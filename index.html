@@ -1,0 +1,1915 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta
+    name="description"
+    content="Public artist archive, project tracker and shop prototype."
+  />
+
+  <title>MIGRAINZ // PUBLIC ACCESS TERMINAL</title>
+
+  <style>
+    :root {
+      --bg: #010301;
+      --panel: #030803;
+      --green: #72ff62;
+      --green2: #42c93a;
+      --dim: #247d21;
+      --hot: #baffaa;
+      --line: rgba(114, 255, 98, 0.32);
+
+      --mx: 0;
+      --my: 0;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      background: #010301;
+      color-scheme: dark;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100%;
+      background: #010301;
+      color: var(--green);
+      font-family: "Courier New", Courier, monospace;
+      line-height: 1.45;
+      letter-spacing: 0.02em;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    button {
+      font: inherit;
+    }
+
+    .shell {
+      width: min(1180px, calc(100% - 32px));
+      margin-inline: auto;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 18px 0;
+      border-bottom: 1px solid var(--line);
+      font-size: 12px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .brand {
+      font-weight: 700;
+      color: var(--hot);
+    }
+
+    .topbar-meta {
+      display: flex;
+      gap: 18px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .online {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .online i {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--hot);
+      box-shadow: 0 0 8px var(--green);
+    }
+
+    /* CRT screen overlay */
+
+    .crt {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 20;
+
+      background:
+        repeating-linear-gradient(
+          to bottom,
+          rgba(255,255,255,.018) 0,
+          rgba(255,255,255,.018) 1px,
+          transparent 1px,
+          transparent 4px
+        );
+
+      mix-blend-mode: screen;
+      opacity: 0.38;
+    }
+
+    .crt::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+
+      background:
+        radial-gradient(
+          circle at center,
+          transparent 50%,
+          rgba(0,0,0,.55) 100%
+        );
+    }
+
+    /* HERO */
+
+    .panel-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.08fr;
+      gap: 44px;
+      min-height: 690px;
+      align-items: center;
+      padding: 70px 0;
+    }
+
+    .eyebrow,
+    .section-head p,
+    .record-copy p {
+      font-size: 11px;
+      color: var(--green2);
+      letter-spacing: 0.13em;
+    }
+
+    .hero h1 {
+      font-size: clamp(48px, 7vw, 96px);
+      line-height: 0.86;
+      margin: 18px 0 24px;
+      color: var(--hot);
+      letter-spacing: -0.07em;
+
+      text-shadow:
+        0 0 14px rgba(155,212,125,.13);
+    }
+
+    .lede {
+      max-width: 620px;
+      color: var(--green2);
+      font-size: 15px;
+    }
+
+    /* MAIN TERMINAL NAV */
+
+    .terminal-nav {
+      display: grid;
+      margin-top: 42px;
+      border-top: 1px solid var(--line);
+    }
+
+    .terminal-nav a {
+      padding: 12px 8px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      gap: 22px;
+      transition: 0.15s;
+    }
+
+    .terminal-nav a span {
+      color: var(--dim);
+    }
+
+    .terminal-nav a:hover,
+    .terminal-nav a:focus-visible {
+      background: rgba(155,212,125,.08);
+      color: var(--hot);
+      padding-left: 16px;
+      outline: none;
+    }
+
+    /* INTERACTIVE FACE */
+
+    .watcher {
+      position: relative;
+      border: 1px solid var(--line);
+
+      background:
+        linear-gradient(
+          145deg,
+          rgba(155,212,125,.035),
+          transparent 45%
+        ),
+        #060a06;
+
+      overflow: hidden;
+    }
+
+    .watcher::before {
+      content: "";
+      display: block;
+      padding-top: 100%;
+    }
+
+    .watcher svg {
+      position: absolute;
+      inset: 7%;
+      width: 86%;
+      height: 86%;
+      overflow: visible;
+
+      transform:
+        perspective(900px)
+        rotateY(calc(var(--mx) * 3deg))
+        rotateX(calc(var(--my) * -3deg));
+
+      transition: transform 0.09s linear;
+    }
+
+    .watcher svg * {
+      vector-effect: non-scaling-stroke;
+    }
+
+    .head path,
+    .eye rect,
+    .mouth {
+      fill: none;
+      stroke: var(--green);
+      stroke-width: 2;
+    }
+
+    .head .detail {
+      stroke: var(--dim);
+    }
+
+    .eye .pupil {
+      fill: var(--hot);
+      stroke: none;
+
+      transform:
+        translate(
+          calc(var(--mx) * 12px),
+          calc(var(--my) * 12px)
+        );
+
+      transition: transform 0.07s linear;
+    }
+
+    .mouth {
+      stroke: var(--green2);
+    }
+
+    .watcher text {
+      fill: var(--dim);
+      font-size: 14px;
+      letter-spacing: 4px;
+    }
+
+    .watcher-label,
+    .scan-readout {
+      position: absolute;
+      z-index: 2;
+      font-size: 10px;
+      color: var(--green2);
+      letter-spacing: 0.12em;
+    }
+
+    .watcher-label {
+      top: 14px;
+      left: 14px;
+    }
+
+    .scan-readout {
+      right: 14px;
+      bottom: 14px;
+      display: flex;
+      gap: 14px;
+    }
+
+    .scan-readout b {
+      color: var(--hot);
+    }
+
+    /* GENERAL SECTIONS */
+
+    .section-block {
+      padding: 70px 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 20px;
+      margin-bottom: 28px;
+    }
+
+    .section-head > div {
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+    }
+
+    .section-head span {
+      font-size: 11px;
+      color: var(--dim);
+    }
+
+    .section-head h2 {
+      margin: 0;
+      color: var(--hot);
+      font-size: 20px;
+      letter-spacing: 0.08em;
+    }
+
+    .compact {
+      margin-bottom: 22px;
+    }
+
+    /* PROJECT TRACKER */
+
+    .project-status {
+      border: 1px solid var(--line);
+      padding: 26px;
+      background: rgba(155,212,125,.018);
+    }
+
+    .status-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      align-items: start;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 20px;
+    }
+
+    .status-title p {
+      margin: 0 0 6px;
+      color: var(--dim);
+      font-size: 11px;
+    }
+
+    .status-title h3 {
+      font-size: 36px;
+      margin: 0;
+      color: var(--hot);
+    }
+
+    .status-chip {
+      border: 1px solid var(--line);
+      padding: 8px 10px;
+      font-size: 11px;
+    }
+
+    .progress-list {
+      display: grid;
+      gap: 10px;
+      padding: 24px 0;
+    }
+
+    .progress-row {
+      display: grid;
+      grid-template-columns: 120px 1fr 54px;
+      gap: 14px;
+      align-items: center;
+      font-size: 12px;
+    }
+
+    .bar {
+      height: 11px;
+      border: 1px solid var(--line);
+      padding: 2px;
+    }
+
+    .bar i {
+      display: block;
+      height: 100%;
+      width: var(--p);
+      background: var(--green);
+    }
+
+    .progress-row b {
+      text-align: right;
+      color: var(--hot);
+    }
+
+    .status-footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      border-top: 1px solid var(--line);
+      padding-top: 16px;
+      font-size: 11px;
+    }
+
+    .text-button {
+      border: 0;
+      background: none;
+      color: var(--green);
+      cursor: pointer;
+    }
+
+    .text-button:hover {
+      color: var(--hot);
+    }
+
+    .hidden-log {
+      display: none;
+      margin-top: 18px;
+      padding: 14px;
+      border-left: 2px solid var(--dim);
+      font-size: 11px;
+      color: var(--green2);
+    }
+
+    .hidden-log.open {
+      display: block;
+    }
+
+    .hidden-log p {
+      margin: 5px 0;
+    }
+
+    /* PROJECT CARDS */
+
+    .project-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .record-card {
+      border: 1px solid var(--line);
+      background: #060a06;
+    }
+
+    .record-image {
+      aspect-ratio: 4 / 3;
+      display: grid;
+      place-items: end start;
+      padding: 14px;
+      position: relative;
+      overflow: hidden;
+      color: var(--hot);
+      font-size: 12px;
+    }
+
+    .record-image::before,
+    .record-image::after {
+      content: "";
+      position: absolute;
+    }
+
+    .art-a {
+      background:
+        radial-gradient(
+          circle at 32% 38%,
+          rgba(213,255,189,.18),
+          transparent 8%
+        ),
+        linear-gradient(
+          135deg,
+          transparent 40%,
+          rgba(155,212,125,.14) 41% 42%,
+          transparent 43%
+        ),
+        linear-gradient(
+          45deg,
+          #081208,
+          #030503
+        );
+    }
+
+    .art-a::before {
+      width: 44%;
+      height: 64%;
+      border: 1px solid var(--green2);
+      left: 27%;
+      top: 17%;
+      transform: skew(-8deg);
+    }
+
+    .art-b {
+      background:
+        repeating-linear-gradient(
+          90deg,
+          transparent 0 22px,
+          rgba(155,212,125,.06) 23px 24px
+        ),
+        linear-gradient(
+          #071007,
+          #020402
+        );
+    }
+
+    .art-b::before {
+      width: 55%;
+      height: 55%;
+      border: 1px dashed var(--green2);
+      border-radius: 50%;
+      left: 21%;
+      top: 18%;
+    }
+
+    .art-c {
+      background:
+        linear-gradient(
+          135deg,
+          #071007 25%,
+          #030503 25% 50%,
+          #071007 50% 75%,
+          #030503 75%
+        );
+    }
+
+    .art-c::before {
+      inset: 20%;
+      border: 1px solid var(--green2);
+      transform: rotate(9deg);
+    }
+
+    .record-copy {
+      padding: 18px;
+    }
+
+    .record-copy h3 {
+      margin: 5px 0 16px;
+      color: var(--hot);
+      font-size: 22px;
+    }
+
+    .record-copy span {
+      font-size: 10px;
+      color: var(--green2);
+    }
+
+    /* ARCHIVE AND ACTIVITY */
+
+    .split {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 50px;
+    }
+
+    .archive-list {
+      border-top: 1px solid var(--line);
+    }
+
+    .archive-list button {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 70px 1fr auto;
+      gap: 12px;
+      text-align: left;
+      padding: 13px 0;
+      border: 0;
+      border-bottom: 1px solid var(--line);
+      background: none;
+      color: var(--green);
+      cursor: pointer;
+    }
+
+    .archive-list button:hover {
+      color: var(--hot);
+      padding-left: 8px;
+    }
+
+    .archive-list span,
+    .archive-list em {
+      font-size: 10px;
+      color: var(--dim);
+      font-style: normal;
+    }
+
+    .activity-feed {
+      border-top: 1px solid var(--line);
+    }
+
+    .activity-feed p {
+      display: grid;
+      grid-template-columns: 60px 1fr auto;
+      gap: 12px;
+      margin: 0;
+      padding: 13px 0;
+      border-bottom: 1px solid var(--line);
+      font-size: 11px;
+    }
+
+    .activity-feed time,
+    .activity-feed b {
+      color: var(--dim);
+    }
+
+    /* SHOP */
+
+    .shop-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .shop-item {
+      border: 1px solid var(--line);
+      padding: 12px;
+    }
+
+    .product-art {
+      aspect-ratio: 1 / 1;
+      background: #070c07;
+      border-bottom: 1px solid var(--line);
+      display: grid;
+      place-items: center;
+      color: var(--dim);
+      letter-spacing: 0.14em;
+    }
+
+    .p1 {
+      background:
+        linear-gradient(
+          30deg,
+          #050805 30%,
+          #0d1a0d 30% 34%,
+          #050805 34% 70%,
+          #0d1a0d 70% 74%,
+          #050805 74%
+        );
+    }
+
+    .p2 {
+      background:
+        repeating-linear-gradient(
+          0deg,
+          #050805 0 14px,
+          #0d170d 15px
+        );
+    }
+
+    .p3 {
+      background:
+        radial-gradient(
+          circle at center,
+          #102010 0 2px,
+          #050805 3px 18px,
+          #102010 19px 20px,
+          #050805 21px
+        );
+    }
+
+    .shop-item > div:last-child {
+      padding: 16px 4px 4px;
+    }
+
+    .shop-item p {
+      min-height: 38px;
+      font-size: 12px;
+    }
+
+    .shop-item strong {
+      display: block;
+      color: var(--hot);
+      margin: 8px 0 14px;
+    }
+
+    .shop-item button {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: none;
+      color: var(--green);
+      padding: 10px;
+      cursor: pointer;
+    }
+
+    .shop-item button:hover {
+      background: rgba(155,212,125,.08);
+      color: var(--hot);
+    }
+
+    .manifest {
+      margin-top: 14px;
+      border: 1px solid var(--line);
+      padding: 12px;
+      font-size: 11px;
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    .manifest span {
+      color: var(--dim);
+    }
+
+    /* ABOUT */
+
+    .about-copy {
+      max-width: 780px;
+    }
+
+    .about-copy > p {
+      font-size: 14px;
+      color: var(--green2);
+    }
+
+    .contact-lines {
+      display: grid;
+      margin-top: 28px;
+      border-top: 1px solid var(--line);
+    }
+
+    .contact-lines a {
+      padding: 11px 0;
+      border-bottom: 1px solid var(--line);
+      font-size: 11px;
+    }
+
+    .contact-lines a:hover {
+      color: var(--hot);
+    }
+
+    /* FOOTER */
+
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 24px 0 40px;
+      border-top: 1px solid var(--line);
+      font-size: 10px;
+      color: var(--dim);
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: -1;
+
+      background:
+        radial-gradient(
+          circle at 50% 0%,
+          rgba(32,120,28,.08),
+          transparent 38%
+        ),
+        #010301;
+    }
+
+    main,
+    header,
+    footer {
+      position: relative;
+    }
+
+    ::selection {
+      background: var(--green);
+      color: #010301;
+    }
+
+    /* TABLET */
+
+    @media (max-width: 860px) {
+      .panel-grid {
+        grid-template-columns: 1fr;
+        padding-top: 50px;
+      }
+
+      .watcher {
+        max-width: 650px;
+      }
+
+      .project-grid,
+      .shop-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .split {
+        grid-template-columns: 1fr;
+      }
+
+      .topbar-meta span:first-child {
+        display: none;
+      }
+    }
+
+    /* MOBILE */
+
+    @media (max-width: 560px) {
+      .shell {
+        width: min(100% - 22px, 1180px);
+      }
+
+      .topbar {
+        font-size: 9px;
+      }
+
+      .topbar-meta {
+        gap: 10px;
+      }
+
+      .panel-grid {
+        min-height: 0;
+        gap: 34px;
+        padding: 45px 0;
+      }
+
+      .hero h1 {
+        font-size: 50px;
+      }
+
+      .terminal-nav a {
+        font-size: 12px;
+      }
+
+      .section-block {
+        padding: 50px 0;
+      }
+
+      .section-head {
+        align-items: start;
+      }
+
+      .section-head p {
+        display: none;
+      }
+
+      .project-grid,
+      .shop-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .progress-row {
+        grid-template-columns: 90px 1fr 40px;
+        gap: 8px;
+      }
+
+      .status-title {
+        display: grid;
+      }
+
+      .status-title h3 {
+        font-size: 28px;
+      }
+
+      .status-footer,
+      .manifest,
+      .footer {
+        display: grid;
+      }
+
+      .archive-list button {
+        grid-template-columns: 54px 1fr;
+      }
+
+      .archive-list em {
+        display: none;
+      }
+
+      .activity-feed p {
+        grid-template-columns: 52px 1fr auto;
+      }
+
+      .crt {
+        opacity: 0.22;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html {
+        scroll-behavior: auto;
+      }
+
+      .watcher svg,
+      .eye .pupil {
+        transition: none !important;
+        transform: none !important;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="crt" aria-hidden="true"></div>
+
+  <header class="topbar shell">
+
+    <a
+      class="brand"
+      href="#top"
+      aria-label="Home"
+    >
+      MIGRAINZ // PUBLIC ACCESS TERMINAL
+    </a>
+
+    <div class="topbar-meta">
+      <span>NODE 01</span>
+
+      <span id="clock">
+        --:--:--
+      </span>
+
+      <span class="online">
+        <i></i>
+        ONLINE
+      </span>
+    </div>
+
+  </header>
+
+  <main
+    id="top"
+    class="shell"
+  >
+
+    <!-- HERO -->
+
+    <section class="hero panel-grid">
+
+      <div class="hero-copy">
+
+        <p class="eyebrow">
+          PUBLIC SYSTEM INDEX / REV. 0.1
+        </p>
+
+        <h1>
+          ARCHIVE.<br>
+          PROJECTS.<br>
+          OBJECTS.
+        </h1>
+
+        <p class="lede">
+          A public terminal for ongoing work,
+          finished projects, studio debris,
+          production logs and releases.
+        </p>
+
+        <nav
+          class="terminal-nav"
+          aria-label="Primary navigation"
+        >
+
+          <a href="#projects">
+            <span>01</span>
+            PROJECT DATABASE
+          </a>
+
+          <a href="#tracker">
+            <span>02</span>
+            CURRENT OPERATIONS
+          </a>
+
+          <a href="#shop">
+            <span>03</span>
+            REQUISITIONS / SHOP
+          </a>
+
+          <a href="#archive">
+            <span>04</span>
+            ARCHIVE
+          </a>
+
+          <a href="#about">
+            <span>05</span>
+            INFORMATION
+          </a>
+
+        </nav>
+
+      </div>
+
+      <!-- INTERACTIVE PLACEHOLDER -->
+
+      <div
+        class="watcher"
+        id="watcher"
+        aria-label="Interactive placeholder artwork"
+      >
+
+        <div class="watcher-label">
+          VISUAL NODE / CURSOR TEST
+        </div>
+
+        <svg
+          viewBox="0 0 600 600"
+          role="img"
+          aria-label="Abstract terminal face"
+        >
+
+          <defs>
+
+            <filter id="roughGlow">
+
+              <feGaussianBlur
+                stdDeviation="2.2"
+                result="blur"
+              />
+
+              <feMerge>
+                <feMergeNode in="blur"/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+
+            </filter>
+
+          </defs>
+
+          <g
+            class="head"
+            filter="url(#roughGlow)"
+          >
+
+            <path
+              d="
+                M165 120
+                L430 120
+                L505 205
+                L470 462
+                L387 520
+                L210 500
+                L123 418
+                L102 210
+                Z
+              "
+            />
+
+            <path
+              d="
+                M210 185
+                L390 175
+                L440 235
+                L418 405
+                L355 452
+                L235 445
+                L173 390
+                L155 245
+                Z
+              "
+            />
+
+            <path
+              class="detail"
+              d="
+                M110 320 L160 330
+                M432 318 L493 300
+                M297 120 L300 177
+                M205 446 L178 480
+                M389 452 L415 487
+              "
+            />
+
+          </g>
+
+          <g
+            class="eye eye-left"
+            transform="translate(225 290)"
+          >
+
+            <rect
+              x="-66"
+              y="-38"
+              width="132"
+              height="76"
+              rx="4"
+            />
+
+            <circle
+              class="pupil"
+              cx="0"
+              cy="0"
+              r="17"
+            />
+
+          </g>
+
+          <g
+            class="eye eye-right"
+            transform="translate(375 285)"
+          >
+
+            <rect
+              x="-66"
+              y="-38"
+              width="132"
+              height="76"
+              rx="4"
+            />
+
+            <circle
+              class="pupil"
+              cx="0"
+              cy="0"
+              r="17"
+            />
+
+          </g>
+
+          <path
+            class="mouth"
+            d="
+              M232 390
+              C270 410
+              330 410
+              370 388
+            "
+          />
+
+          <text
+            x="300"
+            y="563"
+            text-anchor="middle"
+          >
+            POINTER INPUT DETECTED
+          </text>
+
+        </svg>
+
+        <div class="scan-readout">
+
+          <span>
+            X
+            <b id="readout-x">
+              000
+            </b>
+          </span>
+
+          <span>
+            Y
+            <b id="readout-y">
+              000
+            </b>
+          </span>
+
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- PROJECT TRACKER -->
+
+    <section
+      id="tracker"
+      class="section-block"
+    >
+
+      <div class="section-head">
+
+        <div>
+          <span>02</span>
+
+          <h2>
+            CURRENT OPERATIONS
+          </h2>
+        </div>
+
+        <p>
+          PUBLIC PRODUCTION STATUS
+        </p>
+
+      </div>
+
+      <article class="project-status featured-status">
+
+        <div class="status-title">
+
+          <div>
+
+            <p>
+              PROJECT BL-001
+            </p>
+
+            <h3>
+              BLUSHLAND
+            </h3>
+
+          </div>
+
+          <div class="status-chip">
+            ACTIVE / PRODUCTION
+          </div>
+
+        </div>
+
+        <div class="progress-list">
+
+          <div class="progress-row">
+
+            <span>
+              SCRIPT
+            </span>
+
+            <div class="bar">
+              <i style="--p:100%"></i>
+            </div>
+
+            <b>
+              100%
+            </b>
+
+          </div>
+
+          <div class="progress-row">
+
+            <span>
+              DESIGN
+            </span>
+
+            <div class="bar">
+              <i style="--p:82%"></i>
+            </div>
+
+            <b>
+              82%
+            </b>
+
+          </div>
+
+          <div class="progress-row">
+
+            <span>
+              CHAPTER 01
+            </span>
+
+            <div class="bar">
+              <i style="--p:100%"></i>
+            </div>
+
+            <b>
+              100%
+            </b>
+
+          </div>
+
+          <div class="progress-row">
+
+            <span>
+              CHAPTER 02
+            </span>
+
+            <div class="bar">
+              <i style="--p:73%"></i>
+            </div>
+
+            <b>
+              73%
+            </b>
+
+          </div>
+
+          <div class="progress-row">
+
+            <span>
+              CHAPTER 03
+            </span>
+
+            <div class="bar">
+              <i style="--p:24%"></i>
+            </div>
+
+            <b>
+              24%
+            </b>
+
+          </div>
+
+        </div>
+
+        <div class="status-footer">
+
+          <span>
+            LAST UPDATE: 03 SEP 2026
+          </span>
+
+          <button
+            class="text-button"
+            data-toggle="blushlog"
+          >
+            VIEW LOG +
+          </button>
+
+        </div>
+
+        <div
+          class="hidden-log"
+          id="blushlog"
+        >
+
+          <p>
+            09/03 — DEVELOPMENT ART +4
+          </p>
+
+          <p>
+            08/31 — CHAPTER 02 INKS UPDATED
+          </p>
+
+          <p>
+            08/27 — CHARACTER SHEETS REVISED
+          </p>
+
+        </div>
+
+      </article>
+
+    </section>
+
+    <!-- PROJECT DATABASE -->
+
+    <section
+      id="projects"
+      class="section-block"
+    >
+
+      <div class="section-head">
+
+        <div>
+          <span>01</span>
+
+          <h2>
+            PROJECT DATABASE
+          </h2>
+        </div>
+
+        <p>
+          SELECTED RECORDS
+        </p>
+
+      </div>
+
+      <div class="project-grid">
+
+        <article class="record-card">
+
+          <div class="record-image art-a">
+            <span>
+              BL-001
+            </span>
+          </div>
+
+          <div class="record-copy">
+
+            <p>
+              GRAPHIC NOVEL / ACTIVE
+            </p>
+
+            <h3>
+              BLUSHLAND
+            </h3>
+
+            <span>
+              WORLD / CHARACTERS / PRODUCTION ARCHIVE
+            </span>
+
+          </div>
+
+        </article>
+
+        <article class="record-card">
+
+          <div class="record-image art-b">
+            <span>
+              ST-024
+            </span>
+          </div>
+
+          <div class="record-copy">
+
+            <p>
+              CONCEPT ART / ARCHIVED
+            </p>
+
+            <h3>
+              STALKER
+            </h3>
+
+            <span>
+              CAMPAIGN ART / CHARACTER DEVELOPMENT
+            </span>
+
+          </div>
+
+        </article>
+
+        <article class="record-card">
+
+          <div class="record-image art-c">
+            <span>
+              MX-011
+            </span>
+          </div>
+
+          <div class="record-copy">
+
+            <p>
+              STUDIO OUTPUT / ONGOING
+            </p>
+
+            <h3>
+              MISC. WORKS
+            </h3>
+
+            <span>
+              PRINT / DESIGN / CLIENT / EXPERIMENTS
+            </span>
+
+          </div>
+
+        </article>
+
+      </div>
+
+    </section>
+
+    <!-- ARCHIVE + ACTIVITY -->
+
+    <section class="split section-block">
+
+      <div
+        id="archive"
+        class="archive-block"
+      >
+
+        <div class="section-head compact">
+
+          <div>
+            <span>04</span>
+
+            <h2>
+              ARCHIVE
+            </h2>
+          </div>
+
+        </div>
+
+        <div class="archive-list">
+
+          <button>
+            <span>00041</span>
+            <b>CHARACTER STUDIES</b>
+            <em>24 FILES</em>
+          </button>
+
+          <button>
+            <span>00040</span>
+            <b>ENVIRONMENT BLOCKOUTS</b>
+            <em>11 FILES</em>
+          </button>
+
+          <button>
+            <span>00039</span>
+            <b>ABANDONED / UNFILED</b>
+            <em>37 FILES</em>
+          </button>
+
+          <button>
+            <span>00038</span>
+            <b>PRINT DEVELOPMENT</b>
+            <em>09 FILES</em>
+          </button>
+
+        </div>
+
+      </div>
+
+      <div class="activity-block">
+
+        <div class="section-head compact">
+
+          <div>
+            <span>06</span>
+
+            <h2>
+              SYSTEM ACTIVITY
+            </h2>
+          </div>
+
+        </div>
+
+        <div class="activity-feed">
+
+          <p>
+            <time>09/03</time>
+            <span>BLUSHLAND DEVELOPMENT ART</span>
+            <b>+4</b>
+          </p>
+
+          <p>
+            <time>08/29</time>
+            <span>STORE INVENTORY UPDATED</span>
+            <b>OK</b>
+          </p>
+
+          <p>
+            <time>08/24</time>
+            <span>NEW PROJECT REGISTERED</span>
+            <b>+1</b>
+          </p>
+
+          <p>
+            <time>08/17</time>
+            <span>ARCHIVE ENTRY</span>
+            <b>+12</b>
+          </p>
+
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- SHOP -->
+
+    <section
+      id="shop"
+      class="section-block"
+    >
+
+      <div class="section-head">
+
+        <div>
+          <span>03</span>
+
+          <h2>
+            REQUISITIONS / SHOP
+          </h2>
+        </div>
+
+        <p>
+          DEMO INVENTORY — CHECKOUT NOT CONNECTED
+        </p>
+
+      </div>
+
+      <div class="shop-grid">
+
+        <article class="shop-item">
+
+          <div class="product-art p1">
+            PRINT_001
+          </div>
+
+          <div>
+
+            <p>
+              BLUSHLAND / FIELD PRINT 01
+            </p>
+
+            <strong>
+              $30.00
+            </strong>
+
+            <button
+              data-cart="BLUSHLAND / FIELD PRINT 01"
+            >
+              ADD TO MANIFEST
+            </button>
+
+          </div>
+
+        </article>
+
+        <article class="shop-item">
+
+          <div class="product-art p2">
+            BOOK_001
+          </div>
+
+          <div>
+
+            <p>
+              DEVELOPMENT ARCHIVE VOL. 01
+            </p>
+
+            <strong>
+              $45.00
+            </strong>
+
+            <button
+              data-cart="DEVELOPMENT ARCHIVE VOL. 01"
+            >
+              ADD TO MANIFEST
+            </button>
+
+          </div>
+
+        </article>
+
+        <article class="shop-item">
+
+          <div class="product-art p3">
+            OBJ_014
+          </div>
+
+          <div>
+
+            <p>
+              STUDIO OBJECT / LIMITED
+            </p>
+
+            <strong>
+              $18.00
+            </strong>
+
+            <button
+              data-cart="STUDIO OBJECT / LIMITED"
+            >
+              ADD TO MANIFEST
+            </button>
+
+          </div>
+
+        </article>
+
+      </div>
+
+      <div
+        class="manifest"
+        aria-live="polite"
+      >
+
+        MANIFEST:
+
+        <b id="cart-count">
+          0
+        </b>
+
+        OBJECTS
+
+        <span id="cart-message">
+          // LOCAL PROTOTYPE ONLY
+        </span>
+
+      </div>
+
+    </section>
+
+    <!-- ABOUT -->
+
+    <section
+      id="about"
+      class="about section-block"
+    >
+
+      <div class="section-head compact">
+
+        <div>
+          <span>05</span>
+
+          <h2>
+            INFORMATION
+          </h2>
+        </div>
+
+      </div>
+
+      <div class="about-copy">
+
+        <p>
+          This is a prototype for a public-facing
+          artist/studio site: part project archive,
+          part production terminal, part shop.
+          Replace this copy with your actual studio
+          statement and links.
+        </p>
+
+        <div class="contact-lines">
+
+          <a href="mailto:hello@example.com">
+            EMAIL // hello@example.com
+          </a>
+
+          <a href="#">
+            SOCIAL // @HANDLE
+          </a>
+
+          <a href="#top">
+            RETURN // SYSTEM INDEX
+          </a>
+
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <footer class="shell footer">
+
+    <span>
+      © 2026 MIGRAINZ
+    </span>
+
+    <span>
+      PUBLIC NODE / UNAUTHENTICATED ACCESS
+    </span>
+
+  </footer>
+
+  <script>
+    const root = document.documentElement;
+
+    const watcher =
+      document.getElementById("watcher");
+
+    const xReadout =
+      document.getElementById("readout-x");
+
+    const yReadout =
+      document.getElementById("readout-y");
+
+    const clock =
+      document.getElementById("clock");
+
+
+    /*
+      TERMINAL CLOCK
+    */
+
+    function updateClock() {
+
+      const now = new Date();
+
+      clock.textContent =
+        now.toLocaleTimeString(
+          [],
+          {
+            hour12: false
+          }
+        );
+    }
+
+    updateClock();
+
+    setInterval(
+      updateClock,
+      1000
+    );
+
+
+    /*
+      CURSOR TRACKING
+    */
+
+    if (
+      watcher &&
+      window.matchMedia("(pointer:fine)").matches
+    ) {
+
+      watcher.addEventListener(
+        "pointermove",
+        (event) => {
+
+          const rect =
+            watcher.getBoundingClientRect();
+
+          const pointerX =
+            (event.clientX - rect.left)
+            / rect.width;
+
+          const pointerY =
+            (event.clientY - rect.top)
+            / rect.height;
+
+          const mouseX =
+            Math.max(
+              -1,
+              Math.min(
+                1,
+                (pointerX - 0.5) * 2
+              )
+            );
+
+          const mouseY =
+            Math.max(
+              -1,
+              Math.min(
+                1,
+                (pointerY - 0.5) * 2
+              )
+            );
+
+          root.style.setProperty(
+            "--mx",
+            mouseX.toFixed(3)
+          );
+
+          root.style.setProperty(
+            "--my",
+            mouseY.toFixed(3)
+          );
+
+          xReadout.textContent =
+            String(
+              Math.round(pointerX * 999)
+            ).padStart(3, "0");
+
+          yReadout.textContent =
+            String(
+              Math.round(pointerY * 999)
+            ).padStart(3, "0");
+        }
+      );
+
+
+      watcher.addEventListener(
+        "pointerleave",
+        () => {
+
+          root.style.setProperty(
+            "--mx",
+            0
+          );
+
+          root.style.setProperty(
+            "--my",
+            0
+          );
+        }
+      );
+    }
+
+
+    /*
+      PROJECT LOG BUTTON
+    */
+
+    document
+      .querySelectorAll("[data-toggle]")
+      .forEach(
+        (button) => {
+
+          button.addEventListener(
+            "click",
+            () => {
+
+              const target =
+                document.getElementById(
+                  button.dataset.toggle
+                );
+
+              if (!target) {
+                return;
+              }
+
+              target.classList.toggle(
+                "open"
+              );
+
+              button.textContent =
+                target.classList.contains(
+                  "open"
+                )
+                  ? "HIDE LOG −"
+                  : "VIEW LOG +";
+            }
+          );
+        }
+      );
+
+
+    /*
+      PROTOTYPE SHOP CART
+    */
+
+    let cartCount = 0;
+
+    const cartCountEl =
+      document.getElementById(
+        "cart-count"
+      );
+
+    const cartMessage =
+      document.getElementById(
+        "cart-message"
+      );
+
+
+    document
+      .querySelectorAll("[data-cart]")
+      .forEach(
+        (button) => {
+
+          button.addEventListener(
+            "click",
+            () => {
+
+              cartCount += 1;
+
+              cartCountEl.textContent =
+                cartCount;
+
+              cartMessage.textContent =
+                `// ADDED: ${button.dataset.cart}`;
+            }
+          );
+        }
+      );
+  </script>
+
+</body>
+</html>
