@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { useState, type KeyboardEvent } from "react";
-import { projectHref, type Project, type Chapter } from "@/data/projects";
+import { projectHref, type Project, type Chapter } from "@/lib/content/types";
 
 export default function ComicReader({
   project,
   chapter,
 }: {
-  project: Project;
+  project: Pick<Project, 'slug' | 'title'>;
   chapter: Chapter;
 }) {
   const [page, setPage] = useState(0);

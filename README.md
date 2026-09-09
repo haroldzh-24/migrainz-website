@@ -1,6 +1,10 @@
 # Studio Migrainz // Public Access Terminal
 
-A Next.js App Router + React + TypeScript site for exploring creative work. Original `index.html` is preserved as a visual reference; the running homepage is `app/page.tsx`.
+A Next.js App Router + React + TypeScript site for exploring creative work. Original `index.html` is preserved as a visual reference; the running homepage is `app/(frontend)/page.tsx`.
+
+## Content management
+
+Payload CMS now feeds the terminal frontend. See [CMS setup, editing, migration and production requirements](docs/CMS.md). SQLite is **development only**; public production requires managed PostgreSQL. Open `/admin` after setup to create your administrator.
 
 ## Run locally
 
@@ -8,6 +12,10 @@ Requires Node.js 20.9+ and npm. In this directory, using PowerShell:
 
 ```powershell
 npm.cmd ci
+npm.cmd run cms:setup
+npm.cmd run cms:types
+npm.cmd run cms:importmap
+npm.cmd run cms:migrate -- --apply
 npm.cmd run dev
 ```
 
@@ -19,13 +27,13 @@ npm.cmd run build
 npm.cmd start
 ```
 
-`start` serves the production build. Stop development first if using the same port.
+`start` requires real production PostgreSQL configuration; it intentionally rejects development SQLite. See the CMS guide before deployment.
 
 ## Major files
 
-- `app/layout.tsx`: metadata, shared CRT overlay, header, footer and skip link.
-- `app/page.tsx`: terminal-only homepage with dedicated route navigation.
-- `app/globals.css`: extracted prototype styles and directory, reader and promotional-window extensions.
+- `app/(frontend)/layout.tsx`: metadata, shared CRT overlay, header, footer and skip link.
+- `app/(frontend)/page.tsx`: terminal-only homepage with dedicated route navigation.
+- `app/(frontend)/globals.css`: extracted prototype styles and directory, reader and promotional-window extensions.
 - `app/projects/`: project index, dynamic directories and character records.
 - `app/archive/page.tsx`: relocated archive directory and system activity.
 - `app/about/page.tsx`: studio information and external storefront details.
@@ -50,7 +58,7 @@ npm.cmd start
 
 ## Content workflow
 
-Add a record to `projects` in `data/projects.ts` to get an index entry and directory without copying pages. Slugs must be unique within their parent. Percentages must be 0–100. Character `chapterSlugs` must match chapters within that project. Comic pages use ordered public URLs and descriptive alt text. All current content and tracker values are demonstration data.
+Edit content in `/admin`; do not edit `data/projects.ts` for live changes. That file is now a preserved migration fixture. Publishing updates the frontend on the next request. See [the CMS guide](docs/CMS.md) for chapter uploads, galleries, access controls and safe migration.
 
 Example path: `/` → `/projects` → `/projects/blushland` → `/projects/blushland/characters` → `/projects/blushland/characters/the-observer` → `/comics/blushland/chapter-01` → `/projects/blushland`.
 

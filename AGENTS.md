@@ -11,9 +11,11 @@ Studio Migrainz is a Next.js App Router + React + TypeScript website for explori
 
 ## Project shape
 
-- app/page.tsx is the terminal homepage; app/globals.css contains the original visual system and application extensions.
+- app/(frontend)/page.tsx is the terminal homepage; app/(frontend)/globals.css contains the original visual system and application extensions.
+- app/(frontend)/ contains public routes; app/(payload)/ contains the isolated CMS admin/API. SQLite is DEVELOPMENT ONLY; production requires managed PostgreSQL.
+- Keep listing metadata visibility separate from actual content/file authorization.
 - app/ contains routes; components/ contains reusable UI and isolated client interactions.
-- data/projects.ts defines typed public content. Extend data rather than copying individual project pages.
+- Payload collections/ and lib/content/ define live content and server-only queries. data/projects.ts is a preserved migration fixture, not live data. Read docs/CMS.md before changing CMS behavior.
 - data/site.ts holds the external store destination and placeholder flag.
 - public/ contains public assets only.
 - index.html is a preserved prototype, not the running application source.

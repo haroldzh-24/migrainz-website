@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, type CSSProperties } from "react";
-import { projectHref, type Project } from "@/data/projects";
+import { projectHref, type Project } from "@/lib/content/types";
 
 export default function ProjectTracker({ project }: { project: Project }) {
   const [open, setOpen] = useState(false);

@@ -6,3 +6,8 @@ out/
 .env*
 !.env.example
 test-results/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+.build-media-unused/

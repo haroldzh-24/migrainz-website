@@ -145,6 +145,10 @@ const { chromium } = require(
     );
     await page.getByLabel("GO TO PAGE").selectOption("0");
     assert.equal(await previous.isDisabled(), true);
+    await page.waitForFunction(() => {
+      const img = document.querySelector('.comic-figure img');
+      return img?.complete && img.naturalWidth > 0;
+    });
     assert.equal(
       await page
         .locator(".comic-figure img")
