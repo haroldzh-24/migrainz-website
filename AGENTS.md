@@ -1,30 +1,45 @@
-# AGENTS.md
+﻿# AGENTS.md
 
-This repository is a static single-page website for MIGRAINZ // PUBLIC ACCESS TERMINAL. The main editable experience is in `index.html`, which includes the markup, styling, and client-side JavaScript in one place.
-
-## Project shape
-
-- `index.html` is the primary website file. It contains all CSS, markup, and UI behavior in the same document.
-- `MIGRAINZ_terminal_prototype.html.html` is a separate prototype/reference page and should not be treated as the main source unless the task explicitly targets the prototype.
-- There is no package manifest, build pipeline, test runner, or dependency install step in this repository.
+Studio Migrainz is a Next.js App Router + React + TypeScript website for exploring artwork, projects, comics and production archives. It is not a job-seeking portfolio.
 
 ## Working conventions
 
-- At the beginning of every work session, check `bugs.md` and `features.md` before editing or planning work.
-- When reviewing `bugs.md` or `features.md`, remind the user about any unresolved bug or planned feature that has been present for more than one month.
-- Keep edits small and in-place inside the existing HTML structure.
-- Preserve the terminal/public-access aesthetic: dark green CRT workspace, monospace typography, grid-like panel layout, scanner/eye/clock UI details.
-- Favor CSS custom properties and existing design tokens already declared in the page's root styles when adding new visual elements.
-- Add JavaScript in the existing inline script at the bottom of `index.html` rather than introducing a separate source file.
-- Avoid adding frameworks, package dependencies, or build tooling unless a task explicitly requires them.
+- Check bugs.md and features.md before editing or planning. Remind the user about unresolved bugs or planned features older than one month.
+- Update features.md and changelog.md as features are implemented.
+- Preserve Git history and the original index.html visual reference.
+- Keep changes focused and avoid unnecessary dependencies.
+
+## Project shape
+
+- app/page.tsx is the terminal homepage; app/globals.css contains the original visual system and application extensions.
+- app/ contains routes; components/ contains reusable UI and isolated client interactions.
+- data/projects.ts defines typed public content. Extend data rather than copying individual project pages.
+- data/site.ts holds the external store destination and placeholder flag.
+- public/ contains public assets only.
+- index.html is a preserved prototype, not the running application source.
 
 ## UI expectations
 
-- Navigation links and stable anchor IDs should remain consistent with the current page sections.
-- Interactive elements such as the cart counter, project log toggle, and terminal clock already have JavaScript hooks; keep those hooks and UI text patterns consistent.
-- For static design updates, prefer a one-file HTML/CSS/JS implementation that remains visually consistent with the current landing page.
+- Preserve near-black/phosphor-green colors, monospace text, directory structure, timestamps, subtle CRT and face/scanner/clock details.
+- Reuse CSS custom properties and established styles. Avoid generic portfolios, SaaS dashboards, excessive neon and hacker styling.
+- SHOP and Patreon intentionally use cheap Windows 95/98 promotional windows. Triggers open windows; inner actions navigate.
+- Preserve homepage IDs: top, projects, tracker, archive, shop, about.
+- Respect reduced motion, keyboard access, visible focus and touch/mobile behavior. Clean up timers and listeners.
+- Commerce stays external. Do not reintroduce a cart, checkout or payment system.
+- Patreon authentication is a future phase. Never implement fake access control or put restricted files in public assets/client data. Future protected content needs private storage and server-side authorization on every request.
 
 ## Validation
 
-- Because this is a static HTML project, validation usually means opening the page locally in a browser and checking that markup remains valid and the generated site loads without missing assets.
-- If editing the prototype page, keep the visual language aligned with the main site while avoiding accidental drift from the main `index.html` experience.
+- Run npm.cmd run typecheck and npm.cmd run build for TypeScript and production compilation.
+- npm.cmd run dev starts http://127.0.0.1:3000 (or the next free port printed in the terminal).
+- Check the complete BLUSHLAND path, reader boundaries, popup hover/keyboard/touch behavior, mobile widths and reduced motion.
+- Optional browser checks: npm.cmd exec --yes --package=playwright -- node scripts/verify.cjs while the server runs. See README.md.
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

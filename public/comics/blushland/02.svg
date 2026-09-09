@@ -1,0 +1,18 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1200" viewBox="0 0 900 1200">
+  <rect width="900" height="1200" fill="#071007"/>
+  <g fill="none" stroke="#72ff62" stroke-width="3">
+    <rect x="40" y="100" width="820" height="620"/>
+    <path d="M40 580L200 420L360 570L540 360L860 590M40 620H860"/>
+    <rect x="340" y="220" width="230" height="400"/>
+    <circle cx="460" cy="300" r="65"/>
+    <path d="M40 770H860V1080H40ZM160 1080L420 770M710 1080L480 770"/>
+    <circle cx="445" cy="510" r="30"/><path d="M445 540V620M445 560L410 590M445 560L480 580M445 620L415 670M445 620L475 670"/>
+  </g>
+  <g fill="#baffaa" font-family="monospace" font-size="24">
+    <text x="40" y="62">BLUSHLAND / CHAPTER 01 / SAMPLE 02</text>
+    <rect x="62" y="128" width="775" height="60" fill="#071007"/>
+    <text x="80" y="168">Someone had left the terminal running.</text>
+    <text x="40" y="1135">PUBLIC PLACEHOLDER ART / NOT FINAL COMIC ARTWORK</text>
+    <text x="40" y="1172">PAGE 02 / 03</text>
+  </g>
+</svg>
