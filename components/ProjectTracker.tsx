@@ -51,7 +51,7 @@ export default function ProjectTracker({ project }: { project: Project }) {
         </button>
       </div>
       <div className={`hidden-log${open ? " open" : ""}`} id={logId}>
-        <p>PROTOTYPE STATUS DATA / FOR DEMONSTRATION</p>
+        <p>PUBLIC PRODUCTION LOG</p>
         {project.notes.map((note) => (
           <p key={note.date}>
             <time dateTime={note.date}>{note.date}</time> — {note.text}

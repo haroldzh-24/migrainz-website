@@ -53,7 +53,7 @@ export default async function ProjectPage({
             key={chapter.slug}
             href={chapterHref(project, chapter)}
             name={chapter.title}
-            meta={`${chapter.pages.length} SAMPLE PAGES`}
+            meta={`${chapter.pages.length} PAGES`}
           />
         ))}
         <DirectoryLink

@@ -57,3 +57,13 @@
 
 - Patreon opens directly above its navigation item with viewport clamping on scroll/resize and an internal scroll area on short screens.
 - Shop positioning and shared hover/touch behavior remain unchanged.
+
+## 2026-09-09 / CMS foundation and publishing workflow
+
+- Added Payload to isolated frontend/CMS route groups without replacing terminal styling or interactions.
+- Added collection schemas, authenticated admin, draft/version controls, independent listing/content classifications and private media access.
+- Migrated 20 legacy records with stable keys, preserved original data/assets and verified page order, descriptions, alt text and checksums.
+- Connected project writing, images, galleries, characters, chapters, updates, tracker and archive content to the existing frontend.
+- Proved admin login through publishing to the reader before adding the custom batch uploader and page/gallery order controls.
+- Added PostgreSQL production guards and an offline initial migration. SQLite remains development-only.
+- Added CMS setup/migration/verification documentation and browser regression checks. Updated Sharp and DOMPurify to patched versions; remaining upstream moderate advisories are recorded in bugs.md.

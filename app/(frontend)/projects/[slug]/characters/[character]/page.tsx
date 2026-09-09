@@ -50,7 +50,7 @@ export default async function CharacterPage({
           <p className="eyebrow">{character.role}</p>
           <p className="lede">{character.description}</p>
           <ContentWriting data={character.writing} />
-          <p>RECORD STATUS: PUBLIC SAMPLE</p>
+          <p>RECORD STATUS: PUBLIC</p>
         </div>
       </div>
       <h2>RELATED COMIC CHAPTERS</h2>

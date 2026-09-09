@@ -103,7 +103,7 @@ export default function ComicReader({
       </nav>
       {page === chapter.pages.length - 1 && (
         <p className="reader-end">
-          END OF SAMPLE CHAPTER /{" "}
+          END OF CHAPTER /{" "}
           <Link href={projectHref(project)}>RETURN TO {project.title} →</Link>
         </p>
       )}

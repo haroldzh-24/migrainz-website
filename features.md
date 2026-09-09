@@ -56,3 +56,13 @@ Recorded 2026-09-08. Owner: Studio Migrainz. Milestones describe future phases, 
 
 - Patreon opens directly above its navigation item with viewport clamping on scroll/resize and an internal scroll area on short screens.
 - Shop positioning and shared hover/touch behavior remain unchanged.
+
+## Implemented - 2026-09-09 / Payload CMS
+
+- Payload 3.88 admin, authentication, rich text, draft/version publishing, projects, comics, chapters, characters, updates, tracker items, galleries, archive items, media and taxonomy.
+- Existing terminal frontend reads access-checked CMS data through server-only adapters; original data and prototype remain migration fixtures.
+- Development-only SQLite and private local media outside Git; production startup requires PostgreSQL. Offline PostgreSQL schema migration included.
+- Listing visibility/safe teaser fields are separate from content access. Patron records remain staff-only; parent, file and derivative checks are enforced without Patreon OAuth.
+- Repeatable dry-run/import/checksum verification, admin publishing workflow checks and frontend regression coverage.
+- After the basic workflow passed: batch chapter/gallery uploads, natural filename sorting, alt text, progress, retry recovery, explicit attachment and manual ordering.
+- Remaining production work: managed PostgreSQL data transfer/validation, private object-storage adapter, email delivery, operational backups and upstream dependency advisory review.

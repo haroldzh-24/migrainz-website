@@ -126,13 +126,46 @@ const { chromium } = require(require.resolve('playwright', {
     await context.request.patch('/api/chapters/' + chapter.id, { data: { _status: 'published', accessLevel: 'public' } });
     await context.request.patch('/api/projects/' + project.id, { data: { _status: 'draft' } });
     assert.ok([403,404].includes((await publicContext.request.get(media.url)).status()), 'Unpublished parent hides descendant files');
-    console.log('PASS: admin login, project create/edit, rich text, image upload, comic/chapter forms, page attachment, publish-to-reader, unpublish, patron and parent/derivative access checks, batch upload, natural order, retry and manual page order.');
+    await context.request.patch('/api/projects/' + project.id, { data: { _status: 'published' } });
+    async function create(collection, data) {
+      const r = await context.request.post('/api/' + collection, { data: { _status: 'published', accessLevel: 'public', listingVisibility: 'public', ...data } });
+      assert.ok(r.ok(), await r.text()); const doc = (await r.json()).doc; created.push([collection, doc.id]); return doc;
+    }
+    const tag = await create('tags', { title: 'CMS tag ' + suffix, slug: 'cms-tag-' + suffix });
+    const category = await create('categories', { title: 'CMS category ' + suffix, slug: 'cms-category-' + suffix });
+    const gallery = await create('galleries', { title: 'CMS gallery ' + suffix, slug: 'cms-gallery-' + suffix, project: project.id,
+      images: [{ media: media.id, alt: 'Gallery first' }, { media: media.id, alt: 'Gallery second' }], tags: [tag.id] });
+    await context.request.patch('/api/projects/' + project.id, { data: { galleries: [gallery.id], categories: [category.id], tags: [tag.id] } });
+    await page.goto('/admin/collections/galleries/' + gallery.id);
+    await page.getByRole('button', { name: 'Move image 2 up', exact: true }).click();
+    const orderedGallery = await publish('galleries', false);
+    assert.equal(orderedGallery.images[0].alt, 'Gallery second');
+    const character = await create('characters', { name: 'CMS character ' + suffix, slug: 'cms-character-' + suffix, project: project.id,
+      description: 'Character from CMS', relatedChapters: [chapter.id], images: [{ media: media.id }], tags: [tag.id] });
+    await create('tracker-items', { title: 'CMS phase ' + suffix, project: project.id, kind: 'phase', percentage: 42, order: 0 });
+    await create('project-updates', { title: 'CMS update ' + suffix, project: project.id, date: new Date().toISOString(), description: 'A CMS production update', images: [{ media: media.id }] });
+    const archive = await create('archive-items', { title: 'CMS archive ' + suffix, slug: 'cms-archive-' + suffix, project: project.id,
+      category: category.id, tags: [tag.id], description: 'Archive caption from CMS', files: [{ media: media.id }] });
+    await visitor.goto('/projects/' + project.slug);
+    await visitor.getByRole('heading', { name: gallery.title, exact: true }).waitFor();
+    await visitor.getByRole('link', { name: new RegExp(archive.title) }).waitFor();
+    await visitor.getByText('A CMS production update', { exact: false }).first().waitFor();
+    await visitor.goto('/projects/' + project.slug + '/characters/' + character.slug);
+    await visitor.getByText('Character from CMS', { exact: true }).waitFor();
+    await visitor.goto('/archive');
+    await visitor.getByRole('heading', { name: archive.title, exact: true }).waitFor();
+    await visitor.goto('/tracker');
+    await visitor.getByRole('progressbar', { name: 'CMS phase ' + suffix, exact: true }).waitFor();
+    console.log('PASS: admin login, project create/edit, rich text, image upload, comic/chapter forms, page attachment, publish-to-reader, unpublish, patron and parent/derivative access checks, batch upload/retry, page/gallery ordering, taxonomy, characters, archive and tracker display.');
   } finally {
     if (userID) {
       const batches = await context.request.get('/api/media?where[filename][contains]=batch-' + suffix);
       if (batches.ok()) for (const doc of (await batches.json()).docs) created.push(['media', doc.id]);
     }
-    const deletionOrder = ['chapters', 'comics', 'media', 'projects'];
+    for (const [collection, id] of created) {
+      if (collection === 'projects') await context.request.patch('/api/projects/' + id, { data: { _status: 'draft', galleries: [], tags: [], categories: [] } });
+    }
+    const deletionOrder = ['characters', 'archive-items', 'project-updates', 'tracker-items', 'chapters', 'comics', 'galleries', 'media', 'projects', 'tags', 'categories'];
     for (const [collection, id] of created.sort((a,b) => deletionOrder.indexOf(a[0]) - deletionOrder.indexOf(b[0]))) {
       const r = await context.request.delete(`/api/${collection}/${id}`);
       assert.ok(r.ok(), `Cleanup ${collection}/${id}: ${await r.text()}`);

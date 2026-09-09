@@ -7,7 +7,7 @@ export default async function ComicsPage() {
   return (
     <Directory path="SYS:/COMICS/" title="COMIC DIRECTORY">
       <p className="lede">
-        Select a chapter. The current release contains public sample pages.
+        Select a chapter to open the reader.
       </p>
       <div className="directory-list">
         {projects.flatMap((project) =>

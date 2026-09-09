@@ -7,8 +7,7 @@ export default async function TrackerPage() {
   return (
     <Directory path="SYS:/OPERATIONS/" title="PROJECT TRACKER">
       <p className="lede">
-        Public phases, milestones and production notes. Current values are
-        demonstration data carried over from the prototype.
+        Public phases, milestones and production notes.
       </p>
       {projects
         .filter((project) => project.phases.length > 0)
