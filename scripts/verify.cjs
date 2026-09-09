@@ -94,6 +94,20 @@ const { chromium } = require(
     const watcher = page.locator("#watcher");
     await watcher.hover({ position: { x: 100, y: 100 } });
     assert.notEqual(await page.locator("#readout-x").innerText(), "000");
+    const patronTrigger = page.getByRole('button', { name: '06 PATREON ACCESS' });
+    await patronTrigger.hover();
+    const patronPopup = page.getByRole('region', { name: 'PATREON promotional window' });
+    const triggerBox = await patronTrigger.boundingBox();
+    const popupBox = await patronPopup.boundingBox();
+    assert.ok(popupBox.y < triggerBox.y, 'Patreon opens upward');
+    assert.ok(popupBox.y >= 0 && popupBox.y + popupBox.height <= 1000, 'Desktop popup fits viewport');
+    await page.mouse.move(triggerBox.x + 50, triggerBox.y + triggerBox.height / 2);
+    await page.mouse.move(popupBox.x + 50, popupBox.y + popupBox.height - 8, { steps: 15 });
+    assert.equal(await patronTrigger.getAttribute('aria-expanded'), 'true');
+    await patronPopup.getByRole('link', { name: '>>> JOIN PATREON <<<' }).hover();
+    assert.equal(await patronTrigger.getAttribute('aria-expanded'), 'true');
+    await page.screenshot({ path: 'test-results/patreon-desktop.png' });
+    await page.keyboard.press('Escape');
     const shop = page.getByRole("button", { name: "03 REQUISITIONS / SHOP" });
     await shop.hover();
     await page.getByRole("region", { name: "SHOP promotional window" }).hover();
@@ -191,6 +205,8 @@ const { chromium } = require(
     const patreon = touch.getByRole("button", { name: "06 PATREON ACCESS" });
     await patreon.tap();
     assert.equal(await patreon.getAttribute("aria-expanded"), "true");
+    const touchPopup = await touch.locator('#patreon-promo').boundingBox();
+    assert.ok(touchPopup.x >= 0 && touchPopup.y >= 0 && touchPopup.x + touchPopup.width <= 390 && touchPopup.y + touchPopup.height <= 844, 'Touch popup fits viewport');
     assert.equal(
       await touch
         .locator(".promo-new")

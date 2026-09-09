@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { site } from "@/data/site";
 
 export default function PromoWindow({
@@ -14,7 +14,44 @@ export default function PromoWindow({
   const [open, setOpen] = useState(false);
   const wrapper = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
+  const popup = useRef<HTMLDivElement>(null);
   const shop = kind === "shop";
+  useLayoutEffect(() => {
+    if (!open || shop) return;
+    const anchor = wrapper.current;
+    const windowElement = popup.current;
+    if (!anchor || !windowElement) return;
+    const position = () => {
+      const bounds = anchor.getBoundingClientRect();
+      const viewport = window.visualViewport;
+      const topEdge = (viewport?.offsetTop ?? 0) + 8;
+      const leftEdge = (viewport?.offsetLeft ?? 0) + 8;
+      const height = viewport?.height ?? window.innerHeight;
+      const width = viewport?.width ?? document.documentElement.clientWidth;
+      windowElement.style.maxHeight = `${Math.max(0, height - 16)}px`;
+      const top = Math.max(topEdge, Math.min(bounds.top - windowElement.offsetHeight,
+        topEdge + height - 16 - windowElement.offsetHeight));
+      const left = Math.max(leftEdge, Math.min(bounds.left,
+        leftEdge + width - 16 - windowElement.offsetWidth));
+      windowElement.style.top = `${top - bounds.top}px`;
+      windowElement.style.left = `${left - bounds.left}px`;
+    };
+    position();
+    const observer = new ResizeObserver(position);
+    observer.observe(anchor);
+    observer.observe(windowElement);
+    window.addEventListener("resize", position);
+    window.addEventListener("scroll", position, true);
+    window.visualViewport?.addEventListener("resize", position);
+    window.visualViewport?.addEventListener("scroll", position);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", position);
+      window.removeEventListener("scroll", position, true);
+      window.visualViewport?.removeEventListener("resize", position);
+      window.visualViewport?.removeEventListener("scroll", position);
+    };
+  }, [open, shop]);
   useEffect(() => {
     if (!open) return;
     const outside = (event: PointerEvent) => {
@@ -65,6 +102,7 @@ export default function PromoWindow({
       {open && (
         <div
           className="promo-window"
+          ref={popup}
           id={`${kind}-promo`}
           role="region"
           aria-label={`${shop ? "SHOP" : "PATREON"} promotional window`}

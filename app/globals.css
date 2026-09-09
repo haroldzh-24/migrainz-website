@@ -982,6 +982,14 @@ a.directory-row:hover {
   letter-spacing: normal;
   color-scheme: light;
 }
+#patreon > .promo-window {
+  top: auto;
+  bottom: 100%;
+  max-height: calc(100dvh - 16px);
+  overflow-y: auto;
+}
+#patreon > .promo-window[style] { bottom: auto; }
+
 .promo-title {
   display: flex;
   justify-content: space-between;

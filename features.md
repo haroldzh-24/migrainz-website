@@ -51,3 +51,8 @@ Recorded 2026-09-08. Owner: Studio Migrainz. Milestones describe future phases, 
 - Kept the explicit AA placeholder fallback; revised artwork guidance to prioritize a readable feminine anime face, bangs and eyes over simplified gear.
 - Centered the proportionally scaled portrait in a dedicated stage, with small external OPS-CORE, PELTOR and PVS-31 / STOWED labels.
 - Corrected Windows title-bar glyphs and separated the gag caption from the portrait. Three-blink scheduling, fixed frames, skip controls and reduced motion are unchanged.
+
+## 2026-09-08 / Patreon popup positioning
+
+- Patreon opens directly above its navigation item with viewport clamping on scroll/resize and an internal scroll area on short screens.
+- Shop positioning and shared hover/touch behavior remain unchanged.
