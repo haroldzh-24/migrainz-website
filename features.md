@@ -1,5 +1,12 @@
 # Features
 
+## Implemented - 2026-09-10 / Production configuration diagnostics
+
+- Vercel builds require real production configuration; missing settings are reported by name only.
+- Added a presence-only production environment check and isolated production guard fixtures.
+- Documented production variable scopes, redeployment, existing PostgreSQL migration commands and temporary private `/tmp` demo media.
+- Live deployment and production database validation remain pending authenticated Vercel access.
+
 ## Implemented — 2026-09-08
 
 - Next.js + React + TypeScript foundation, reusable components and pinned dependencies.

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-09-10 / Vercel configuration diagnosis
+
+- Stop masking missing Vercel environment variables with build-only fallback values; preserve local offline builds.
+- Share production validation across Payload, hosted build and standalone startup, with missing-variable names and no secret values.
+- Add `cms:verify-env`; test each missing hosted variable and production SQLite rejection without local secrets.
+- Document dashboard remediation and non-resetting migration workflow; retain private temporary demo media and defer R2.
+
 ## 2026-09-08 — Terminal foundation / 0.2.0
 
 ### Added

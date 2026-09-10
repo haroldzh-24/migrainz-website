@@ -142,7 +142,67 @@ Before public production deployment:
 4. Configure administrator credentials, secret management, email, backups and
    upload limits for the hosting provider. Review outstanding dependency advisories.
 
-## Verification
+## Vercel class-demo deployment
+
+Vercel runs Next.js functions directly; `scripts/start.mjs` is not its startup
+hook. Variables supplied only to the build script's child process do not configure
+those functions. Hosted builds now fail on missing production configuration
+instead of substituting offline placeholders. Local offline builds still work.
+
+1. Open the Vercel project whose Settings > Domains contains
+   `migrainz-website.vercel.app`. Confirm Settings > Git uses the intended repository
+   and production branch `main`, with the repository root as Root Directory.
+2. In Settings > Environment Variables, confirm all four exact names are enabled
+   for **Production**: `CMS_DATABASE`, `DATABASE_URL`, `PAYLOAD_SECRET`,
+   `CMS_MEDIA_DIR`. Use `postgres` and `/tmp/studio-migrainz-media` for the two
+   nonsecret settings. Preserve the existing managed PostgreSQL URL and stable
+   secret; do not copy local SQLite values or add `NEXT_PUBLIC_` prefixes.
+   Shared variables must be linked to this project. Preview-only settings do not
+   apply to Production.
+3. In Build and Deployment, use the Next.js framework preset and `npm run build`.
+   Leave Output Directory at its framework default. Deploy the verified source
+   changes to Production. Changing dashboard variables does not update an old
+   deployment: create a new deployment, then confirm the production domain points
+   to it. Do not merely promote an older deployment with stale variables.
+4. Inspect the new deployment's runtime logs while opening `/admin`. Configuration
+   failures now name missing variables without printing values. A successful build
+   still does not prove database connectivity or that migrations have been applied.
+
+For a trusted shell already supplied with the production variables, run
+`npm run cms:verify-env`. This prints presence only, validates configuration, and
+does not connect to the database. It intentionally does not load `.env.local`.
+Do not publish an environment-debug API endpoint.
+
+If logs report missing PostgreSQL tables, use the existing reviewed foundation
+migration, not schema pushing or the legacy content importer. From a trusted
+shell with production variables injected (not the local SQLite `.env.local`):
+
+```powershell
+node scripts/verify-production-env.mjs
+# Continue only if verification passed.
+node node_modules/payload/bin.js migrate:status
+# Review status and confirm the intended database before applying pending up migrations.
+node node_modules/payload/bin.js migrate
+node node_modules/payload/bin.js migrate:status
+```
+
+The checked-in foundation `up` creates tables, enums, indexes and foreign keys;
+its `down` is destructive and must not be run for deployment. Do not use
+`migrate:fresh`, `migrate:reset`, `migrate:refresh` or `push:true`. If an existing
+schema conflicts with migration history, reconcile it before applying migrations.
+No production migration is automatically run by a build or function startup.
+
+After schema initialization, `/admin` should offer Payload's first-user setup on
+an empty database or login on an existing database. Create the real administrator
+interactively; no default user is provisioned. Existing staff access rules remain.
+
+`/tmp/studio-migrainz-media` is only a temporary class-demo filesystem location.
+Payload creates the directory on upload. Files can disappear on restart and are
+not shared across functions/instances; database records can outlive them. Keep
+originals elsewhere. Existing file authorization remains in force. R2 integration
+and durable production media remain deferred.
+
+## Local verification commands
 
 ```powershell
 npm.cmd run typecheck

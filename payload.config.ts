@@ -4,14 +4,19 @@ import { sqliteAdapter } from '@payloadcms/db-sqlite';
 import { postgresAdapter } from '@payloadcms/db-postgres';
 import { lexicalEditor, FixedToolbarFeature } from '@payloadcms/richtext-lexical';
 import sharp from 'sharp';
+import { validateProductionEnv } from './scripts/production-env.mjs';
 import { ArchiveItems, Characters, Chapters, Comics, Galleries, mediaCollection, Projects, ProjectUpdates, taxonomies, TrackerItems, Users } from './collections';
 
 const database = process.env.CMS_DATABASE;
 const url = process.env.DATABASE_URL;
 const mediaDirectory = process.env.CMS_MEDIA_DIR;
 const secret = process.env.PAYLOAD_SECRET;
+if (process.env.NODE_ENV === 'production') validateProductionEnv();
 if (!secret || secret.length < 32) throw new Error('Set a random PAYLOAD_SECRET of at least 32 characters. Run npm run cms:setup for development.');
-if (!url || !mediaDirectory || !database) throw new Error('CMS_DATABASE, DATABASE_URL and CMS_MEDIA_DIR are required. Run npm run cms:setup.');
+if (!url || !mediaDirectory || !database) {
+  const missing = ['CMS_DATABASE', 'DATABASE_URL', 'CMS_MEDIA_DIR'].filter(name => !process.env[name]);
+  throw new Error(`Missing CMS environment variables: ${missing.join(', ')}. Run npm run cms:setup for development.`);
+}
 if (!path.isAbsolute(mediaDirectory) || path.resolve(mediaDirectory) === path.resolve('public') || path.resolve(mediaDirectory).startsWith(path.resolve('public') + path.sep)) {
   throw new Error('CMS_MEDIA_DIR must be an absolute private directory outside public/.');
 }
