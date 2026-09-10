@@ -11,3 +11,6 @@ test-results/
 *.db-wal
 *.sqlite
 .build-media-unused/
+
+.vercel
+.env*
