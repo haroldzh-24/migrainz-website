@@ -22,6 +22,8 @@ const { chromium } = require(
     baseURL,
   });
   const page = await context.newPage();
+  // Fresh fixture servers compile each route on first visit.
+  page.setDefaultTimeout(90000);
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   page.on("console", (message) => {
@@ -30,29 +32,97 @@ const { chromium } = require(
   });
   fs.mkdirSync("test-results", { recursive: true });
   try {
+    if (process.env.BOOT_ONLY !== '1') {
+      const fixtureResponse = await context.request.get('/api/chapters?where[slug][equals]=chapter-01&depth=0');
+      assert.equal(fixtureResponse.status(), 200);
+      assert.equal((await fixtureResponse.json()).totalDocs, 1,
+        'Published BLUSHLAND chapter fixture is missing. Run npm run test:regression for an isolated seeded database; do not republish editorial drafts for tests.');
+    }
+    const noJS = await browser.newContext({ javaScriptEnabled: false, baseURL });
+    const initial = await noJS.newPage();
+    await initial.goto('/');
+    assert.equal(await initial.locator('.startup-sequence').isVisible(), true);
+    assert.equal(await initial.locator('#top').isVisible(), false);
+    assert.equal(await initial.locator('#top').evaluate(el => !!el.closest('[inert]')), true);
+    await noJS.close();
+    const adminContext = await browser.newContext({ baseURL });
+    const admin = await adminContext.newPage();
+    const adminResponse = await admin.goto('/admin', { timeout: 120000 });
+    assert.equal(adminResponse.status(), 200);
+    assert.equal(await admin.locator('.startup-sequence').count(), 0);
+    assert.equal(await admin.locator('[inert]').count(), 0);
+    await adminContext.close();
     await page.goto("/");
     await page.locator('.startup-sequence').waitFor({ state: 'visible' });
-    await page.locator('.startup-log').getByText('SYSTEM COMPROMISED', { exact: true }).waitFor();
-    const art = page.locator('.startup-art-viewport');
-    await art.waitFor();
-    assert.equal(await art.getAttribute('data-placeholder'), 'true');
-    assert.equal(await page.locator('.startup-face').count(), 2);
-    assert.equal(await page.locator('.startup-face').first().textContent(), await page.locator('.startup-face').last().textContent());
-    for (let blink = 0; blink < 3; blink++) {
-      await page.waitForFunction(() => document.querySelector('.startup-art-viewport')?.dataset.eyeState === 'closed');
-      await page.waitForFunction(() => document.querySelector('.startup-art-viewport')?.dataset.eyeState === 'open');
-    }
+    const frame = await page.locator('.startup-window').elementHandle();
+    const bootBounds = await frame.boundingBox();
+    await page.locator('.startup-compromised').waitFor();
+    assert.equal(await page.locator('#top').isVisible(), false);
+    assert.equal(await page.locator('#top').evaluate(el => !!el.closest('[inert]')), true);
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('Enter');
+    assert.equal(await page.locator('.startup-sequence').getAttribute('data-phase'), 'boot');
+    await page.waitForFunction(() => document.querySelector('.startup-art-viewport')?.dataset.eyeState === 'closed');
+    await page.waitForFunction(() => document.querySelector('.startup-art-viewport')?.dataset.eyeState === 'open');
+    await page.getByRole('button', { name: 'ENTER', exact: true }).waitFor();
+    assert.equal(await frame.evaluate(el => el === document.querySelector('.startup-window')), true);
+    const adBounds = await frame.boundingBox();
+    assert.equal(adBounds.width, bootBounds.width);
+    assert.equal(adBounds.height, bootBounds.height);
+    assert.equal(await page.locator('.startup-window').getAttribute('aria-modal'), null);
+    assert.equal(await page.locator('#top').evaluate(el => !!el.closest('[inert]')), false);
+    assert.equal(await page.locator('.startup-sequence').evaluate(el => getComputedStyle(el).backgroundColor), 'rgba(0, 0, 0, 0)');
+    // A real page control outside the hanging window remains usable.
+    await page.getByRole('link', { name: 'Home', exact: true }).click();
+    assert.equal(await page.locator('.startup-announcement').isVisible(), true);
+    await page.getByRole('button', { name: 'ENTER', exact: true }).focus();
+    await page.waitForTimeout(1000);
+    assert.equal(await page.locator('#top').isVisible(), true);
+    await page.keyboard.press('Enter');
     await page.locator('.startup-sequence').waitFor({ state: 'hidden' });
-    for (const key of ['Enter', 'Space', 'click']) {
-      await page.evaluate(() => sessionStorage.removeItem('migrainz-startup'));
+    for (const key of ['Enter', 'Escape', 'click']) {
+      await page.evaluate(() => sessionStorage.clear());
       await page.reload();
-      await page.locator('.startup-sequence').waitFor({ state: 'visible' });
-      if (key === 'click') await page.locator('.startup-log').click();
-      else await page.keyboard.press(key);
+      await page.getByRole('button', { name: 'ENTER', exact: true }).waitFor();
+      if (key === 'click') await page.getByRole('button', { name: 'Close announcement' }).click();
+      else {
+        await page.getByRole('link', { name: 'Home', exact: true }).focus();
+        await page.keyboard.press(key);
+      }
       await page.locator('.startup-sequence').waitFor({ state: 'hidden' });
+      await page.reload();
+      await page.locator('.startup-sequence').waitFor({ state: 'hidden' });
+      assert.equal(await page.locator('#top').isVisible(), true);
     }
     await page.reload();
-    assert.equal(await page.locator('.startup-sequence').isVisible(), false);
+    await page.locator('.startup-sequence').waitFor({ state: 'hidden' });
+    // A dismissal for another ID must not suppress the current announcement.
+    await page.evaluate(() => {
+      sessionStorage.clear();
+      sessionStorage.setItem('migrainz-announcement:older-transmission', 'older-transmission');
+    });
+    await page.reload();
+    await page.getByRole('button', { name: 'ENTER', exact: true }).waitFor();
+    await page.getByRole('button', { name: 'ENTER', exact: true }).click();
+    if (process.env.BOOT_ONLY === '1') {
+      const mobileGate = await browser.newContext({ viewport: { width: 320, height: 740 }, isMobile: true, hasTouch: true, reducedMotion: 'reduce', baseURL });
+      const gatePage = await mobileGate.newPage();
+      await gatePage.goto('/');
+      await gatePage.locator('.startup-compromised').waitFor();
+      await gatePage.waitForTimeout(1000);
+      assert.equal(await gatePage.locator('.startup-art-viewport').getAttribute('data-eye-state'), 'open');
+      await gatePage.getByRole('button', { name: 'ENTER', exact: true }).waitFor();
+      assert.equal(await gatePage.locator('#top').isVisible(), true);
+      const bounds = await gatePage.locator('.startup-window').boundingBox();
+      assert.ok(bounds.x >= 0 && bounds.x + bounds.width <= 320);
+      assert.equal(await gatePage.locator('.startup-blink').first().evaluate(el => getComputedStyle(el).animationName), 'none');
+      await gatePage.getByRole('button', { name: 'ENTER', exact: true }).tap();
+      await gatePage.locator('.startup-sequence').waitFor({ state: 'hidden' });
+      await mobileGate.close();
+      assert.deepEqual(errors, []);
+      console.log('Boot gate checks passed: initial HTML, persistent frame, dismissal, session, mobile and reduced motion.');
+      return;
+    }
     await page.getByRole("heading", { level: 1 }).waitFor();
     await page.waitForFunction(
       () => document.querySelector("#clock").textContent !== "--:--:--",
@@ -128,7 +198,11 @@ const { chromium } = require(
     await page.getByRole("link", { name: /BL-001.*OPEN DIRECTORY/ }).click();
     await page.getByRole("link", { name: /CHARACTERS\/.*1 RECORDS/ }).click();
     await page.getByRole("link", { name: /THE OBSERVER/ }).click();
-    await page.getByRole("link", { name: /CHAPTER 01.*OPEN READER/ }).click();
+    await page.waitForURL('**/projects/blushland/characters/the-observer');
+    const chapterLink = page.getByRole("link", { name: /CHAPTER 01.*OPEN READER/ });
+    assert.equal(await chapterLink.getAttribute('href'), '/comics/blushland/chapter-01');
+    await chapterLink.click();
+    await page.waitForURL('**/comics/blushland/chapter-01');
     const previous = page.getByRole("button", { name: "← PREVIOUS" }).first();
     const next = page.getByRole("button", { name: "NEXT →" }).first();
     assert.equal(await previous.isDisabled(), true);
@@ -187,12 +261,11 @@ const { chromium } = require(
     });
     const gag = await gagContext.newPage();
     await gag.goto('/archive');
-    assert.equal(await gag.locator('.startup-sequence').count(), 0);
-    await gag.goto('/');
-    await gag.locator('.startup-art-viewport').waitFor();
-    assert.equal(await gag.locator('.startup-art-viewport').evaluate(el => el.querySelector('.startup-art-canvas').getBoundingClientRect().width <= el.clientWidth + 1), true);
+    await gag.getByRole('button', { name: 'ENTER', exact: true }).waitFor();
+    const bounds = await gag.locator('.startup-window').boundingBox();
+    assert.ok(bounds.x >= 0 && bounds.x + bounds.width <= 320);
     await gag.screenshot({ path: 'test-results/startup-mobile.png' });
-    await gag.locator('.startup-art-viewport').tap();
+    await gag.getByRole('button', { name: 'ENTER', exact: true }).tap();
     await gag.locator('.startup-sequence').waitFor({ state: 'hidden' });
     await gagContext.close();
     const mobile = await browser.newContext({
@@ -205,7 +278,10 @@ const { chromium } = require(
     const touch = await mobile.newPage();
     touch.on("pageerror", (error) => errors.push(error.message));
     await touch.goto("/");
-    assert.equal(await touch.locator('.startup-sequence').isVisible(), false);
+    await touch.getByRole('button', { name: 'ENTER', exact: true }).waitFor();
+    assert.equal(await touch.locator('.startup-blink').first().evaluate(el => getComputedStyle(el).animationName), 'none');
+    await touch.getByRole('button', { name: 'ENTER', exact: true }).tap();
+    await touch.locator('.startup-sequence').waitFor({ state: 'hidden' });
     const patreon = touch.getByRole("button", { name: "06 PATREON ACCESS" });
     await patreon.tap();
     assert.equal(await patreon.getAttribute("aria-expanded"), "true");

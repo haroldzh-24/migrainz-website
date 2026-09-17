@@ -1,5 +1,17 @@
 # Features
 
+## Implemented - 2026-09-15 / Isolated browser regression fixtures
+
+- `npm run test:regression` imports and verifies the preserved demo fixture in a fresh ignored database and media directory, runs the complete browser suite on a dedicated local server, and stops that server afterward.
+- Editing database drafts no longer determine whether BLUSHLAND reader and project checks can execute. Startup behavior and public content authorization are unchanged.
+
+## Implemented - 2026-09-15 / Startup announcement dismissal
+
+- Preserved the existing BIOS/install/virus log, SYSTEM COMPROMISED and three ASCII eye blinks in the 5.2-second boot.
+- Boot alone hides and makes public content inert; completion reveals the page underneath the same floating, nonmodal retro announcement window.
+- Enter and Escape dismiss from the announcement or homepage; X and the configured button also dismiss. Per-ID session storage and the separate admin layout remain intact.
+- Browser verification covers initial hidden/inert HTML, boot keyboard protection, eye animation, floating page interaction, all dismissal methods, session persistence, another announcement ID and admin bypass.
+
 ## Implemented - 2026-09-10 / Production configuration diagnostics
 
 - Vercel builds require real production configuration; missing settings are reported by name only.
@@ -73,3 +85,18 @@ Recorded 2026-09-08. Owner: Studio Migrainz. Milestones describe future phases, 
 - Repeatable dry-run/import/checksum verification, admin publishing workflow checks and frontend regression coverage.
 - After the basic workflow passed: batch chapter/gallery uploads, natural filename sorting, alt text, progress, retry recovery, explicit attachment and manual ordering.
 - Remaining production work: managed PostgreSQL data transfer/validation, private object-storage adapter, email delivery, operational backups and upstream dependency advisory review.
+
+## 2026-09-10 / Persistent boot and announcement window
+
+- Public layout renders an opaque gate and hidden/inert page before hydration; admin bypasses it.
+- The same retro window transitions after 2.6 seconds to an announcement, dismissed by ENTER, X or Escape.
+- Announcement config: data/announcement.ts; graphics: public/announcements/. Dismissal is stored per ID in sessionStorage.
+- Reduced motion stops blinking while keeping the gate and announcement visible.
+
+## 2026-09-10 / Compromised boot into floating ad
+
+- Restored fake BIOS/package infection sequence and three 120ms eye blinks using the existing StartupArt two-frame renderer; supplied ASCII eyes because the historic portrait frames are placeholders.
+- One unchanged window runs a 5.2-second boot, then reveals and unlocks the public page behind its nonmodal announcement. Background pointer, keyboard and scroll access resume.
+- The announcement floats at the lower right with viewport bounds on mobile; X, ENTER and Escape dismiss per announcement ID.
+- Config uses id, enabled, image, title, copy and buttonLabel in data/announcement.ts; graphics remain in public/announcements/.
+- Reduced motion keeps the eyes static and disables status blinking. Admin and infrastructure are unchanged.

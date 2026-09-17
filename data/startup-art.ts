@@ -22,3 +22,9 @@ export const STARTUP_ART = {
 
 // Set isPlaceholder to false after supplying both frames. The identical
 // placeholders deliberately show no substitute face or pretend eye animation.
+
+// Visible fallback for the compromised-system gag; portrait slots above stay intact.
+export const COMPROMISED_EYES = {
+  "eyesOpen": "  .--------.       .--------.  \n /   [##]   \\     /   [##]   \\ \n \\________/       \\________/  ",
+  "eyesClosed": "  .--------.       .--------.  \n | -------- |     | -------- | \n \\________/       \\________/  "
+};

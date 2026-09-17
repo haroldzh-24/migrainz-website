@@ -1,110 +1,106 @@
 "use client";
-
-import { useEffect, useRef, useState } from "react";
-
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import StartupArt from "@/components/StartupArt";
+import { announcement } from "@/data/announcement";
 
+const storageKey = `migrainz-announcement:${announcement.id}`;
 const messages = [
-  "BOOTING PUBLIC NODE... OK",
-  "INSTALLING definitely_normal.pkg [##########] 100%",
-  "ERROR / UNAUTHORIZED PROCESS DETECTED: helmet_girl.exe",
-  "SYSTEM COMPROMISED",
+  "MIGRAINZ SYSTEM BIOS v0.2", "MEMORY CHECK ... OK", "ARCHIVE NODE ... ONLINE",
+  "PROJECT DATABASE ... MOUNTED", "COMIC READER ... READY", "CHECKING REMOTE PACKAGE...",
+  "FOUND: MIGRAINZ_WORM.EXE", "INSTALLING ... 12%", "INSTALLING ... 47%",
+  "INSTALLING ... 93%", "INSTALLING ... 100%", "INSTALLATION COMPLETE.",
+  "VERIFYING PACKAGE.... ERROR", "UNAUTHORIZED PROCESS DETECTED", "SYSTEM COMPROMISED",
 ];
 
-export default function StartupSequence() {
-  const dialog = useRef<HTMLDialogElement>(null);
-  const [stage, setStage] = useState(0);
+export default function StartupSequence({ children }: { children: ReactNode }) {
+  const [state, setState] = useState<"boot" | "announcement" | "closed">("boot");
   const [blink, setBlink] = useState(false);
-  const [finished, setFinished] = useState(false);
-
+  const [stage, setStage] = useState(0);
+  const windowRef = useRef<HTMLDivElement>(null);
+  const enterRef = useRef<HTMLButtonElement>(null);
+  const restoreFocus = useRef(false);
+  const contentRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (finished) return;
+    let dismissed = false;
+    try { dismissed = sessionStorage.getItem(storageKey) === announcement.id; } catch { /* Optional storage. */ }
+    if (!announcement.enabled || dismissed) { setState("closed"); return; }
+    windowRef.current?.focus();
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
-    let seen = false;
-    try {
-      seen = sessionStorage.getItem("migrainz-startup") === "seen";
-    } catch { /* Storage is optional. */ }
-    if (motion.matches || seen) return;
-
-    const windowElement = dialog.current;
-    windowElement?.showModal();
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    const later = (action: () => void, delay: number) => {
-      timers.push(setTimeout(action, delay));
-    };
-    // Defer the session marker so Strict Mode's trial effect can clean up.
-    later(() => {
-      try { sessionStorage.setItem("migrainz-startup", "seen"); } catch { /* Optional. */ }
-    }, 0);
-    later(() => setStage(1), 450);
-    later(() => setStage(2), 1000);
-    later(() => setStage(3), 1500);
-    later(() => setStage(4), 1850);
-    for (const at of [2250, 2800, 3350]) {
-      later(() => setBlink(true), at);
-      later(() => setBlink(false), at + 120);
+    const timers = messages.slice(1).map((_, index) =>
+      setTimeout(() => setStage(index + 1), (index + 1) * 180));
+    // Reuse the original three 120ms eye-frame swaps, spaced to avoid rapid flashing.
+    for (const at of [2950, 3750, 4550]) {
+      timers.push(setTimeout(() => { if (!motion.matches) setBlink(true); }, at));
+      timers.push(setTimeout(() => setBlink(false), at + 120));
     }
-    later(() => setFinished(true), 3900);
-    const reduce = () => { if (motion.matches) setFinished(true); };
+    timers.push(setTimeout(() => setState("announcement"), 5200));
+    const reduce = () => { if (motion.matches) setBlink(false); };
     motion.addEventListener("change", reduce);
     return () => {
       timers.forEach(clearTimeout);
       motion.removeEventListener("change", reduce);
-      windowElement?.close();
     };
-  }, [finished]);
-
-  if (finished) return null;
-  return (
-    <dialog
-      ref={dialog}
-      className="startup-sequence"
-      aria-label="Silly fictional terminal startup. Press Enter or Space to skip."
-      onClick={() => setFinished(true)}
-      onCancel={() => setFinished(true)}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          setFinished(true);
-        }
-      }}
-    >
-      <div className="startup-content">
-        <p className="eyebrow">MIGRAINZ / EXTREMELY FAKE BOOT SEQUENCE</p>
-        <div className="startup-log" aria-hidden="true">
-          {messages.slice(0, Math.min(stage + 1, 4)).map((message) => (
-            <p key={message}>{message}</p>
-          ))}
+  }, []);
+  useEffect(() => {
+    if (state === "announcement") enterRef.current?.focus();
+    if (state === "closed" && restoreFocus.current) contentRef.current?.querySelector<HTMLElement>("#top")?.focus({ preventScroll: true });
+  }, [state]);
+  const close = () => {
+    if (state !== "announcement") return;
+    restoreFocus.current = true;
+    try { sessionStorage.setItem(storageKey, announcement.id); } catch { /* Dismissal works without storage. */ }
+    setState("closed");
+  };
+  useEffect(() => {
+    if (state !== "announcement") return;
+    const dismiss = (event: KeyboardEvent) => {
+      if (!["Enter", "Escape"].includes(event.key) || event.defaultPrevented || event.isComposing || event.repeat) return;
+      event.preventDefault();
+      try { sessionStorage.setItem(storageKey, announcement.id); } catch { /* Optional storage. */ }
+      // Preserve focus if the visitor has already moved into the page.
+      restoreFocus.current = !!windowRef.current?.contains(document.activeElement);
+      setState("closed");
+    };
+    window.addEventListener("keydown", dismiss);
+    return () => window.removeEventListener("keydown", dismiss);
+  }, [state]);
+  return <>
+    {state !== "closed" && <div className="startup-sequence" data-phase={state} style={{ position: "fixed", inset: 0, background: state === "boot" ? "#010301" : "transparent", zIndex: 10000, pointerEvents: state === "boot" ? "auto" : "none" }}>
+      <div ref={windowRef} className="startup-takeover startup-window" role="dialog" aria-modal={state === "boot" ? true : undefined} aria-labelledby="startup-title" tabIndex={-1}
+        onKeyDown={event => {
+          if (event.key === "Escape") { event.preventDefault(); close(); }
+          if (event.key === "Tab" && state === "boot") {
+            const buttons = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>("button:not(:disabled)"));
+            const first = buttons[0], last = buttons[buttons.length - 1];
+            if (!first) { event.preventDefault(); return; }
+            if (event.shiftKey && (document.activeElement === first || document.activeElement === windowRef.current)) { event.preventDefault(); last.focus(); }
+            else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+          }
+        }}>
+        <div className="promo-title">
+          <span id="startup-title">MIGRAINZ / PUBLIC TRANSMISSION</span>
+          <span className="window-controls"><span aria-hidden="true">_ &#9633;</span><button type="button" aria-label="Close announcement" disabled={state === "boot"} onClick={close}>&#215;</button></span>
         </div>
-        {stage === 4 && (
-          <div className="startup-takeover">
-            <div className="promo-title">
-              <span>SYSTEM COMPROMISED</span>
-              <span className="window-controls">
-                <span aria-hidden="true">_ &#9633;</span>
-                <button type="button" aria-label="Close startup joke">&#215;</button>
-              </span>
-            </div>
-            <div className="startup-takeover-body">
-              <div className="startup-gear-labels" aria-label="Portrait equipment">
-                <span>[ OPS-CORE ]</span>
-                <span>[ PVS-31 / STOWED ]</span>
-              </div>
-              <div className="startup-portrait-stage">
-                <StartupArt blink={blink} />
-              </div>
-              <div className="startup-gear-labels startup-gear-footer">
-                <span>[ PELTOR ]</span>
-                <span>helmet_girl.exe</span>
-              </div>
-              <p>YOUR TERMINAL IS MINE. i installed a little hat.</p>
-            </div>
-          </div>
-        )}
-        <button type="button" className="terminal-button" autoFocus>
-          CLICK / TAP / ENTER / SPACE TO SKIP
-        </button>
+        <div className="startup-takeover-body startup-window-body">
+          {state === "boot" ? <div className="startup-log">
+            <p className="eyebrow">SYSTEM STARTUP / PLEASE WAIT</p>
+            {messages.slice(Math.max(0, stage - 7), stage + 1).map(message => <p key={message}>{message}</p>)}
+            {stage === messages.length - 1 && <div className="startup-compromised">
+              <StartupArt blink={blink} />
+              <p>YOUR TERMINAL IS MINE. enjoy the ad.</p>
+            </div>}
+            <span className="startup-blink" aria-hidden="true">_</span>
+          </div> : <div className="startup-announcement">
+            <p className="eyebrow"><span className="startup-blink">[ NEW ]</span> / INCOMING STUDIO AD</p>
+            {announcement.image ? <img className="startup-announcement-image" src={announcement.image} alt="" /> : <div className="startup-ad-placeholder" aria-hidden="true">MIGRAINZ<br />PUBLIC ACCESS<br />[ TRANSMISSION 001 ]</div>}
+            <h2>{announcement.title}</h2>
+            <p>{announcement.copy}</p>
+            <button ref={enterRef} type="button" className="terminal-button" onClick={close}>{announcement.buttonLabel}</button>
+            <p className="startup-status">AWAITING INPUT <span className="startup-blink" aria-hidden="true">_</span></p>
+          </div>}
+        </div>
       </div>
-    </dialog>
-  );
+    </div>}
+    <div ref={contentRef} inert={state === "boot"} aria-hidden={state === "boot" ? true : undefined} style={{ visibility: state === "boot" ? "hidden" : "visible" }}>{children}</div>
+  </>;
 }

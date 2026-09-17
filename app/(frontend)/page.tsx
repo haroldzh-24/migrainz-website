@@ -1,11 +1,11 @@
 import Watcher from "@/components/Watcher";
 import TerminalNav from "@/components/TerminalNav";
-import StartupSequence from "@/components/StartupSequence";
+
 
 export default function Home() {
   return (
     <section className="hero panel-grid">
-      <StartupSequence />
+
       <div className="hero-copy">
         <p className="eyebrow">PUBLIC SYSTEM INDEX / REV. 0.2</p>
         <h1>

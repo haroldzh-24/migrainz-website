@@ -28,6 +28,12 @@
 
 ## Resolved Bugs
 
+### 2026-09-15 - Regression suite depended on editorial publication state
+
+- Cause: the browser suite expected the published legacy BLUSHLAND comic/chapter and STALKER project in the editing database, where these records are now drafts. Anonymous queries correctly omit them, including The Observer's related chapter link.
+- Fix: `npm run test:regression` seeds and verifies a fresh private database/media fixture before running the complete browser suite. Editorial records and content authorization are unchanged. Direct browser runs report a missing published chapter fixture explicitly.
+- Coverage: the original project/character/chapter path and reader assertions remain, with an added exact chapter-link URL assertion.
+
 ### Bug Entry Template
 
 - Description / Symptoms:
@@ -35,3 +41,9 @@
 - Evidence:
 - Fix:
 - Status: Resolved
+
+### 2026-09-10 - Public page flash before startup
+
+- Cause: closed dialog opened only in a hydration effect; window frame appeared in a later animation stage.
+- Fix: public layout initially renders a fixed opaque gate with its window already visible and underlying content hidden/inert. Session dismissal is checked after hydration.
+- Status: Resolved. Typecheck, production build and focused browser checks passed (initial HTML without JavaScript, persistent frame, dismissal/session, mobile and reduced motion).

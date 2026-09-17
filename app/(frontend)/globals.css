@@ -74,7 +74,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .startup-sequence { display: none; }
+  .startup-blink { animation: none !important; }
 }
 
 .cms-hero-image { width: 100%; height: 100%; object-fit: cover; }
@@ -1161,4 +1161,28 @@ a.directory-row:hover {
     transition: none !important;
     scroll-behavior: auto !important;
   }
+}
+
+.startup-sequence { display: flex; align-items: center; justify-content: center; cursor: default; }
+body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
+.startup-window { width: min(680px, 100%); height: min(540px, calc(100dvh - 40px)); margin: 0; display: flex; flex-direction: column; }
+.startup-window .promo-title { flex-shrink: 0; gap: 8px; }
+.startup-window .promo-title > span:first-child { overflow-wrap: anywhere; }
+.startup-window .window-controls { flex-shrink: 0; }
+.startup-window-body { flex: 1; overflow: auto; min-height: 0; }
+.startup-announcement h2 { font-size: clamp(18px, 4vw, 28px); }
+.startup-announcement-image { display: block; width: 100%; height: 180px; object-fit: contain; image-rendering: pixelated; }
+.startup-ad-placeholder { border: 2px dashed var(--green); padding: 20px 8px; text-align: center; font-size: clamp(18px, 5vw, 30px); line-height: 1.2; font-weight: bold; }
+.startup-status { font-size: 11px; }
+.startup-blink { animation: startup-blink 1.6s step-end infinite; }
+@keyframes startup-blink { 50% { opacity: .35; } }
+
+.startup-window { pointer-events: auto; }
+.startup-sequence[data-phase="announcement"] { overflow: visible; }
+.startup-sequence[data-phase="announcement"] .startup-window { position: absolute; right: 20px; bottom: 20px; }
+.startup-compromised { border: 1px dashed var(--green); padding: 16px 8px; margin-top: 12px; }
+.startup-compromised p { font-size: 11px; text-align: center; margin-top: 12px; }
+@media (max-width: 700px) {
+  .startup-window { height: min(540px, calc(100dvh - 100px)); }
+  .startup-sequence[data-phase="announcement"] .startup-window { width: calc(100% - 40px); }
 }

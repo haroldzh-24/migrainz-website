@@ -7,6 +7,7 @@
     "build": "node scripts/build.mjs",
     "start": "node --env-file-if-exists=.env.local scripts/start.mjs",
     "typecheck": "tsc --noEmit",
+    "test:regression": "npm exec --yes --package=playwright -- node scripts/regression.mjs",
     "cms:setup": "node scripts/setup-cms.mjs",
     "cms:types": "node --env-file=.env.local node_modules/payload/bin.js generate:types",
     "cms:importmap": "node --env-file=.env.local node_modules/payload/bin.js generate:importmap",

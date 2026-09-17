@@ -72,7 +72,15 @@ No OAuth, membership verification, private content or fake unlocks exist. `publi
 
 ## Browser checks
 
-With the development server running and Chrome installed at its default Windows path:
+Stop the development server, then run the complete suite with Chrome installed at its default Windows path:
+
+```powershell
+npm.cmd run test:regression
+```
+
+This imports the preserved demo fixture into a fresh SQLite database and private media directory under ignored `test-results/regression-*`, verifies the import, starts a local server on a free port, runs every browser check, and stops that server. It does not change `.env.local` or the editing database. Artifacts remain available for diagnosis. BLUSHLAND chapter 01 and STALKER must be published in this fixture; their editorial copies may legitimately be drafts.
+
+To check an already-running server that has the published demo fixture:
 
 ```powershell
 npm.cmd exec --yes --package=playwright -- node scripts/verify.cjs

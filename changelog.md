@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-09-15 / BLUSHLAND regression fixture isolation
+
+- Fix browser test setup that assumed BLUSHLAND comic/chapter and STALKER were still published in the editing database. Their current draft state correctly hides them from visitors.
+- Add `test:regression` with a fresh seeded/verified SQLite database, private media, free local port and managed server shutdown; preserve editorial data and `.env.local`.
+- Preserve full project/character/reader navigation and controls coverage; assert the exact chapter URL and diagnose missing fixtures before a link timeout.
+- Document the isolated runner and retain direct browser checks for servers with the published demo fixture.
+
+## 2026-09-15 / Floating startup announcement verification
+
+- Retain the working tree's boot/install/virus and blinking-eyes flow into a floating announcement over the visible, interactive website.
+- Handle Enter as well as Escape after focus moves into the homepage; prevent the dismissal key from activating a background link and ignore composition/repeated key events.
+- Extend browser checks for admin bypass, hidden/inert content during boot, keyboard dismissal outside the announcement and persistence after each dismissal method.
+- Announcement content stays in data/announcement.ts; original index.html remains untouched.
+- Validation: typecheck, production build and focused startup browser suite passed, including admin bypass, mobile touch and reduced motion. The broader browser suite stopped at the expected CHAPTER 01 / OPEN READER link on The Observer page; subsequent reader checks remain unverified.
+
 ## 2026-09-10 / Vercel configuration diagnosis
 
 - Stop masking missing Vercel environment variables with build-only fallback values; preserve local offline builds.
@@ -74,3 +89,18 @@
 - Proved admin login through publishing to the reader before adding the custom batch uploader and page/gallery order controls.
 - Added PostgreSQL production guards and an offline initial migration. SQLite remains development-only.
 - Added CMS setup/migration/verification documentation and browser regression checks. Updated Sharp and DOMPurify to patched versions; remaining upstream moderate advisories are recorded in bugs.md.
+
+## 2026-09-10 / Persistent boot and announcement window
+
+- Public layout renders an opaque gate and hidden/inert page before hydration; admin bypasses it.
+- The same retro window transitions after 2.6 seconds to an announcement, dismissed by ENTER, X or Escape.
+- Announcement config: data/announcement.ts; graphics: public/announcements/. Dismissal is stored per ID in sessionStorage.
+- Reduced motion stops blinking while keeping the gate and announcement visible.
+
+## 2026-09-10 / Compromised boot into floating ad
+
+- Restored fake BIOS/package infection sequence and three 120ms eye blinks using the existing StartupArt two-frame renderer; supplied ASCII eyes because the historic portrait frames are placeholders.
+- One unchanged window runs a 5.2-second boot, then reveals and unlocks the public page behind its nonmodal announcement. Background pointer, keyboard and scroll access resume.
+- The announcement floats at the lower right with viewport bounds on mobile; X, ENTER and Escape dismiss per announcement ID.
+- Config uses id, enabled, image, title, copy and buttonLabel in data/announcement.ts; graphics remain in public/announcements/.
+- Reduced motion keeps the eyes static and disables status blinking. Admin and infrastructure are unchanged.
