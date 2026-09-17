@@ -1,5 +1,11 @@
 # Features
 
+## Implemented - 2026-09-17 / Homepage studio terminal
+
+- Expanded the homepage beneath the preserved startup and primary terminal navigation with LATEST, featured PROJECTS, readable COMICS, TRACKER, ARCHIVE and SYSTEM panels.
+- Reused public CMS project records, production notes, phases, chapters and archive records; full routes remain the canonical directories.
+- Kept SHOP and Patreon promotional windows in the existing navigation and retained the homepage's responsive terminal language.
+
 ## Implemented - 2026-09-15 / Isolated browser regression fixtures
 
 - `npm run test:regression` imports and verifies the preserved demo fixture in a fresh ignored database and media directory, runs the complete browser suite on a dedicated local server, and stops that server afterward.

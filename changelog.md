@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-17 / Studio terminal homepage
+
+- Add a dense homepage activity layer for latest project notes, featured active projects, readable comics, tracker progress, archive records and public system status.
+- Keep the existing startup takeover, watcher, primary navigation and SHOP/Patreon promotional behavior unchanged.
+- Use live public CMS query results with explicit empty states instead of duplicating project or archive content.
+
 ## 2026-09-15 / BLUSHLAND regression fixture isolation
 
 - Fix browser test setup that assumed BLUSHLAND comic/chapter and STALKER were still published in the editing database. Their current draft state correctly hides them from visitors.
