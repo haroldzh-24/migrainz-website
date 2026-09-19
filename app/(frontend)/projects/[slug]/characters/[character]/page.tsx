@@ -5,6 +5,7 @@ import ContentWriting from "@/components/ContentWriting";
 import ContentGallery from "@/components/ContentGallery";
 import { getProject } from "@/lib/content/queries";
 import { projectHref, chapterHref } from "@/lib/content/types";
+import { CharacterViewerButton } from "@/components/CharacterViewerLink";
 export async function generateMetadata({
   params,
 }: {
@@ -38,6 +39,7 @@ export default async function CharacterPage({
       >
         ← CHARACTER DIRECTORY
       </Link>
+      <CharacterViewerButton project={project} character={{ slug: character.slug, name: character.name, role: character.role, description: character.description, images: character.images }} />
       <div className="split character-record">
         {character.images.length ? <ContentGallery images={character.images} /> : <div
           className={`record-image ${project.art}`}

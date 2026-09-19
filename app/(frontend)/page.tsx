@@ -3,7 +3,7 @@ import TerminalNav from "@/components/TerminalNav";
 import Link from "next/link";
 import { getHomepageData } from "@/lib/content/queries";
 import { chapterHref, projectHref } from "@/lib/content/types";
-import { RetroWindow, WindowTaskbar } from "@/components/WindowManager";
+import { RetroWindow } from "@/components/WindowManager";
 
 function dateLabel(value?: string) {
   return value ? value.slice(5).replace("-", "/") : "--/--";
@@ -75,8 +75,6 @@ export default async function Home() {
             <Link className="system-link" href="/about">READ SYSTEM INFORMATION →</Link>
           </RetroWindow>
         </div>
-        <WindowTaskbar />
-
         <div className="home-terminal-grid">
 
           <section className="terminal-panel projects-panel">

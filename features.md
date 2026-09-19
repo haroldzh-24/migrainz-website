@@ -1,5 +1,11 @@
 # Features
 
+## Implemented - 2026-09-19 / Public art viewer tabs
+
+- Added a large neutral gray art viewer built on the existing public window manager, with bounded desktop dragging, focus, minimize, restore and close behavior.
+- Added persistent browser-like artwork tabs with deduplication, switching, individual close behavior and final-tab viewer closure.
+- Integrated character-directory links and direct character pages with existing public CMS character/image data while preserving real route URLs and lightweight sessionStorage tab persistence.
+
 ## Implemented - 2026-09-19 / Public retro window manager
 
 - Added a public-only reusable gray-window manager with pointer dragging, focus and z-order, minimize, restore, close and bounded positions.

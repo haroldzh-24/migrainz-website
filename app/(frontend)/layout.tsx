@@ -4,6 +4,8 @@ import StartupSequence from "@/components/StartupSequence";
 import TerminalHeader from "@/components/TerminalHeader";
 import { SoundProvider } from "@/components/SoundProvider";
 import { WindowManagerProvider } from "@/components/WindowManager";
+import ArtViewer from "@/components/ArtViewer";
+import { WindowTaskbar } from "@/components/WindowManager";
 import "./globals.css";
 
 export const dynamic = "force-dynamic";
@@ -29,6 +31,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <main className="shell" id="top" tabIndex={-1}>
             {children}
           </main>
+          <WindowTaskbar />
+          <ArtViewer />
           <footer className="shell footer">
             <span>© 2026 MIGRAINZ</span>
             <span>PUBLIC NODE / UNAUTHENTICATED ACCESS</span>

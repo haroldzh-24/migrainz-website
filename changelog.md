@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-19 / Public art viewer tabs
+
+- Add a large gray image viewer using the existing window manager and centralized sound system.
+- Add persistent tab state for generic image-heavy records, with character route integration and duplicate-tab reuse.
+- Keep artwork neutral against the CRT shell, preserve direct character URLs, and use a full-width mobile viewer.
+
 ## 2026-09-19 / Public retro window manager
 
 - Add a lightweight public window manager with bounded Pointer Events dragging, focus stacking, minimize, restore and close controls.

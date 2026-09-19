@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Directory, DirectoryLink } from "@/components/Directory";
+import { Directory } from "@/components/Directory";
 import { getProject } from "@/lib/content/queries";
 import { projectHref, chapterHref } from "@/lib/content/types";
+import { CharacterViewerLink } from "@/components/CharacterViewerLink";
 export const metadata = { title: "Characters" };
 export default async function CharactersPage({
   params,
@@ -21,11 +22,10 @@ export default async function CharactersPage({
       </Link>
       <div className="directory-list">
         {project.characters.map((character) => (
-          <DirectoryLink
+          <CharacterViewerLink
             key={character.slug}
-            href={`${projectHref(project)}/characters/${character.slug}`}
-            name={character.name}
-            meta={character.role}
+            project={project}
+            character={{ slug: character.slug, name: character.name, role: character.role, description: character.description, images: character.images }}
           />
         ))}
       </div>
