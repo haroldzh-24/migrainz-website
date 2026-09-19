@@ -63,6 +63,67 @@ export const getProjects = cache(async (): Promise<Project[]> => {
 });
 export const getProject = async (slug: string) => (await getProjects()).find((project) => project.slug === slug);
 
+export const getHomepageData = cache(async () => {
+  const cms = await getPayload({ config });
+  const [projects, comics, chapters, updates, tracker, archive] = await Promise.all([
+    cms.find({ collection: 'projects', overrideAccess: false, depth: 0, pagination: false, where: publicWhere, sort: 'id',
+      select: { id: true, slug: true, projectCode: true, title: true, status: true, placeholderArt: true, contentUpdated: true, updatedAt: true } }),
+    cms.find({ collection: 'comics', overrideAccess: false, depth: 0, pagination: false, where: publicWhere,
+      select: { id: true, project: true } }),
+    cms.find({ collection: 'chapters', overrideAccess: false, depth: 0, pagination: false, where: publicWhere, sort: 'chapterNumber',
+      select: { slug: true, title: true, comic: true, pages: true } }),
+    cms.find({ collection: 'project-updates', overrideAccess: false, depth: 0, pagination: false, where: publicWhere, sort: '-date',
+      select: { project: true, date: true, title: true, description: true } }),
+    cms.find({ collection: 'tracker-items', overrideAccess: false, depth: 0, pagination: false, where: publicWhere, sort: 'order',
+      select: { project: true, kind: true, title: true, percentage: true } }),
+    cms.find({ collection: 'archive-items', overrideAccess: false, depth: 1, pagination: false, where: publicWhere, sort: '-date',
+      select: { title: true, slug: true, category: true, date: true } }),
+  ]);
+  const projectIDByComicID = new Map(comics.docs.map((comic) => [comic.id, idOf(comic.project)]));
+  const chaptersByProjectID = new Map<number, typeof chapters.docs>();
+  for (const chapter of chapters.docs) {
+    const projectID = projectIDByComicID.get(idOf(chapter.comic));
+    if (projectID === undefined || projectID < 0) continue;
+    const projectChapters = chaptersByProjectID.get(projectID) ?? [];
+    projectChapters.push(chapter);
+    chaptersByProjectID.set(projectID, projectChapters);
+  }
+  const updatesByProjectID = new Map<number, typeof updates.docs>();
+  for (const update of updates.docs) {
+    const projectID = idOf(update.project);
+    const projectUpdates = updatesByProjectID.get(projectID) ?? [];
+    projectUpdates.push(update);
+    updatesByProjectID.set(projectID, projectUpdates);
+  }
+  const trackerByProjectID = new Map<number, typeof tracker.docs>();
+  for (const item of tracker.docs) {
+    const projectID = idOf(item.project);
+    const projectItems = trackerByProjectID.get(projectID) ?? [];
+    projectItems.push(item);
+    trackerByProjectID.set(projectID, projectItems);
+  }
+  return {
+    projects: projects.docs.map((project) => ({
+      slug: project.slug, id: project.projectCode, title: project.title,
+      status: project.status, art: project.placeholderArt || 'art-a',
+      updated: (project.contentUpdated || project.updatedAt).slice(0, 10),
+      phases: (trackerByProjectID.get(project.id) ?? []).filter((item) => item.kind === 'phase')
+        .map((item) => ({ label: item.title, percent: item.percentage ?? 0 })),
+      notes: (updatesByProjectID.get(project.id) ?? []).map((update) => ({
+        date: update.date.slice(0, 10), text: update.description || update.title,
+      })),
+      chapters: (chaptersByProjectID.get(project.id) ?? []).map((chapter) => ({
+        slug: chapter.slug, title: chapter.title, pages: chapter.pages ?? [],
+      })),
+    })),
+    archiveItems: archive.docs.map((item) => ({
+      title: item.title, slug: item.slug,
+      category: typeof item.category === 'object' && item.category ? item.category.title : '',
+      date: item.date?.slice(0, 10),
+    })),
+  };
+});
+
 export const getArchiveItems = cache(async () => {
   const cms = await getPayload({ config });
   const result = await cms.find({ collection: 'archive-items', depth: 1, pagination: false, overrideAccess: false,

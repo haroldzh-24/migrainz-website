@@ -1,7 +1,7 @@
 import Watcher from "@/components/Watcher";
 import TerminalNav from "@/components/TerminalNav";
 import Link from "next/link";
-import { getArchiveItems, getProjects } from "@/lib/content/queries";
+import { getHomepageData } from "@/lib/content/queries";
 import { chapterHref, projectHref } from "@/lib/content/types";
 
 function dateLabel(value?: string) {
@@ -9,10 +9,7 @@ function dateLabel(value?: string) {
 }
 
 export default async function Home() {
-  const [projects, archiveItems] = await Promise.all([
-    getProjects(),
-    getArchiveItems(),
-  ]);
+  const { projects, archiveItems } = await getHomepageData();
   const featured = projects
     .filter((project) => !project.status.toUpperCase().includes("ARCHIVED"))
     .slice(0, 2);

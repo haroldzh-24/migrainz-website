@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-18 / Homepage query performance
+
+- Replace the homepage's full project graph load with a public summary query for the data rendered by LATEST, PROJECTS, COMICS and TRACKER.
+- Fetch homepage collections concurrently, use depth 0 for non-relational summary data, and index project relations once instead of repeatedly filtering every collection for each project.
+- Keep full project/archive loaders for detail routes and preserve all homepage sections, CMS authorization and admin behavior.
+
 ## 2026-09-17 / Studio terminal homepage
 
 - Add a dense homepage activity layer for latest project notes, featured active projects, readable comics, tracker progress, archive records and public system status.

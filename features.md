@@ -1,5 +1,10 @@
 # Features
 
+## Implemented - 2026-09-18 / Homepage summary query
+
+- Added a homepage-specific public CMS query that loads only project, comic/chapter, update, tracker and archive summary fields in parallel.
+- Avoided the full project graph, media transforms and repeated per-project relation scans used by detail routes while preserving all homepage panels and CMS-backed content.
+
 ## Implemented - 2026-09-17 / Homepage studio terminal
 
 - Expanded the homepage beneath the preserved startup and primary terminal navigation with LATEST, featured PROJECTS, readable COMICS, TRACKER, ARCHIVE and SYSTEM panels.
