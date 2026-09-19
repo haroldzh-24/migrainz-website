@@ -3,6 +3,7 @@ import TerminalNav from "@/components/TerminalNav";
 import Link from "next/link";
 import { getHomepageData } from "@/lib/content/queries";
 import { chapterHref, projectHref } from "@/lib/content/types";
+import { RetroWindow, WindowTaskbar } from "@/components/WindowManager";
 
 function dateLabel(value?: string) {
   return value ? value.slice(5).replace("-", "/") : "--/--";
@@ -51,8 +52,8 @@ export default async function Home() {
           <p>PUBLIC NODE / READ ONLY</p>
         </div>
 
-        <div className="home-terminal-grid">
-          <section className="terminal-panel latest-panel">
+        <div className="desktop-windows">
+          <RetroWindow id="latest" title="LATEST" defaultPosition={{ x: 12, y: 12 }} defaultSize={{ width: 620, height: 300 }}>
             <div className="terminal-panel-head">
               <h2>LATEST</h2><Link href="/tracker">OPEN FEED →</Link>
             </div>
@@ -65,7 +66,18 @@ export default async function Home() {
                 </Link>
               )) : <p className="terminal-empty">NO PUBLIC ACTIVITY FILED.</p>}
             </div>
-          </section>
+          </RetroWindow>
+          <RetroWindow id="system" title="SYSTEM" defaultPosition={{ x: 650, y: 12 }} defaultSize={{ width: 430, height: 220 }}>
+            <div className="terminal-panel-head"><h2>SYSTEM</h2><span>NODE STATUS</span></div>
+            <p><b>VERSION</b> 0.2.0 / <b>STATUS</b> ONLINE</p>
+            <p><b>ACCESS</b> PUBLIC / UNAUTHENTICATED</p>
+            <p><b>CHANNELS</b> PROJECTS / COMICS / ARCHIVE</p>
+            <Link className="system-link" href="/about">READ SYSTEM INFORMATION →</Link>
+          </RetroWindow>
+        </div>
+        <WindowTaskbar />
+
+        <div className="home-terminal-grid">
 
           <section className="terminal-panel projects-panel">
             <div className="terminal-panel-head">
@@ -116,13 +128,6 @@ export default async function Home() {
                 <span>{dateLabel(item.date)}</span><b>{item.title}</b><em>{item.category || "UNFILED"}</em>
               </Link>
             )) : <p className="terminal-empty">ARCHIVE INDEX AWAITING FILES.</p>}
-          </section>
-          <section className="terminal-panel system-panel">
-            <div className="terminal-panel-head"><h2>SYSTEM</h2><span>NODE STATUS</span></div>
-            <p><b>VERSION</b> 0.2.0 / <b>STATUS</b> ONLINE</p>
-            <p><b>ACCESS</b> PUBLIC / UNAUTHENTICATED</p>
-            <p><b>CHANNELS</b> PROJECTS / COMICS / ARCHIVE</p>
-            <Link className="system-link" href="/about">READ SYSTEM INFORMATION →</Link>
           </section>
         </div>
       </div>

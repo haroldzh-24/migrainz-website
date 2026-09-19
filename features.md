@@ -1,5 +1,11 @@
 # Features
 
+## Implemented - 2026-09-19 / Public retro window manager
+
+- Added a public-only reusable gray-window manager with pointer dragging, focus and z-order, minimize, restore, close and bounded positions.
+- Converted the homepage LATEST and SYSTEM panels into managed windows with a restrained taskbar that can reopen closed or minimized windows.
+- Desktop windows stack into stable full-width mobile windows with dragging disabled at small breakpoints; Payload admin remains isolated.
+
 ## Implemented - 2026-09-19 / Public CRT and UI sound layer
 
 - Added a public-only CSS CRT presentation layer with faint scanlines, phosphor edge glow, slow refresh sweep and rare brightness fluctuation.

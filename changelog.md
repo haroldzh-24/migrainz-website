@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-19 / Public retro window manager
+
+- Add a lightweight public window manager with bounded Pointer Events dragging, focus stacking, minimize, restore and close controls.
+- Convert homepage LATEST and SYSTEM content into gray Windows-style windows with a small reopenable dock.
+- Stack windows and disable dragging on mobile without changing CMS data loading or Payload admin behavior.
+
 ## 2026-09-19 / Public CRT and UI sound layer
 
 - Add restrained scanlines, phosphor edge glow, refresh sweep and occasional flicker to the existing public CRT overlay.
