@@ -1,5 +1,11 @@
 # Features
 
+## Implemented - 2026-09-19 / Public CRT and UI sound layer
+
+- Added a public-only CSS CRT presentation layer with faint scanlines, phosphor edge glow, slow refresh sweep and rare brightness fluctuation.
+- Added an opt-in Web Audio UI sound provider with localStorage persistence, a global `SND: OFF` / `SND: ON` status toggle and delegated activation sounds for existing links and buttons.
+- Reduced motion disables CRT sweep and flicker; Payload admin remains outside both the provider and CRT layout boundary.
+
 ## Implemented - 2026-09-18 / Homepage summary query
 
 - Added a homepage-specific public CMS query that loads only project, comic/chapter, update, tracker and archive summary fields in parallel.

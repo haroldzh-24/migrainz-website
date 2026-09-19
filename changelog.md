@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-19 / Public CRT and UI sound layer
+
+- Add restrained scanlines, phosphor edge glow, refresh sweep and occasional flicker to the existing public CRT overlay.
+- Add an opt-in localStorage-backed Web Audio sound manager and terminal status toggle for existing UI activations.
+- Keep reduced-motion behavior and Payload admin isolation intact.
+
 ## 2026-09-18 / Homepage query performance
 
 - Replace the homepage's full project graph load with a public summary query for the data rendered by LATEST, PROJECTS, COMICS and TRACKER.

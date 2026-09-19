@@ -79,7 +79,7 @@ export default function StartupSequence({ children }: { children: ReactNode }) {
         }}>
         <div className="promo-title">
           <span id="startup-title">MIGRAINZ / PUBLIC TRANSMISSION</span>
-          <span className="window-controls"><span aria-hidden="true">_ &#9633;</span><button type="button" aria-label="Close announcement" disabled={state === "boot"} onClick={close}>&#215;</button></span>
+          <span className="window-controls"><span aria-hidden="true">_ &#9633;</span><button type="button" aria-label="Close announcement" data-sound="close" disabled={state === "boot"} onClick={close}>&#215;</button></span>
         </div>
         <div className="startup-takeover-body startup-window-body">
           {state === "boot" ? <div className="startup-log">
@@ -95,7 +95,7 @@ export default function StartupSequence({ children }: { children: ReactNode }) {
             {announcement.image ? <img className="startup-announcement-image" src={announcement.image} alt="" /> : <div className="startup-ad-placeholder" aria-hidden="true">MIGRAINZ<br />PUBLIC ACCESS<br />[ TRANSMISSION 001 ]</div>}
             <h2>{announcement.title}</h2>
             <p>{announcement.copy}</p>
-            <button ref={enterRef} type="button" className="terminal-button" onClick={close}>{announcement.buttonLabel}</button>
+            <button ref={enterRef} type="button" className="terminal-button" data-sound="close" onClick={close}>{announcement.buttonLabel}</button>
             <p className="startup-status">AWAITING INPUT <span className="startup-blink" aria-hidden="true">_</span></p>
           </div>}
         </div>

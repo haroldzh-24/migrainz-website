@@ -154,6 +154,20 @@ button {
   justify-content: flex-end;
 }
 
+.sound-toggle {
+  border: 0;
+  padding: 0;
+  color: var(--green);
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+}
+
+.sound-toggle:hover,
+.sound-toggle[aria-pressed="true"] {
+  color: var(--hot);
+}
+
 .online {
   display: flex;
   align-items: center;
@@ -186,6 +200,16 @@ button {
 
   mix-blend-mode: screen;
   opacity: 0.38;
+  box-shadow: inset 0 0 70px rgba(114, 255, 98, 0.035);
+  animation: crt-flicker 17s steps(1, end) infinite;
+}
+
+.crt::before {
+  content: "";
+  position: absolute;
+  inset: -100% 0;
+  background: linear-gradient(to bottom, transparent 49.8%, rgba(255, 255, 255, 0.045) 50%, transparent 50.2%);
+  animation: crt-sweep 14s linear infinite;
 }
 
 .crt::after {
@@ -198,6 +222,16 @@ button {
     transparent 50%,
     rgba(0, 0, 0, 0.55) 100%
   );
+}
+
+@keyframes crt-sweep {
+  to { transform: translateY(200%); }
+}
+
+@keyframes crt-flicker {
+  0%, 96%, 100% { opacity: 0.38; }
+  96.2% { opacity: 0.34; }
+  96.4% { opacity: 0.39; }
 }
 
 /* HERO */
@@ -878,6 +912,11 @@ footer {
   .eye .pupil {
     transition: none !important;
     transform: none !important;
+  }
+
+  .crt,
+  .crt::before {
+    animation: none !important;
   }
 }
 

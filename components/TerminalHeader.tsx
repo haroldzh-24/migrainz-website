@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useSound } from "@/components/SoundProvider";
 
 export default function TerminalHeader() {
   const [clock, setClock] = useState("--:--:--");
+  const { enabled, setEnabled, playSound } = useSound();
   useEffect(() => {
     const update = () =>
       setClock(new Date().toLocaleTimeString([], { hour12: false }));
@@ -24,6 +26,19 @@ export default function TerminalHeader() {
           <i aria-hidden="true" />
           ONLINE
         </span>
+        <button
+          className="sound-toggle"
+          type="button"
+          data-sound-toggle
+          aria-pressed={enabled}
+          onClick={() => {
+            const next = !enabled;
+            setEnabled(next);
+            if (next) playSound("toggle");
+          }}
+        >
+          SND: {enabled ? "ON" : "OFF"}
+        </button>
       </div>
     </header>
   );

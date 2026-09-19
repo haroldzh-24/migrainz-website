@@ -92,6 +92,7 @@ export default function PromoWindow({
       <button
         ref={trigger}
         className="nav-trigger"
+        data-sound={open ? "close" : "open"}
         aria-expanded={open}
         aria-controls={`${kind}-promo`}
         onClick={() => setOpen((value) => !value)}
@@ -113,6 +114,7 @@ export default function PromoWindow({
               <span aria-hidden="true">_ □</span>
               <button
                 aria-label={`Close ${kind} promotion`}
+                data-sound="close"
                 onClick={() => {
                   setOpen(false);
                   trigger.current?.focus();
