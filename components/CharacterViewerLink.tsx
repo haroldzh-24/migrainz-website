@@ -1,10 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useWindowManager, type ViewerTab } from "@/components/WindowManager";
 import type { Character, Project } from "@/lib/content/types";
+import DesktopFile from "@/components/DesktopFile";
 
-type ViewerCharacter = Pick<Character, "slug" | "name" | "role" | "description" | "images">;
+type ViewerCharacter = Pick<Character, "slug" | "name" | "role" | "description" | "images" | "updated">;
 
 function tabFor(project: Pick<Project, "slug" | "title">, character: ViewerCharacter): ViewerTab {
   return {
@@ -19,15 +19,21 @@ function tabFor(project: Pick<Project, "slug" | "title">, character: ViewerChara
 }
 
 export function CharacterViewerLink({ project, character }: { project: Pick<Project, "slug" | "title">; character: ViewerCharacter }) {
-  const { openViewerTab } = useWindowManager();
   const tab = tabFor(project, character);
-  return <Link href={tab.href} className="directory-row" onClick={(event) => {
-    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
-    event.preventDefault();
-    openViewerTab(tab);
-  }}>
-    <span aria-hidden="true">↳</span><strong>{character.name}</strong><span>{character.role}</span>
-  </Link>;
+  return <DesktopFile
+    label={`${character.name.replace(/\s+/g, "_")}.CHR`}
+    type="CHR"
+    href={tab.href}
+    viewerTab={tab}
+    metadata={[
+      { label: "NAME", value: character.name },
+      { label: "PROJECT", value: project.title },
+      ...(character.role ? [{ label: "ROLE", value: character.role }] : []),
+      { label: "IMAGE COUNT", value: String(character.images.length) },
+      { label: "TYPE", value: "CHARACTER" },
+      ...(character.updated ? [{ label: "UPDATED", value: character.updated }] : []),
+    ]}
+  />;
 }
 
 export function CharacterViewerButton({ project, character }: { project: Pick<Project, "slug" | "title">; character: ViewerCharacter }) {

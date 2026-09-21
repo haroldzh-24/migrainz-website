@@ -51,6 +51,7 @@ const { chromium } = require(
     assert.equal(adminResponse.status(), 200);
     assert.equal(await admin.locator('.startup-sequence').count(), 0);
     assert.equal(await admin.locator('[inert]').count(), 0);
+    assert.equal(await admin.locator('.desktop-file, .desktop-inspector, .crt, .art-viewer-window, .window-taskbar').count(), 0);
     await adminContext.close();
     await page.goto("/");
     await page.locator('.startup-sequence').waitFor({ state: 'visible' });
@@ -124,6 +125,16 @@ const { chromium } = require(
       return;
     }
     await page.getByRole("heading", { level: 1 }).waitFor();
+    assert.equal(await page.locator('.crt').evaluate(el => getComputedStyle(el).pointerEvents), 'none');
+    assert.match(await page.locator('.crt').evaluate(el => getComputedStyle(el).animationName), /crt-flicker/);
+    const sound = page.locator('.sound-toggle');
+    assert.equal(await sound.getAttribute('aria-pressed'), 'false');
+    await sound.click();
+    assert.equal(await sound.getAttribute('aria-pressed'), 'true');
+    await page.reload();
+    await page.waitForFunction(() => document.querySelector('.sound-toggle')?.getAttribute('aria-pressed') === 'true');
+    await sound.click();
+    assert.equal(await page.evaluate(() => localStorage.getItem('migrainz-sound-enabled')), 'false');
     await page.waitForFunction(
       () => document.querySelector("#clock").textContent !== "--:--:--",
     );
@@ -195,9 +206,60 @@ const { chromium } = require(
     );
     await page.keyboard.press("Escape");
     await page.getByRole("link", { name: "01 PROJECT DATABASE" }).click();
-    await page.getByRole("link", { name: /BL-001.*OPEN DIRECTORY/ }).click();
+    await page.getByRole("link", { name: "BLUSHLAND/", exact: true }).hover();
+    await page.getByRole('tooltip').waitFor();
+    assert.match(await page.getByRole('tooltip').innerText(), /PAGE COUNT\s+3/);
+    assert.doesNotMatch(await page.getByRole('tooltip').innerText(), /CURRENT PHASE|TRACKER STATE/);
+    await page.screenshot({ path: 'test-results/phase5-project-properties.png' });
+    await page.getByRole("link", { name: "BLUSHLAND/", exact: true }).click();
+    if (process.env.DESKTOP_TEST_FIXTURE) {
+      const art = page.getByRole('link', { name: 'REGRESSION ART.ART', exact: true });
+      assert.equal(await art.getAttribute('href'), '/projects/blushland#gallery-regression-art');
+      await art.click();
+      await page.getByRole('tab', { name: 'REGRESSION ART', exact: true }).waitFor();
+      await page.waitForFunction(() => { const img = document.querySelector('.art-viewer-canvas img'); return img?.complete && img.naturalWidth > 0; });
+      assert.equal(await page.locator('.art-viewer-canvas').evaluate(el => { const canvas = el.getBoundingClientRect(); const image = el.querySelector('img').getBoundingClientRect(); return image.bottom <= canvas.bottom && image.right <= canvas.right; }), true);
+      await page.screenshot({ path: 'test-results/phase5-artwork.png' });
+      await page.getByRole('button', { name: 'Minimize ART VIEWER', exact: true }).click();
+      await art.click();
+      assert.equal(await page.getByRole('tab', { name: 'REGRESSION ART', exact: true }).count(), 1);
+      await page.getByRole('button', { name: 'Close REGRESSION ART', exact: true }).click();
+    }
     await page.getByRole("link", { name: /CHARACTERS\/.*1 RECORDS/ }).click();
-    await page.getByRole("link", { name: /THE OBSERVER/ }).click();
+    const file = page.getByRole("link", { name: "THE_OBSERVER.CHR", exact: true });
+    const fallback = await file.getAttribute('href');
+    let hoverRequests = [];
+    const trackHover = request => { if (/\/api\/|_rsc=/.test(request.url())) hoverRequests.push(request.url()); };
+    await page.waitForLoadState('networkidle');
+    page.on('request', trackHover);
+    await file.hover();
+    await page.getByRole('tooltip').waitFor();
+    assert.match(await page.getByRole('tooltip').innerText(), /NAME\s+THE OBSERVER/);
+    assert.match(await page.getByRole('tooltip').innerText(), /PROJECT\s+BLUSHLAND/);
+    assert.match(await page.getByRole('tooltip').innerText(), /UPDATED\s+\d{4}-\d{2}-\d{2}/);
+    assert.equal(await page.getByRole('tooltip').evaluate(el => getComputedStyle(el).pointerEvents), 'none');
+    const inspector = await page.getByRole('tooltip').boundingBox();
+    assert.ok(inspector.x >= 0 && inspector.y >= 0 && inspector.x + inspector.width <= 1440 && inspector.y + inspector.height <= 1000);
+    page.off('request', trackHover);
+    assert.deepEqual(hoverRequests, []);
+    await page.keyboard.press('Escape');
+    await page.getByRole('tooltip').waitFor({ state: 'hidden' });
+    await file.focus();
+    await page.getByRole('tooltip').waitFor();
+    await page.setViewportSize({ width: 320, height: 240 });
+    await page.waitForFunction(() => { const box = document.querySelector('.desktop-inspector')?.getBoundingClientRect(); return box && box.x >= 0 && box.y >= 0 && box.right <= innerWidth && box.bottom <= innerHeight; });
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await file.press('Enter');
+    await page.getByRole('tab', { name: 'THE OBSERVER', exact: true }).waitFor();
+    assert.equal(new URL(page.url()).pathname, '/projects/blushland/characters');
+    await page.getByRole('button', { name: 'Minimize ART VIEWER', exact: true }).click();
+    await file.click();
+    assert.equal(await page.getByRole('tab', { name: 'THE OBSERVER', exact: true }).count(), 1);
+    await page.reload();
+    await page.getByRole('tab', { name: 'THE OBSERVER', exact: true }).waitFor();
+    await page.screenshot({ path: 'test-results/phase5-viewer-desktop.png' });
+    await page.getByRole('button', { name: 'Close THE OBSERVER', exact: true }).click();
+    await page.goto(fallback);
     await page.waitForURL('**/projects/blushland/characters/the-observer');
     const chapterLink = page.getByRole("link", { name: /CHAPTER 01.*OPEN READER/ });
     assert.equal(await chapterLink.getAttribute('href'), '/comics/blushland/chapter-01');
@@ -279,6 +341,7 @@ const { chromium } = require(
     touch.on("pageerror", (error) => errors.push(error.message));
     await touch.goto("/");
     await touch.getByRole('button', { name: 'ENTER', exact: true }).waitFor();
+    assert.equal(await touch.locator('.crt').evaluate(el => getComputedStyle(el).animationName), 'none');
     assert.equal(await touch.locator('.startup-blink').first().evaluate(el => getComputedStyle(el).animationName), 'none');
     await touch.getByRole('button', { name: 'ENTER', exact: true }).tap();
     await touch.locator('.startup-sequence').waitFor({ state: 'hidden' });
@@ -324,12 +387,25 @@ const { chromium } = require(
     );
     for (const width of [320, 390, 768]) {
       await touch.setViewportSize({ width, height: 844 });
-      for (const route of ['/', '/archive', '/about']) {
+      for (const route of ['/', '/archive', '/about', '/projects', '/projects/blushland/characters']) {
         await touch.goto(route);
         assert.equal(await touch.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, route + ' at ' + width);
       }
     }
     await touch.setViewportSize({ width: 390, height: 844 });
+    await touch.goto('/projects/blushland/characters');
+    await touch.getByRole('button', { name: 'Properties for THE_OBSERVER.CHR', exact: true }).tap();
+    await touch.getByRole('tooltip').waitFor();
+    assert.match(await touch.getByRole('tooltip').innerText(), /THE OBSERVER/);
+    const mobileInspector = await touch.getByRole('tooltip').boundingBox();
+    assert.ok(mobileInspector.x >= 0 && mobileInspector.y >= 0 && mobileInspector.x + mobileInspector.width <= 390 && mobileInspector.y + mobileInspector.height <= 844);
+    await touch.screenshot({ path: 'test-results/phase5-properties-mobile.png' });
+    await touch.getByRole('button', { name: 'Properties for THE_OBSERVER.CHR', exact: true }).tap();
+    await touch.getByRole('tooltip').waitFor({ state: 'hidden' });
+    await touch.getByRole('link', { name: 'THE_OBSERVER.CHR', exact: true }).tap();
+    await touch.getByRole('tab', { name: 'THE OBSERVER', exact: true }).waitFor();
+    assert.equal(await touch.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    await touch.getByRole('button', { name: 'Close THE OBSERVER', exact: true }).tap();
     await touch.goto("/comics/blushland/chapter-01");
     await touch.getByRole("button", { name: "NEXT →" }).first().tap();
     assert.match(

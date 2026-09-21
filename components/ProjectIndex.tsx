@@ -1,30 +1,24 @@
-import Link from "next/link";
 import { projectHref } from "@/lib/content/types";
 import { getProjects } from "@/lib/content/queries";
+import { DesktopFolder } from "@/components/DesktopFile";
 
 export default async function ProjectIndex() {
   const projects = await getProjects();
   return (
-    <div className="project-grid">
+    <div className="desktop-file-grid project-grid">
       {projects.map((project) => (
-        <Link
-          className="record-card"
-          href={projectHref(project)}
+        <DesktopFolder
           key={project.slug}
-        >
-          <div className={`record-image ${project.art}`}>
-            {project.hero && <img className="cms-hero-image" src={project.hero.src} alt={project.hero.alt} />}
-            <span>{project.id}</span>
-          </div>
-          <div className="record-copy">
-            <p>
-              {project.category} / {project.status}
-            </p>
-            <h3>{project.title}</h3>
-            <span>{project.summary}</span>
-            <p>OPEN DIRECTORY →</p>
-          </div>
-        </Link>
+          label={`${project.title}/`}
+          href={projectHref(project)}
+          metadata={[
+            ...(project.category ? [{ label: "CATEGORY", value: project.category }] : []),
+            ...(project.status ? [{ label: "STATUS", value: project.status }] : []),
+            ...(project.updated ? [{ label: "LAST UPDATE", value: project.updated }] : []),
+            { label: "CHAPTER COUNT", value: String(project.chapters.length) },
+            { label: "PAGE COUNT", value: String(project.chapters.reduce((count, chapter) => count + chapter.pages.length, 0)) },
+          ]}
+        />
       ))}
     </div>
   );

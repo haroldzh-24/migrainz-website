@@ -1,5 +1,15 @@
 # Features
 
+## Implemented - 2026-09-20 / Phase 5 desktop files and inspectors
+
+- Continue the interrupted file styling and project/character integration with reusable DesktopFile and DesktopFolder components.
+- Character files and CMS gallery artwork reuse the existing ART VIEWER and stable tab IDs; real character routes and gallery anchors remain available.
+- Add delayed hover/focus properties and a touch properties toggle, viewport clamping, Escape/outside dismissal, and timer/listener cleanup. Metadata comes from existing access-checked server queries; hover does not fetch or prefetch CMS data.
+- Correct the existing viewer canvas sizing so tall artwork fits without clipping.
+- Show actual character update dates and public chapter/page counts; omit unsupported current-phase and tracker-state assumptions.
+- Preserve the existing window manager, viewer persistence, CRT, sound, startup, promotional windows and isolated Payload admin. Extend browser regression coverage for files, properties, persistence and mobile widths.
+- Validation completed 2026-09-21: typecheck, production build and isolated regression pass; desktop/mobile screenshots reviewed, with an additional artwork-fit check at 1440/390/320px.
+
 ## Implemented - 2026-09-19 / Public art viewer tabs
 
 - Added a large neutral gray art viewer built on the existing public window manager, with bounded desktop dragging, focus, minimize, restore and close behavior.

@@ -7,7 +7,7 @@ export type Chapter = { slug: string; title: string; description: string; pages:
 export type Gallery = { slug: string; title: string; description: string; images: ComicPage[] };
 export type Character = {
   slug: string; name: string; role: string; description: string; chapterSlugs: string[];
-  writing?: Writing | null; images: ComicPage[];
+  writing?: Writing | null; images: ComicPage[]; updated?: string;
 };
 export type Project = {
   slug: string; id: string; title: string; category: string; status: string; art: string;

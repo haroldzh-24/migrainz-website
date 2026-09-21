@@ -51,7 +51,7 @@ export const getProjects = cache(async (): Promise<Project[]> => {
       })),
       characters: characters.docs.filter((character) => idOf(character.project) === project.id).map((character) => ({
         slug: character.slug, name: character.name, role: character.role || '', description: character.description || '',
-        writing: character.writing, images: images(character.images),
+        writing: character.writing, images: images(character.images), updated: character.updatedAt.slice(0, 10),
         chapterSlugs: (character.relatedChapters ?? []).flatMap((value) => {
           const chapter = projectChapters.find((c) => c.id === idOf(value)); return chapter ? [chapter.slug] : [];
         }),

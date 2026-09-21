@@ -17,6 +17,7 @@ const env = {
   CMS_MEDIA_DIR: path.join(fixture, 'media'),
   PAYLOAD_SECRET: randomBytes(32).toString('hex'),
   BOOT_ONLY: '0',
+  DESKTOP_TEST_FIXTURE: fixture,
 };
 mkdirSync(env.CMS_MEDIA_DIR);
 const children = new Set();
@@ -46,6 +47,7 @@ try {
   console.log(`Regression fixture: ${fixture}`);
   await completed(launch(['--import', 'tsx', 'scripts/migrate-legacy-content.ts', '--apply']));
   await completed(launch(['--import', 'tsx', 'scripts/verify-content-migration.ts']));
+  await completed(launch(['--import', 'tsx', 'scripts/seed-desktop-fixture.ts']));
   const port = await new Promise((resolve, reject) => {
     const probe = net.createServer();
     probe.once('error', reject);
