@@ -1,5 +1,22 @@
 # Features
 
+## Implemented - 2026-09-24 / Pixel monitor desktop
+
+- Add a reusable public PixelMonitorDesktop with a stepped hardware shell, neutral internal workspace and the existing taskbar inside the screen.
+- Portal all RetroWindow instances into the shared monitor; use workspace width/height for drag clamping, resize correction and viewer maximize bounds. Keep the existing manager and focus/minimize/restore state.
+- Open LATEST and SYSTEM from terminal launchers; artwork opens the same persistent ART VIEWER. Hide with RETURN TO TERMINAL or Escape within the monitor; reopen through OPEN DESKTOP without unmounting windows or clearing tabs.
+- Preserve the outer terminal, startup/promotional windows, sound, CMS and admin boundaries. Artwork receives no pixel rendering or CRT tint.
+- Simplify the bezel on mobile, stack non-draggable windows in a scrollable workspace, and keep the taskbar below that workspace.
+- Validation: `npm.cmd run typecheck` passed. Build, regression and browser validation omitted as requested; manual visual/interaction review remains.
+
+## Implemented - 2026-09-21 / Art viewer zoom and maximize
+
+- Extend the existing ART VIEWER with FIT, native-size 100%, bounded zoom buttons and canvas-only Pointer Events panning; arrow keys also pan overflowing artwork.
+- Measure available canvas space and decoded image dimensions to preserve aspect ratio. Keep artwork in the existing neutral window layer.
+- Add opt-in MAXIMIZE/RESTORE to RetroWindow using WindowManager state; preserve normal geometry and restore normal-size artwork zoom/pan settings. Mobile retains its near-fullscreen, non-draggable window without redundant maximize controls.
+- Keep tab/session persistence, duplicate prevention and close behavior unchanged. New view settings are in-memory only; buttons use the existing delegated sound handling.
+- Validation: `npm.cmd run typecheck` passed; broader manual validation is delegated to the user.
+
 ## Implemented - 2026-09-20 / Phase 5 desktop files and inspectors
 
 - Continue the interrupted file styling and project/character integration with reusable DesktopFile and DesktopFolder components.

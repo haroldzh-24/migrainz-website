@@ -3,7 +3,7 @@ import TerminalNav from "@/components/TerminalNav";
 import Link from "next/link";
 import { getHomepageData } from "@/lib/content/queries";
 import { chapterHref, projectHref } from "@/lib/content/types";
-import { RetroWindow } from "@/components/WindowManager";
+import { RetroWindow, WindowLauncher } from "@/components/WindowManager";
 
 function dateLabel(value?: string) {
   return value ? value.slice(5).replace("-", "/") : "--/--";
@@ -52,8 +52,10 @@ export default async function Home() {
           <p>PUBLIC NODE / READ ONLY</p>
         </div>
 
-        <div className="desktop-windows">
-          <RetroWindow id="latest" title="LATEST" defaultPosition={{ x: 12, y: 12 }} defaultSize={{ width: 620, height: 300 }}>
+        <div className="desktop-launchers">
+          <WindowLauncher id="latest">[ LATEST ]</WindowLauncher>
+          <WindowLauncher id="system">[ SYSTEM ]</WindowLauncher>
+          <RetroWindow id="latest" title="LATEST" defaultOpen={false} defaultPosition={{ x: 12, y: 12 }} defaultSize={{ width: 620, height: 300 }}>
             <div className="terminal-panel-head">
               <h2>LATEST</h2><Link href="/tracker">OPEN FEED →</Link>
             </div>
@@ -67,7 +69,7 @@ export default async function Home() {
               )) : <p className="terminal-empty">NO PUBLIC ACTIVITY FILED.</p>}
             </div>
           </RetroWindow>
-          <RetroWindow id="system" title="SYSTEM" defaultPosition={{ x: 650, y: 12 }} defaultSize={{ width: 430, height: 220 }}>
+          <RetroWindow id="system" title="SYSTEM" defaultOpen={false} defaultPosition={{ x: 650, y: 50 }} defaultSize={{ width: 430, height: 220 }}>
             <div className="terminal-panel-head"><h2>SYSTEM</h2><span>NODE STATUS</span></div>
             <p><b>VERSION</b> 0.2.0 / <b>STATUS</b> ONLINE</p>
             <p><b>ACCESS</b> PUBLIC / UNAUTHENTICATED</p>

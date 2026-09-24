@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import { useSound } from "@/components/SoundProvider";
+import { createPortal } from "react-dom";
 
 type WindowPosition = { x: number; y: number };
 type WindowSize = { width: number; height: number };
@@ -32,8 +33,14 @@ type WindowRecord = {
   zIndex: number;
   position: WindowPosition;
   size: WindowSize;
+  maximized?: boolean;
 };
 type WindowManagerValue = {
+  workspace: HTMLDivElement | null;
+  setWorkspace: (element: HTMLDivElement | null) => void;
+  desktopVisible: boolean;
+  showDesktop: () => void;
+  hideDesktop: () => void;
   windows: WindowRecord[];
   registerWindow: (window: Omit<WindowRecord, "focused" | "zIndex">) => void;
   focusWindow: (id: string, sound?: "click" | "open") => void;
@@ -41,6 +48,7 @@ type WindowManagerValue = {
   restoreWindow: (id: string) => void;
   closeWindow: (id: string) => void;
   moveWindow: (id: string, position: WindowPosition) => void;
+  toggleMaximizeWindow: (id: string) => void;
   viewerTabs: ViewerTab[];
   activeViewerTab: string | null;
   openViewerTab: (tab: ViewerTab) => void;
@@ -66,10 +74,10 @@ function readViewerTabs() {
   }
 }
 
-function clampPosition(position: WindowPosition, size: WindowSize) {
-  const workspaceWidth = document.querySelector<HTMLElement>(".desktop-windows")?.clientWidth ?? window.innerWidth;
-  const maxX = Math.max(12, workspaceWidth - size.width - 12);
-  const maxY = Math.max(12, window.innerHeight - size.height - 12);
+function clampPosition(position: WindowPosition, size: WindowSize, workspace: HTMLDivElement | null) {
+  if (!workspace?.clientWidth || !workspace.clientHeight) return position;
+  const maxX = Math.max(12, workspace.clientWidth - size.width - 12);
+  const maxY = Math.max(12, workspace.clientHeight - size.height - 12);
   return {
     x: Math.max(12, Math.min(position.x, maxX)),
     y: Math.max(12, Math.min(position.y, maxY)),
@@ -77,12 +85,38 @@ function clampPosition(position: WindowPosition, size: WindowSize) {
 }
 
 export function WindowManagerProvider({ children }: { children: ReactNode }) {
+  const [workspace, setWorkspace] = useState<HTMLDivElement | null>(null);
+  const [desktopVisible, setDesktopVisible] = useState(false);
+  const returnFocus = useRef<HTMLElement | null>(null);
+  const showDesktop = () => {
+    if (!desktopVisible) {
+      returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      setDesktopVisible(true);
+    }
+  };
+  const hideDesktop = () => {
+    setDesktopVisible(false);
+    const target = returnFocus.current;
+    (target?.isConnected ? target : document.getElementById("top"))?.focus({ preventScroll: true });
+  };
   const [windows, setWindows] = useState<WindowRecord[]>([]);
   const [viewerTabs, setViewerTabs] = useState<ViewerTab[]>([]);
   const [activeViewerTab, setActiveViewerTab] = useState<string | null>(null);
   const [viewerHydrated, setViewerHydrated] = useState(false);
   const nextZIndex = useRef(10);
   const { playSound } = useSound();
+
+  useEffect(() => {
+    if (!workspace || !desktopVisible) return;
+    const observer = new ResizeObserver(() => {
+      setWindows((current) => current.map((entry) => {
+        const position = clampPosition(entry.position, entry.size, workspace);
+        return position.x === entry.position.x && position.y === entry.position.y ? entry : { ...entry, position };
+      }));
+    });
+    observer.observe(workspace);
+    return () => observer.disconnect();
+  }, [workspace, desktopVisible]);
 
   useEffect(() => {
     const tabs = readViewerTabs();
@@ -97,10 +131,11 @@ export function WindowManagerProvider({ children }: { children: ReactNode }) {
   }, [viewerHydrated, viewerTabs]);
 
   const registerWindow = (window: Omit<WindowRecord, "focused" | "zIndex">) => {
+    if (!windows.some((entry) => entry.id === window.id) && window.open) showDesktop();
     setWindows((current) => {
       if (current.some((entry) => entry.id === window.id)) return current;
       nextZIndex.current += 1;
-      return [...current, { ...window, position: clampPosition(window.position, window.size), focused: current.length === 0, zIndex: nextZIndex.current }];
+      return [...current, { ...window, position: clampPosition(window.position, window.size, workspace), focused: current.length === 0, zIndex: nextZIndex.current }];
     });
   };
   const focusWindow = (id: string, sound: "click" | "open" = "open") => {
@@ -117,6 +152,7 @@ export function WindowManagerProvider({ children }: { children: ReactNode }) {
     playSound("close");
   };
   const restoreWindow = (id: string) => {
+    showDesktop();
     setWindows((current) => current.map((window) => window.id === id ? { ...window, open: true, minimized: false } : window));
     focusWindow(id);
   };
@@ -125,7 +161,11 @@ export function WindowManagerProvider({ children }: { children: ReactNode }) {
     playSound("close");
   };
   const moveWindow = (id: string, position: WindowPosition) => {
-    setWindows((current) => current.map((window) => window.id === id ? { ...window, position: clampPosition(position, window.size) } : window));
+    setWindows((current) => current.map((window) => window.id === id ? { ...window, position: clampPosition(position, window.size, workspace) } : window));
+  };
+  const toggleMaximizeWindow = (id: string) => {
+    // Keep normal geometry intact; CSS supplies the monitor workspace bounds.
+    setWindows((current) => current.map((window) => window.id === id ? { ...window, maximized: !window.maximized } : window));
   };
 
   const ensureViewerWindow = () => {
@@ -140,12 +180,13 @@ export function WindowManagerProvider({ children }: { children: ReactNode }) {
         minimized: false,
         focused: true,
         zIndex: nextZIndex.current,
-        position: viewerWindowDefaults.position,
+        position: clampPosition(viewerWindowDefaults.position, viewerWindowDefaults.size, workspace),
         size: viewerWindowDefaults.size,
       }];
     });
   };
   const openViewerTab = (tab: ViewerTab) => {
+    showDesktop();
     setViewerTabs((current) => current.some((entry) => entry.id === tab.id) ? current : [...current, tab]);
     setActiveViewerTab(tab.id);
     ensureViewerWindow();
@@ -166,7 +207,7 @@ export function WindowManagerProvider({ children }: { children: ReactNode }) {
     else playSound("close");
   };
 
-  return <WindowManagerContext.Provider value={{ windows, registerWindow, focusWindow, minimizeWindow, restoreWindow, closeWindow, moveWindow, viewerTabs, activeViewerTab, openViewerTab, switchViewerTab, closeViewerTab }}>{children}</WindowManagerContext.Provider>;
+  return <WindowManagerContext.Provider value={{ workspace, setWorkspace, desktopVisible, showDesktop, hideDesktop, windows, registerWindow, focusWindow, minimizeWindow, restoreWindow, closeWindow, moveWindow, toggleMaximizeWindow, viewerTabs, activeViewerTab, openViewerTab, switchViewerTab, closeViewerTab }}>{children}</WindowManagerContext.Provider>;
 }
 
 export function useWindowManager() {
@@ -175,25 +216,36 @@ export function useWindowManager() {
   return context;
 }
 
-export function RetroWindow({ id, title, defaultPosition, defaultSize, className, children }: {
+export function RetroWindow({ id, title, defaultPosition, defaultSize, defaultOpen = true, className, children, onToggleMaximize }: {
   id: string;
   title: string;
   defaultPosition: WindowPosition;
   defaultSize: WindowSize;
+  defaultOpen?: boolean;
   className?: string;
   children: ReactNode;
+  onToggleMaximize?: () => void;
 }) {
   const manager = useWindowManager();
   const record = manager.windows.find((window) => window.id === id);
+  const windowElement = useRef<HTMLElement>(null);
   const drag = useRef<{ pointerId: number; offsetX: number; offsetY: number; workspaceLeft: number; workspaceTop: number } | null>(null);
 
   useEffect(() => {
-    manager.registerWindow({ id, title, open: true, minimized: false, position: defaultPosition, size: defaultSize });
-  }, [defaultPosition, defaultSize, id, manager, title]);
+    manager.registerWindow({ id, title, open: defaultOpen, minimized: false, position: defaultPosition, size: defaultSize });
+  }, [defaultOpen, defaultPosition, defaultSize, id, manager, title]);
 
-  const current = record ?? { id, title, open: true, minimized: false, focused: false, zIndex: 1, position: defaultPosition, size: defaultSize };
+  useEffect(() => {
+    if (manager.desktopVisible && record?.open && !record.minimized && record.focused && window.matchMedia("(max-width: 700px)").matches) {
+      const element = windowElement.current;
+      if (element && manager.workspace) manager.workspace.scrollTop = element.offsetTop;
+    }
+  }, [manager.desktopVisible, manager.workspace, record?.open, record?.minimized, record?.focused]);
+
+  const current = record ?? { id, title, open: defaultOpen, minimized: false, focused: false, zIndex: 1, position: defaultPosition, size: defaultSize };
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if ((event.target as HTMLElement).closest("button")) return;
+    if (event.button !== 0 || (event.target as HTMLElement).closest("button")) return;
+    if (current.maximized) return;
     if (window.matchMedia("(max-width: 700px)").matches) return;
     const windowBounds = event.currentTarget.parentElement?.getBoundingClientRect();
     const workspaceBounds = event.currentTarget.parentElement?.parentElement?.getBoundingClientRect();
@@ -215,17 +267,23 @@ export function RetroWindow({ id, title, defaultPosition, defaultSize, className
     if (drag.current?.pointerId === event.pointerId && event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
     drag.current = null;
   };
-  if (!current.open || current.minimized) return null;
-  return <section className={`retro-window${className ? ` ${className}` : ""}`} data-focused={current.focused} style={{ left: current.position.x, top: current.position.y, width: current.size.width, zIndex: current.zIndex }} onPointerDown={() => manager.focusWindow(id)} aria-label={`${title} window`}>
+  if (!current.open || current.minimized || !manager.workspace) return null;
+  return createPortal(<section ref={windowElement} className={`retro-window${className ? ` ${className}` : ""}`} data-maximized={current.maximized || undefined} data-focused={current.focused} style={{ left: current.position.x, top: current.position.y, width: current.size.width, height: current.size.height, zIndex: current.zIndex }} onFocusCapture={() => { if (!current.focused) manager.focusWindow(id, "click"); }} onPointerDown={() => manager.focusWindow(id)} aria-label={`${title} window`}>
     <div className="retro-window-titlebar" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={stopDragging} onPointerCancel={stopDragging}>
       <strong>{title}</strong>
       <span className="retro-window-controls">
+        {onToggleMaximize && <button type="button" className="art-viewer-maximize" aria-label={`${current.maximized ? "Restore" : "Maximize"} ${title}`} onClick={onToggleMaximize}>{current.maximized ? "RESTORE" : "MAXIMIZE"}</button>}
         <button type="button" aria-label={`Minimize ${title}`} onClick={() => manager.minimizeWindow(id)}>_</button>
         <button type="button" aria-label={`Close ${title}`} onClick={() => manager.closeWindow(id)}>×</button>
       </span>
     </div>
     <div className="retro-window-body">{children}</div>
-  </section>;
+  </section>, manager.workspace);
+}
+
+export function WindowLauncher({ id, children }: { id: string; children: ReactNode }) {
+  const { restoreWindow } = useWindowManager();
+  return <button className="terminal-button" type="button" onClick={() => restoreWindow(id)}>{children}</button>;
 }
 
 export function WindowTaskbar() {

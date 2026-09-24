@@ -5,7 +5,7 @@ import TerminalHeader from "@/components/TerminalHeader";
 import { SoundProvider } from "@/components/SoundProvider";
 import { WindowManagerProvider } from "@/components/WindowManager";
 import ArtViewer from "@/components/ArtViewer";
-import { WindowTaskbar } from "@/components/WindowManager";
+import PixelMonitorDesktop from "@/components/PixelMonitorDesktop";
 import "./globals.css";
 
 export const dynamic = "force-dynamic";
@@ -31,7 +31,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <main className="shell" id="top" tabIndex={-1}>
             {children}
           </main>
-          <WindowTaskbar />
+          <PixelMonitorDesktop />
           <ArtViewer />
           <footer className="shell footer">
             <span>© 2026 MIGRAINZ</span>

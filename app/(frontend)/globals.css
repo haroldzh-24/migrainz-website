@@ -275,11 +275,60 @@ button {
 .home-terminal-head { margin: 28px 0 20px; }
 .home-terminal-grid { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 16px; }
 .home-terminal-lower { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 16px; margin-top: 16px; }
-.desktop-windows { position: relative; min-height: 344px; }
+.desktop-launchers { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+.monitor-launcher { padding-block: 12px; }
+.pixel-monitor {
+  position: fixed;
+  z-index: 40;
+  inset: 60px 24px 28px;
+  width: min(1220px, calc(100% - 48px));
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 20px 0;
+  border: 8px solid #88877c;
+  border-top-color: #deddd0;
+  border-left-color: #c9c8ba;
+  background: #aeada0;
+  color: #292b28;
+  box-shadow: inset 4px 4px #e4e3d6, inset -4px -4px #686a62;
+  clip-path: polygon(0 12px, 12px 12px, 12px 0, calc(100% - 12px) 0, calc(100% - 12px) 12px, 100% 12px, 100% calc(100% - 12px), calc(100% - 12px) calc(100% - 12px), calc(100% - 12px) 100%, 12px 100%, 12px calc(100% - 12px), 0 calc(100% - 12px));
+  font: 11px monospace;
+  letter-spacing: normal;
+  color-scheme: light;
+  isolation: isolate;
+}
+.pixel-monitor[hidden] { display: none; }
+.pixel-monitor-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding: 0 0 12px; }
+.pixel-monitor-header button { padding: 7px 10px; border: 3px outset #e4e3d6; background: #c9c8ba; color: #20221f; font: inherit; cursor: pointer; }
+.pixel-monitor button:focus-visible { outline: 2px solid #000080; outline-offset: -2px; }
+.pixel-monitor-screen {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  border: 8px solid #363d39;
+  border-right-color: #74786d;
+  border-bottom-color: #878a7d;
+  background: #343e3b;
+  overflow: hidden;
+}
+.desktop-windows { position: relative; flex: 1; min-height: 0; min-width: 0; overflow: hidden; isolation: isolate; }
+.pixel-monitor-dock { flex-shrink: 0; min-height: 39px; max-height: 30%; overflow: auto; background: #c0c0c0; border-top: 2px solid #eee; }
+.pixel-monitor-hardware { display: flex; align-items: center; gap: 16px; min-height: 40px; padding: 8px 4px; }
+.pixel-monitor-hardware > span:nth-child(2) { margin-left: auto; }
+.pixel-monitor-hardware b { color: #315b32; margin-inline: 8px; }
+.pixel-monitor-vents { width: 72px; height: 12px; background: repeating-linear-gradient(90deg, #5b5e56 0 4px, transparent 4px 8px); }
+.pixel-monitor-switch { width: 20px; height: 16px; border: 3px outset #e4e3d6; background: #92958a; }
 .retro-window {
   position: absolute;
-  min-width: 260px;
-  min-height: 120px;
+  min-width: 0;
+  min-height: 0;
+  max-width: calc(100% - 24px);
+  max-height: calc(100% - 24px);
+  display: flex;
+  flex-direction: column;
   padding: 3px;
   background: #c0c0c0;
   color: #000;
@@ -316,7 +365,8 @@ button {
   font: bold 14px Arial, sans-serif;
   line-height: 16px;
 }
-.retro-window-body { max-height: 300px; overflow: auto; padding: 14px; background: #efefef; }
+.retro-window-titlebar { flex-shrink: 0; touch-action: none; }
+.retro-window-body { flex: 1; min-height: 0; overflow: auto; padding: 14px; background: #efefef; }
 .retro-window-body .terminal-panel-head { border-color: #999; }
 .retro-window-body .terminal-panel-head h2 { color: #000080; }
 .retro-window-body .home-feed-row { border-color: #bbb; }
@@ -332,12 +382,11 @@ button {
   flex-wrap: wrap;
   gap: 6px;
   min-height: 35px;
-  margin: 10px 0 16px;
+  margin: 0;
   padding: 4px;
   border: 2px inset #eee;
   background: #c0c0c0;
-  width: min(1180px, calc(100% - 32px));
-  margin: 10px auto 16px;
+  width: 100%;
 }
 .window-taskbar button {
   padding: 4px 10px;
@@ -349,10 +398,42 @@ button {
 }
 .window-taskbar button.is-open { border-style: inset; }
 .art-viewer-window {
-  position: fixed;
-  z-index: 40 !important;
-  width: min(900px, calc(100vw - 32px)) !important;
-  height: min(700px, calc(100dvh - 40px));
+  position: absolute;
+}
+.art-viewer-window[data-maximized="true"] {
+  top: 12px !important;
+  left: 12px !important;
+  width: calc(100% - 24px) !important;
+  height: calc(100% - 24px) !important;
+}
+.art-viewer-window[data-maximized="true"] .retro-window-titlebar { cursor: default; }
+.retro-window-controls .art-viewer-maximize { width: auto; padding: 0 5px; font-size: 10px; }
+.art-viewer-toolbar {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 5px;
+  padding: 5px;
+  background: #c0c0c0;
+  color: #111;
+  font: 11px Arial, sans-serif;
+}
+.art-viewer-toolbar button {
+  min-width: 30px;
+  min-height: 28px;
+  padding: 3px 7px;
+  border: 2px outset #eee;
+  background: #ddd;
+  color: #111;
+  font: bold 11px Arial, sans-serif;
+  cursor: pointer;
+}
+.art-viewer-toolbar button[aria-pressed="true"] { border-style: inset; }
+.art-viewer-toolbar button:disabled { color: #666; cursor: default; }
+.art-viewer-toolbar button:focus-visible,
+.art-viewer-canvas:focus-visible { outline: 2px solid #000080; outline-offset: -2px; }
+@media (max-width: 700px) {
+  .art-viewer-maximize { display: none; }
 }
 .art-viewer-window .retro-window-body {
   display: flex;
@@ -402,17 +483,19 @@ button {
   place-items: center;
   padding: 18px;
   background: #3f3f3f;
+  overflow: hidden;
+  user-select: none;
 }
+.art-viewer-canvas[data-pannable="true"] { cursor: grab; touch-action: none; }
+.art-viewer-canvas[data-dragging="true"] { cursor: grabbing; }
 .art-viewer-canvas img {
   position: absolute;
-  inset: 0;
+  top: 50%;
+  left: 50%;
   display: block;
-  max-width: 100%;
-  max-height: 100%;
-  width: 100%;
-  height: 100%;
-  padding: inherit;
-  object-fit: contain;
+  max-width: none;
+  max-height: none;
+  pointer-events: none;
 }
 .art-viewer-placeholder { color: #c0c0c0; font: bold 12px Arial, sans-serif; }
 .art-viewer-thumbs {
@@ -1072,10 +1155,18 @@ footer {
   .home-terminal-grid,
   .home-terminal-lower { grid-template-columns: 1fr; }
 
-  .desktop-windows { min-height: 0; }
-  .retro-window { position: relative; inset: auto !important; width: 100% !important; margin: 0 0 12px; }
+  .pixel-monitor { inset: 54px 6px 10px; width: calc(100% - 12px); padding: 8px 6px 0; border-width: 4px; }
+  .pixel-monitor-header { font-size: 10px; gap: 6px; padding-bottom: 8px; }
+  .pixel-monitor-header button { min-height: 36px; }
+  .pixel-monitor-screen { border-width: 4px; }
+  .pixel-monitor-hardware { min-height: 28px; font-size: 9px; }
+  .pixel-monitor-vents { display: none; }
+  .desktop-windows { overflow: auto; padding: 6px; overscroll-behavior: contain; }
+  .retro-window { position: relative; inset: auto !important; width: 100% !important; height: auto !important; max-width: 100%; max-height: none; margin: 0 0 12px; }
+  .retro-window-titlebar { cursor: default; touch-action: auto; }
   .retro-window-body { max-height: none; }
-  .art-viewer-window { position: fixed; top: 8px !important; left: 8px !important; width: calc(100vw - 16px) !important; height: calc(100dvh - 16px); margin: 0; }
+  .art-viewer-window, .art-viewer-window[data-maximized="true"] { inset: auto !important; width: 100% !important; height: max(400px, calc(100dvh - 230px)) !important; }
+  .window-taskbar button { min-height: 36px; }
   .art-viewer-canvas { padding: 10px; }
 
   .topbar-meta span:first-child {

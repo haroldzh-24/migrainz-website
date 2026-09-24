@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-09-24 / Pixel monitor desktop
+
+- Mount a reusable pixel-style computer monitor in the public layout while preserving the green terminal outside it.
+- Route managed gray windows into its screen, bound dragging/maximize to that workspace, and move the existing taskbar inside the screen.
+- Add terminal launchers and hide/reopen controls with focus return; retain viewer tabs, session storage and hidden desktop state.
+- Use a simplified mobile bezel and scrolling stacked windows with an accessible internal dock. Keep artwork neutral and unpixelated.
+- Validation: `npm.cmd run typecheck` passed; no build/regression/browser checks, commit or push.
+
+## 2026-09-21 / Art viewer zoom and maximize
+
+- Add FIT, 100%, zoom in/out and bounded pointer/keyboard artwork panning to the existing ART VIEWER without dependencies.
+- Add opt-in WindowManager maximize state, preserving normal window geometry and restoring the prior normal-size zoom/pan settings. Keep tabs mounted and mobile window behavior unchanged.
+- Preserve existing session tab storage and neutral artwork presentation; reuse delegated button sounds.
+- Validation: `npm.cmd run typecheck` passed; production build, regression and browser validation intentionally omitted at the user's request.
+
 ## 2026-09-20 / Phase 5 desktop files and inspectors
 
 - Continue the interrupted file styling and project/character integration with reusable DesktopFile and DesktopFolder components.
