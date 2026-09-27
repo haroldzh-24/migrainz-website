@@ -4,7 +4,7 @@ export const validatePublishedMedia: CollectionBeforeChangeHook = async ({ data,
   const record = { ...originalDoc, ...data };
   if (record._status !== 'published') return data;
   const references: { id: number; path: string }[] = [];
-  for (const field of ['heroImage', 'cover']) {
+  for (const field of ['heroImage', 'cover', 'emblem']) {
     const value = record[field];
     if (value) references.push({ id: typeof value === 'object' ? value.id : value, path: field });
   }

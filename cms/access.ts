@@ -41,11 +41,11 @@ async function buildMediaRule(req: PayloadRequest): Promise<Where> {
   const add = (value: unknown) => {
     if (typeof value === 'number' || typeof value === 'string') ids.add(value);
   };
-  for (const collection of ['projects', 'characters', 'comics', 'chapters', 'galleries', 'archive-items', 'project-updates'] as CollectionSlug[]) {
+  for (const collection of ['projects', 'factions', 'equipment', 'characters', 'comics', 'chapters', 'galleries', 'archive-items', 'project-updates'] as CollectionSlug[]) {
     const result = await req.payload.find({ collection, req, overrideAccess: false, depth: 0, pagination: false });
     for (const doc of result.docs) {
       const record = doc as unknown as Record<string, unknown>;
-      add(record.heroImage); add(record.cover);
+      add(record.heroImage); add(record.cover); add(record.emblem);
       for (const field of ['pages', 'images', 'files']) {
         const rows = record[field];
         if (Array.isArray(rows)) for (const row of rows) add(row.media);
@@ -57,10 +57,11 @@ async function buildMediaRule(req: PayloadRequest): Promise<Where> {
 
 export async function preventReferencedDelete(req: PayloadRequest, collection: CollectionSlug, id: number | string) {
   const references: Partial<Record<CollectionSlug, [CollectionSlug, string][]>> = {
-    projects: [['characters', 'project'], ['comics', 'project'], ['project-updates', 'project'], ['tracker-items', 'project'], ['galleries', 'project'], ['archive-items', 'project']],
+    projects: [['factions', 'project'], ['equipment', 'project'], ['characters', 'project'], ['comics', 'project'], ['project-updates', 'project'], ['tracker-items', 'project'], ['galleries', 'project'], ['archive-items', 'project']],
+    factions: [['characters', 'primaryFaction'], ['characters', 'affiliations'], ['equipment', 'faction']],
     comics: [['chapters', 'comic']],
     chapters: [['characters', 'relatedChapters']],
-    media: [['projects', 'heroImage'], ['characters', 'images.media'], ['comics', 'cover'], ['chapters', 'pages.media'], ['galleries', 'images.media'], ['archive-items', 'files.media'], ['project-updates', 'images.media']],
+    media: [['factions', 'emblem'], ['equipment', 'images.media'], ['projects', 'heroImage'], ['characters', 'images.media'], ['comics', 'cover'], ['chapters', 'pages.media'], ['galleries', 'images.media'], ['archive-items', 'files.media'], ['project-updates', 'images.media']],
     galleries: [['projects', 'galleries']],
     tags: [['projects', 'tags'], ['characters', 'tags'], ['galleries', 'tags'], ['archive-items', 'tags']],
     categories: [['projects', 'categories'], ['archive-items', 'category']],

@@ -33,10 +33,43 @@ configure an email adapter before relying on password-reset emails in production
 
 ## Editing and publishing
 
-Projects, Characters, Comics, Chapters, Updates, Tracker Items, Galleries, Archive
+Projects, Factions, Characters, Equipment, Comics, Chapters, Updates, Tracker Items, Galleries, Archive
 Items, Media, Tags and Categories appear in the admin navigation. Each content
 record supports drafts and version history. Publication status is independent of
 production status (for example, a published project can still be in development).
+
+## Factions and equipment
+
+Create Factions under a Project, select the organization type, and add a short
+description, optional full writing, status, emblem and display order. Emblems use
+the existing Media library and must be images. Publish the project, media and
+faction to expose the record publicly. Slugs are unique within each project.
+
+Characters now have optional `primaryFaction` and multiple `affiliations`.
+Select the project first: Payload filters these fields and Equipment's optional
+`faction` field to that project, and validates selected relationships on save.
+Changing a character/equipment project requires clearing or reselecting any
+factions from the previous project. No existing characters are reassigned.
+The faction directory includes characters with either a primary or additional
+affiliation, once per character. Equipment supports category, description,
+ordered media rows and display order. Both collections retain drafts, versions,
+listing visibility and content access controls.
+
+Public navigation is Project -> Factions -> Characters / Equipment. The faction
+index also links to all characters, including unassigned records. Existing
+character URLs and viewer tab IDs are unchanged. Equipment opens the same ART
+VIEWER and has `/projects/PROJECT/equipment/ITEM` URLs for direct navigation.
+Equipment requires an accessible project and, when assigned, an accessible
+faction; characters retain their existing project-based access. Hiding a listing
+does not make content or its files private. Unpublishing a faction revokes media
+used only by it or its equipment, through the existing media authorization layer.
+
+The additive PostgreSQL migration `20260927_190344_factions_equipment` is generated
+but not applied. Apply pending migrations through the existing production
+migration workflow before running this schema against PostgreSQL. It adds nullable
+character relationships without rewriting records. Development SQLite uses its
+existing development schema synchronization; back up the local database before
+starting the updated app. No data import or fabricated assignments are required.
 
 For the basic comic workflow:
 

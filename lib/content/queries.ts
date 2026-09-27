@@ -63,6 +63,60 @@ export const getProjects = cache(async (): Promise<Project[]> => {
 });
 export const getProject = async (slug: string) => (await getProjects()).find((project) => project.slug === slug);
 
+// Faction routes fetch only their project and selected directory, never getProjects().
+export const getProjectIdentity = cache(async (slug: string) => {
+  const cms = await getPayload({ config });
+  const result = await cms.find({ collection: 'projects', overrideAccess: false, depth: 0, limit: 1,
+    where: { and: [publicWhere, { slug: { equals: slug } }] },
+    select: { id: true, slug: true, title: true } });
+  return result.docs[0];
+});
+
+export const getFactions = cache(async (project: number) => {
+  const cms = await getPayload({ config });
+  const result = await cms.find({ collection: 'factions', overrideAccess: false, depth: 0, pagination: false,
+    where: { and: [publicWhere, { project: { equals: project } }] }, sort: ['order', 'name'],
+    select: { name: true, slug: true, type: true, status: true, description: true, updatedAt: true } });
+  return result.docs;
+});
+
+export const getFaction = cache(async (project: number, slug: string) => {
+  const cms = await getPayload({ config });
+  const result = await cms.find({ collection: 'factions', overrideAccess: false, depth: 1, limit: 1,
+    where: { and: [publicWhere, { project: { equals: project } }, { slug: { equals: slug } }] } });
+  const faction = result.docs[0];
+  return faction ? { ...faction, emblemImage: image(faction.emblem) } : undefined;
+});
+
+export const getFactionContents = cache(async (project: number, faction: number) => {
+  const cms = await getPayload({ config });
+  const [characters, equipment] = await Promise.all([
+    cms.find({ collection: 'characters', overrideAccess: false, depth: 1, pagination: false, sort: 'name',
+      where: { and: [publicWhere, { project: { equals: project } },
+        { or: [{ primaryFaction: { equals: faction } }, { affiliations: { contains: faction } }] }] },
+      select: { slug: true, name: true, role: true, description: true, images: true, updatedAt: true } }),
+    cms.find({ collection: 'equipment', overrideAccess: false, depth: 1, pagination: false, sort: ['order', 'name'],
+      where: { and: [publicWhere, { project: { equals: project } }, { faction: { equals: faction } }] },
+      select: { slug: true, name: true, category: true, description: true, images: true, updatedAt: true } }),
+  ]);
+  return {
+    characters: characters.docs.map(character => ({ slug: character.slug, name: character.name,
+      role: character.role || '', description: character.description || '', images: images(character.images),
+      updated: character.updatedAt.slice(0, 10) })),
+    equipment: equipment.docs.map(item => ({ slug: item.slug, name: item.name, category: item.category || '',
+      description: item.description || '', images: images(item.images), updated: item.updatedAt.slice(0, 10) })),
+  };
+});
+
+export const getEquipment = cache(async (project: number, slug: string) => {
+  const cms = await getPayload({ config });
+  const result = await cms.find({ collection: 'equipment', overrideAccess: false, depth: 1, limit: 1,
+    where: { and: [publicWhere, { project: { equals: project } }, { slug: { equals: slug } }] } });
+  const item = result.docs[0];
+  return item ? { slug: item.slug, name: item.name, category: item.category || '', description: item.description || '',
+    images: images(item.images), updated: item.updatedAt.slice(0, 10) } : undefined;
+});
+
 export const getHomepageData = cache(async () => {
   const cms = await getPayload({ config });
   const [projects, comics, chapters, updates, tracker, archive] = await Promise.all([

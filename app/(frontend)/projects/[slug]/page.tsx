@@ -48,10 +48,9 @@ export default async function ProjectPage({
       ))}
       <div className="directory-list">
         <DesktopFolder
-          href={projectHref(project) + "/characters"}
-          label="CHARACTERS/"
-          subtitle={project.characters.length + " RECORDS"}
-          metadata={[{ label: "PROJECT", value: project.title }, { label: "TYPE", value: "CHARACTERS" }]}
+          href={projectHref(project) + "/factions"}
+          label="FACTIONS/"
+          metadata={[{ label: "PROJECT", value: project.title }, { label: "TYPE", value: "FACTIONS / ASSOCIATIONS" }]}
         />
         {project.chapters.map((chapter) => (
           <DirectoryLink

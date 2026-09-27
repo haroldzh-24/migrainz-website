@@ -13,6 +13,15 @@ export const publishingFields: Field[] = [
 export const slugField: TextField = { name: 'slug', type: 'text', required: true, index: true,
   validate: (value: unknown) => typeof value === 'string' && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value) || 'Use lowercase letters, numbers and single hyphens.' };
 export const projectRelation: RelationshipField = { name: 'project', type: 'relationship', relationTo: 'projects', required: true, index: true };
+export function factionRelation(name: string, hasMany = false): RelationshipField {
+  return { name, type: 'relationship', relationTo: 'factions', hasMany, index: true,
+    admin: { description: 'Optional. Select a project first; only its factions are available.' },
+    filterOptions: ({ data }) => {
+      const project = data?.project;
+      return project ? { project: { equals: typeof project === 'object' ? project.id : project } } : false;
+    },
+  };
+}
 export const writing: Field = { name: 'writing', type: 'richText' };
 export const tags: Field = { name: 'tags', type: 'relationship', relationTo: 'tags', hasMany: true };
 export function mediaRows(name: string, required = false): Field {

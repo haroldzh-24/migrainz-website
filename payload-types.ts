@@ -71,7 +71,9 @@ export interface Config {
     projects: Project;
     comics: Comic;
     chapters: Chapter;
+    factions: Faction;
     characters: Character;
+    equipment: Equipment;
     'project-updates': ProjectUpdate;
     'tracker-items': TrackerItem;
     galleries: Gallery;
@@ -90,7 +92,9 @@ export interface Config {
     projects: ProjectsSelect<false> | ProjectsSelect<true>;
     comics: ComicsSelect<false> | ComicsSelect<true>;
     chapters: ChaptersSelect<false> | ChaptersSelect<true>;
+    factions: FactionsSelect<false> | FactionsSelect<true>;
     characters: CharactersSelect<false> | CharactersSelect<true>;
+    equipment: EquipmentSelect<false> | EquipmentSelect<true>;
     'project-updates': ProjectUpdatesSelect<false> | ProjectUpdatesSelect<true>;
     'tracker-items': TrackerItemsSelect<false> | TrackerItemsSelect<true>;
     galleries: GalleriesSelect<false> | GalleriesSelect<true>;
@@ -383,6 +387,49 @@ export interface Chapter {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "factions".
+ */
+export interface Faction {
+  id: number;
+  name: string;
+  slug: string;
+  project: number | Project;
+  type: 'Faction' | 'Organization' | 'Association' | 'Military Unit' | 'Corporation' | 'Government' | 'Group' | 'Other';
+  status?: string | null;
+  description?: string | null;
+  writing?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  emblem?: (number | null) | Media;
+  order?: number | null;
+  /**
+   * Metadata visibility only. Does not grant access to writing or files. Locked listings are not exposed in this foundation.
+   */
+  listingVisibility: 'public' | 'hidden';
+  accessLevel: 'public' | 'patron';
+  /**
+   * Optional safe teaser for future directory listings. Never put restricted writing here.
+   */
+  listingSummary?: string | null;
+  legacyKey?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "characters".
  */
 export interface Character {
@@ -390,6 +437,14 @@ export interface Character {
   name: string;
   slug: string;
   project: number | Project;
+  /**
+   * Optional. Select a project first; only its factions are available.
+   */
+  primaryFaction?: (number | null) | Faction;
+  /**
+   * Optional. Select a project first; only its factions are available.
+   */
+  affiliations?: (number | Faction)[] | null;
   role?: string | null;
   description?: string | null;
   writing?: {
@@ -420,6 +475,47 @@ export interface Character {
     | null;
   relatedChapters?: (number | Chapter)[] | null;
   tags?: (number | Tag)[] | null;
+  /**
+   * Metadata visibility only. Does not grant access to writing or files. Locked listings are not exposed in this foundation.
+   */
+  listingVisibility: 'public' | 'hidden';
+  accessLevel: 'public' | 'patron';
+  /**
+   * Optional safe teaser for future directory listings. Never put restricted writing here.
+   */
+  listingSummary?: string | null;
+  legacyKey?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "equipment".
+ */
+export interface Equipment {
+  id: number;
+  name: string;
+  slug: string;
+  project: number | Project;
+  /**
+   * Optional. Select a project first; only its factions are available.
+   */
+  faction?: (number | null) | Faction;
+  category?: string | null;
+  description?: string | null;
+  /**
+   * Add existing uploads or upload a file in each row. Row order is display order.
+   */
+  images?:
+    | {
+        media: number | Media;
+        caption?: string | null;
+        alt?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  order?: number | null;
   /**
    * Metadata visibility only. Does not grant access to writing or files. Locked listings are not exposed in this foundation.
    */
@@ -592,8 +688,16 @@ export interface PayloadLockedDocument {
         value: number | Chapter;
       } | null)
     | ({
+        relationTo: 'factions';
+        value: number | Faction;
+      } | null)
+    | ({
         relationTo: 'characters';
         value: number | Character;
+      } | null)
+    | ({
+        relationTo: 'equipment';
+        value: number | Equipment;
       } | null)
     | ({
         relationTo: 'project-updates';
@@ -764,12 +868,36 @@ export interface ChaptersSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "factions_select".
+ */
+export interface FactionsSelect<T extends boolean = true> {
+  name?: T;
+  slug?: T;
+  project?: T;
+  type?: T;
+  status?: T;
+  description?: T;
+  writing?: T;
+  emblem?: T;
+  order?: T;
+  listingVisibility?: T;
+  accessLevel?: T;
+  listingSummary?: T;
+  legacyKey?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "characters_select".
  */
 export interface CharactersSelect<T extends boolean = true> {
   name?: T;
   slug?: T;
   project?: T;
+  primaryFaction?: T;
+  affiliations?: T;
   role?: T;
   description?: T;
   writing?: T;
@@ -783,6 +911,34 @@ export interface CharactersSelect<T extends boolean = true> {
       };
   relatedChapters?: T;
   tags?: T;
+  listingVisibility?: T;
+  accessLevel?: T;
+  listingSummary?: T;
+  legacyKey?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "equipment_select".
+ */
+export interface EquipmentSelect<T extends boolean = true> {
+  name?: T;
+  slug?: T;
+  project?: T;
+  faction?: T;
+  category?: T;
+  description?: T;
+  images?:
+    | T
+    | {
+        media?: T;
+        caption?: T;
+        alt?: T;
+        id?: T;
+      };
+  order?: T;
   listingVisibility?: T;
   accessLevel?: T;
   listingSummary?: T;

@@ -1,5 +1,14 @@
 # Features
 
+## Implemented - 2026-09-27 / Factions and equipment
+
+- Add published/versioned Factions and Equipment collections, project-scoped slugs, media attachments and display order.
+- Add optional character primaryFaction and affiliations; filter faction choices by the selected project in Payload.
+- Replace project-level CHARACTERS navigation with FACTIONS and add faction index/detail and equipment detail routes with focused public queries.
+- Reuse DesktopFile, existing character tab IDs and ART VIEWER; retain all character routes and access to unassigned characters.
+- Extend media authorization, publishing validation and reference deletion guards. Generate an additive PostgreSQL migration without applying it or changing content.
+- Validation: `npm.cmd run typecheck` passed. Build, regression and browser checks omitted as requested; manual CMS/viewer checks remain.
+
 ## Implemented - 2026-09-24 / Pixel monitor desktop
 
 - Add a reusable public PixelMonitorDesktop with a stepped hardware shell, neutral internal workspace and the existing taskbar inside the screen.

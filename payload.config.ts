@@ -5,7 +5,7 @@ import { postgresAdapter } from '@payloadcms/db-postgres';
 import { lexicalEditor, FixedToolbarFeature } from '@payloadcms/richtext-lexical';
 import sharp from 'sharp';
 import { validateProductionEnv } from './scripts/production-env.mjs';
-import { ArchiveItems, Characters, Chapters, Comics, Galleries, mediaCollection, Projects, ProjectUpdates, taxonomies, TrackerItems, Users } from './collections';
+import { ArchiveItems, Characters, Chapters, Comics, Equipment, Factions, Galleries, mediaCollection, Projects, ProjectUpdates, taxonomies, TrackerItems, Users } from './collections';
 
 const database = process.env.CMS_DATABASE;
 const url = process.env.DATABASE_URL;
@@ -39,7 +39,7 @@ export default buildConfig({
     FixedToolbarFeature(),
   ] }),
   sharp,
-  collections: [Users, Projects, Comics, Chapters, Characters, ProjectUpdates, TrackerItems, Galleries, ArchiveItems, mediaCollection(mediaDirectory), ...taxonomies],
+  collections: [Users, Projects, Comics, Chapters, Factions, Characters, Equipment, ProjectUpdates, TrackerItems, Galleries, ArchiveItems, mediaCollection(mediaDirectory), ...taxonomies],
   typescript: { outputFile: path.resolve('payload-types.ts') },
   graphQL: { disable: true },
   upload: { limits: { fileSize: 40 * 1024 * 1024 } },

@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-09-27 / Factions and equipment
+
+- Add Factions and Equipment to Payload with optional character affiliation relationships and project-filtered choices.
+- Add project faction directories, faction character/equipment files and direct equipment URLs using the existing desktop and ART VIEWER.
+- Preserve character URLs, tab IDs, unassigned records and homepage summary queries; extend file access and reference protection to the new collections.
+- Generate CMS types and an additive PostgreSQL schema migration; no database migration or content changes applied.
+- Validation: `npm.cmd run typecheck` passed; no production build, regression/browser validation, commit or push.
+
 ## 2026-09-24 / Pixel monitor desktop
 
 - Mount a reusable pixel-style computer monitor in the public layout while preserving the green terminal outside it.

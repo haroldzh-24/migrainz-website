@@ -1,11 +1,11 @@
 import type { CollectionConfig, CollectionSlug, Field } from 'payload';
 import { editorialAccess, mediaRead, preventReferencedDelete, publicContent, staff } from '@/cms/access';
-import { mediaRows, projectRelation, publishingFields, slugField, tags, writing } from '@/cms/fields';
+import { factionRelation, mediaRows, projectRelation, publishingFields, slugField, tags, writing } from '@/cms/fields';
 import { validatePublishedMedia } from '@/cms/validate-content';
 
 function content(slug: CollectionSlug, fields: Field[], parent?: CollectionSlug, relation = 'project', optional = false): CollectionConfig {
   return {
-    slug, admin: { useAsTitle: slug === 'characters' ? 'name' : 'title', group: 'Studio content' },
+    slug, admin: { useAsTitle: ['characters', 'factions', 'equipment'].includes(slug) ? 'name' : 'title', group: 'Studio content' },
     access: editorialAccess(publicContent(parent, relation, optional)),
     versions: { drafts: true, maxPerDoc: 25 },
     fields: [...fields, ...publishingFields],
@@ -55,10 +55,36 @@ Chapters.hooks!.beforeValidate = [async ({ data, req, originalDoc }) => {
 }];
 export const Characters = content('characters', [
   { name: 'name', type: 'text', required: true }, slugField, projectRelation,
+  factionRelation('primaryFaction'), factionRelation('affiliations', true),
   { name: 'role', type: 'text' }, description, writing, mediaRows('images'),
   { name: 'relatedChapters', type: 'relationship', relationTo: 'chapters', hasMany: true }, tags,
 ], 'projects');
 Characters.indexes = [{ fields: ['project', 'slug'], unique: true }];
+export const Factions = content('factions', [
+  { name: 'name', type: 'text', required: true }, slugField, projectRelation,
+  { name: 'type', type: 'select', required: true, defaultValue: 'Faction',
+    options: ['Faction', 'Organization', 'Association', 'Military Unit', 'Corporation', 'Government', 'Group', 'Other'] },
+  { name: 'status', type: 'text' }, description, writing,
+  { name: 'emblem', type: 'upload', relationTo: 'media', filterOptions: { mimeType: { contains: 'image/' } } },
+  { name: 'order', type: 'number', defaultValue: 0 },
+], 'projects');
+Factions.indexes = [{ fields: ['project', 'slug'], unique: true }];
+export const Equipment = content('equipment', [
+  { name: 'name', type: 'text', required: true }, slugField, projectRelation,
+  factionRelation('faction'), { name: 'category', type: 'text' }, description, mediaRows('images'),
+  { name: 'order', type: 'number', defaultValue: 0 },
+], 'projects');
+Equipment.indexes = [{ fields: ['project', 'slug'], unique: true }];
+// Equipment inherits both its project's access and its optional faction's access.
+// Characters retain project-based access so existing character URLs stay independent.
+Equipment.access!.read = async (args) => {
+  const project = await publicContent('projects')(args);
+  const faction = await publicContent('factions', 'faction', true)(args);
+  if (project === false || faction === false) return false;
+  if (project === true) return faction;
+  if (faction === true) return project;
+  return { and: [project, faction] };
+};
 export const ProjectUpdates = content('project-updates', [title, projectRelation,
   { name: 'date', type: 'date', required: true }, writing, description, mediaRows('images'),
   { name: 'milestone', type: 'relationship', relationTo: 'tracker-items' }, { name: 'statusInfo', type: 'text' },
