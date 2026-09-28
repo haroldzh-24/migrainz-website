@@ -1,6 +1,7 @@
 import * as migration_20260909_045755_foundation from './20260909_045755_foundation';
 import * as migration_20260927_190344_factions_equipment from './20260927_190344_factions_equipment';
 import * as migration_20260928_120000_route_key_repair from './20260928_120000_route_key_repair';
+import * as migration_20260928_160000_media_image_sizes from './20260928_160000_media_image_sizes';
 
 export const migrations = [
   {
@@ -17,5 +18,10 @@ export const migrations = [
     up: migration_20260928_120000_route_key_repair.up,
     down: migration_20260928_120000_route_key_repair.down,
     name: '20260928_120000_route_key_repair'
+  },
+  {
+    up: migration_20260928_160000_media_image_sizes.up,
+    down: migration_20260928_160000_media_image_sizes.down,
+    name: '20260928_160000_media_image_sizes'
   },
 ];

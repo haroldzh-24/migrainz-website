@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-28 / PostgreSQL Media image-size repair
+
+- Add and register `20260928_160000_media_image_sizes` to supply missing preview/viewer columns on `media` and `_media_v`, plus their filename indexes.
+- Keep all new fields nullable; do not rewrite records, regenerate derivatives, alter thumbnail fields or edit historical migrations. The forward-only migration retains metadata on rollback.
+- No storage adapters, provider/configuration changes, environment variables or UI changes. Migration remains unapplied; `npm.cmd run typecheck` passed. No build or regression run.
+
 ## 2026-09-28 / Art-first monitor and public image derivatives
 
 - Reduce monitor and window chrome, place ART VIEWER tabs in the titlebar, maximize within the monitor screen, and collapse the dock while maximized. Consolidate COMIC READER page controls into a compact row.

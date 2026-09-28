@@ -1,5 +1,11 @@
 # Features
 
+## Implemented - 2026-09-28 / PostgreSQL Media image-size repair
+
+- Register a new additive forward migration for preview/viewer metadata on Media and its versions table, including Payload filename indexes.
+- All 24 columns are nullable with no defaults or backfill; existing rows and thumbnail fields remain unchanged. No storage, environment, viewer UI or faction/equipment changes.
+- Migration remains unapplied. Validation: `npm.cmd run typecheck` passed; no build or regression run.
+
 ## Implemented - 2026-09-28 / Art-first monitor and public image sizes
 
 - Compact monitor/window chrome and maximize ART VIEWER or COMIC READER within the internal screen; collapse the dock while maximized and keep viewer tabs in its titlebar.
