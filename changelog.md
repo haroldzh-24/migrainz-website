@@ -1,19 +1,5 @@
 # Changelog
 
-## 2026-09-28 / Production infrastructure stabilization
-
-- Add nullable Media preview/viewer and storage-prefix columns with a generated schema snapshot, plus a separate forward repair for original faction index names.
-- Enable private S3-compatible storage using the existing adapter; keep Payload file URLs and original-image authorization. Route existing batch uploads through the adapter's direct-upload transport.
-- Isolate unfinished schema/hooks in `documentation/parked-access-sections/`; no content, database, public UI or historical migration changes.
-- Add a narrow disposable PostgreSQL migration check and production deployment/storage runbook. No production migrations or uploads run automatically.
-- Validation: typecheck passes; offline Payload generation reports no remaining schema delta, and both historical migration variants pass the disposable PostgreSQL/data-preservation check.
-
-## 2026-09-28 / Post-faction audit
-
-- Audit the five commits after `519daa1` and preserve the later uncommitted work.
-- Fix invalid taxonomy access filters, missing timestamp crashes, maximized viewer size caps and mobile dock visibility; remove duplicate CSS and unused imports.
-- Document migration/schema gaps, existing-media limitations and unfinished access/sections work in `documentation/post-faction-audit.md`. No migrations or content changes applied.
-
 ## 2026-09-28 / Art-first monitor and public image derivatives
 
 - Reduce monitor and window chrome, place ART VIEWER tabs in the titlebar, maximize within the monitor screen, and collapse the dock while maximized. Consolidate COMIC READER page controls into a compact row.

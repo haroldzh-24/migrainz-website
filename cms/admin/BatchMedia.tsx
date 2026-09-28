@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useForm, useFormFields, useUploadHandlers } from '@payloadcms/ui';
+import { useForm, useFormFields } from '@payloadcms/ui';
 import './batch-media.css';
 
 type Entry = {
@@ -14,7 +14,6 @@ const supportedImageTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'i
 
 export function BatchMedia({ targetPath = 'pages' }: { targetPath?: string }) {
   const { addFieldRow, getDataByPath, moveFieldRow, setProcessing } = useForm();
-  const { getUploadHandler } = useUploadHandlers();
   const rows = useFormFields(([fields]) => fields[targetPath]?.rows);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [busy, setBusy] = useState(false);
@@ -44,19 +43,9 @@ export function BatchMedia({ targetPath = 'pages' }: { targetPath?: string }) {
     if (found.docs?.[0]) return found.docs[0].id;
     if (cancel.current) throw new Error('Upload cancelled.');
     const form = new FormData();
-    const directUpload = getUploadHandler({ collectionSlug: 'media' });
-    let clientUploadContext: unknown;
-    if (directUpload) {
-      let filename = entry.file.name;
-      clientUploadContext = await directUpload({ file: entry.file, updateFilename: value => { filename = value; } });
-      if (cancel.current || !mounted.current) throw new Error('Upload cancelled.');
-      form.append('file', JSON.stringify({ collectionSlug: 'media', filename, mimeType: entry.file.type,
-        size: entry.file.size, clientUploadContext }));
-    } else form.append('file', entry.file);
+    form.append('file', entry.file);
     form.append('_payload', JSON.stringify({ alt: entry.alt, uploadKey: entry.key, _status: 'published',
-      accessLevel: getDataByPath('accessLevel') || 'public', listingVisibility: 'hidden',
-      ...(clientUploadContext && typeof clientUploadContext === 'object' && 'prefix' in clientUploadContext
-        ? { prefix: clientUploadContext.prefix } : {}) }));
+      accessLevel: getDataByPath('accessLevel') || 'public', listingVisibility: 'hidden' }));
     return new Promise((resolve, reject) => {
       const request = new XMLHttpRequest();
       xhr.current = request;

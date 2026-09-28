@@ -12,8 +12,6 @@ if (hosted) validateProductionEnv();
 const result = spawnSync(process.execPath, ['node_modules/next/dist/bin/next', 'build'], {
   stdio: 'inherit',
   env: hosted ? { ...process.env } : { ...process.env, CMS_DATABASE: 'postgres',
-    CMS_STORAGE: 's3', S3_BUCKET: 'offline-build-unused', S3_REGION: 'us-east-1',
-    S3_ACCESS_KEY_ID: 'offline-build-unused', S3_SECRET_ACCESS_KEY: 'offline-build-unused',
     DATABASE_URL: process.env.DATABASE_URL?.startsWith('postgres') ? process.env.DATABASE_URL : 'postgres://build:build@127.0.0.1:1/build',
     CMS_MEDIA_DIR: process.env.CMS_MEDIA_DIR || path.resolve('.build-media-unused'),
     PAYLOAD_SECRET: process.env.PAYLOAD_SECRET || 'build-only-placeholder-not-a-runtime-secret',

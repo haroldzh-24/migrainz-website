@@ -1,18 +1,5 @@
 # Features
 
-## Implemented - 2026-09-28 / Production infrastructure stabilization
-
-- Add forward Media derivative/storage schema and legacy compound-index reconciliation migrations without rewriting historical migrations or changing content.
-- Configure the installed S3 adapter for private durable storage, access-checked file delivery and direct admin/batch uploads; require production storage variables.
-- Park unfinished access/sections schema and hooks with exact source snapshots. Preserve existing public UI and legacy publication/access rules.
-- Document existing-file transfer, nullable derivative compatibility and operator-only deployment in `docs/PRODUCTION-STORAGE.md`.
-- Validation: typecheck and offline schema parity pass; disposable PostgreSQL checks pass for both original and corrected faction migration histories. Live bucket/Vercel checks remain operator tasks.
-
-## Audit - 2026-09-28 / Post-faction implementation
-
-- Review existing upload guidance, monitor reader, compact chrome, derivatives and forward route-key repair without rebuilding them.
-- Correct small runtime/layout defects; production schema parity and uncommitted access/sections work remain incomplete. See `documentation/post-faction-audit.md`.
-
 ## Implemented - 2026-09-28 / Art-first monitor and public image sizes
 
 - Compact monitor/window chrome and maximize ART VIEWER or COMIC READER within the internal screen; collapse the dock while maximized and keep viewer tabs in its titlebar.

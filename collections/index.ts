@@ -134,8 +134,8 @@ export function mediaCollection(directory: string): CollectionConfig {
         { name: 'viewer', width: 2400, height: 2400, fit: 'inside', withoutEnlargement: true, formatOptions: { format: 'webp', options: { quality: 84 } } },
       ],
       handlers: [(req, { doc, params }) => {
-        const media = doc as unknown as { filename?: string; mimeType?: string } | null;
-        if (!staff({ req }) && media?.mimeType?.startsWith('image/') && params.filename === media.filename) {
+        const media = doc as unknown as { filename?: string; mimeType?: string };
+        if (!req.user && media.mimeType?.startsWith('image/') && params.filename === media.filename) {
           return new Response(null, { status: 404, headers: { 'Cache-Control': 'private, no-store' } });
         }
         return undefined;

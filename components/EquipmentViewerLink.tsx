@@ -2,11 +2,11 @@
 
 import DesktopFile from "@/components/DesktopFile";
 import { useWindowManager, type ViewerTab } from "@/components/WindowManager";
-import type { AccessControl, ComicPage } from "@/lib/content/types";
+import type { ComicPage } from "@/lib/content/types";
 
 type Props = {
   project: { slug: string; title: string };
-  equipment: { slug: string; name: string; category: string; description: string; images: ComicPage[]; updated: string; access?: AccessControl };
+  equipment: { slug: string; name: string; category: string; description: string; images: ComicPage[]; updated: string };
 };
 function tabFor({ project, equipment }: Props): ViewerTab {
   return { id: `equipment:${project.slug}:${equipment.slug}`, href: `/projects/${project.slug}/equipment/${equipment.slug}`,
@@ -15,15 +15,10 @@ function tabFor({ project, equipment }: Props): ViewerTab {
 }
 export function EquipmentViewerLink(props: Props) {
   const tab = tabFor(props);
-  const access = props.equipment.access;
-  const locked = access?.state === "redacted" || access?.state === "patron";
-  const title = locked ? access?.displayTitle || tab.title : tab.title;
-  return <DesktopFile label={`${title.replace(/\s+/g, "_")}.EQP`} type="EQP" href={tab.href}
-    subtitle={locked ? access?.teaser || (access?.state === "patron" ? "CLASSIFIED / PATRON" : access?.redactionLabel || "REDACTED") : props.equipment.category}
-    viewerTab={locked ? undefined : tab}
-    metadata={locked ? [{ label: "NAME", value: title }, { label: "PROJECT", value: tab.project }, { label: "ACCESS", value: access?.state === "patron" ? "CLASSIFIED" : "REDACTED" }] :
-      [{ label: "NAME", value: title }, { label: "PROJECT", value: tab.project }, { label: "CATEGORY", value: props.equipment.category },
-        { label: "TYPE", value: "EQUIPMENT" }, { label: "IMAGE COUNT", value: String(tab.images.length) }, { label: "UPDATED", value: props.equipment.updated }]} />;
+  return <DesktopFile label={`${props.equipment.name.replace(/\s+/g, "_")}.EQP`} type="EQP" href={tab.href} viewerTab={tab}
+    metadata={[{ label: "NAME", value: tab.title }, { label: "PROJECT", value: tab.project },
+      { label: "CATEGORY", value: props.equipment.category }, { label: "TYPE", value: "EQUIPMENT" },
+      { label: "IMAGE COUNT", value: String(tab.images.length) }, { label: "UPDATED", value: props.equipment.updated }]} />;
 }
 export function EquipmentViewerButton(props: Props) {
   const { openViewerTab } = useWindowManager();

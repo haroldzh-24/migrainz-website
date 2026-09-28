@@ -25,7 +25,7 @@ export default async function CharactersPage({
           <CharacterViewerLink
             key={character.slug}
             project={{ slug: project.slug, title: project.title }}
-            character={{ slug: character.slug, name: character.name, role: character.role, description: character.description, images: character.images, updated: character.updated, access: character.access }}
+            character={{ slug: character.slug, name: character.name, role: character.role, description: character.description, images: character.images, updated: character.updated }}
           />
         ))}
       </div>

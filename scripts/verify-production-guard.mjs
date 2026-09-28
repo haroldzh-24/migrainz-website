@@ -3,8 +3,7 @@ import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { validateProductionEnv, requiredProductionEnv } from './production-env.mjs';
 
-const fixture = { ...process.env, CMS_DATABASE: 'postgres', DATABASE_URL: 'postgres://test:test@127.0.0.1:1/test', CMS_MEDIA_DIR: path.resolve('.build-media-unused'), PAYLOAD_SECRET: 'test-only-secret-with-at-least-32-characters',
-  CMS_STORAGE: 's3', S3_BUCKET: 'test-unused', S3_REGION: 'us-east-1', S3_ACCESS_KEY_ID: 'test-unused', S3_SECRET_ACCESS_KEY: 'test-unused' };
+const fixture = { ...process.env, CMS_DATABASE: 'postgres', DATABASE_URL: 'postgres://test:test@127.0.0.1:1/test', CMS_MEDIA_DIR: path.resolve('.build-media-unused'), PAYLOAD_SECRET: 'test-only-secret-with-at-least-32-characters' };
 validateProductionEnv(fixture);
 for (const name of requiredProductionEnv) {
   const env = { ...fixture, [name]: '' };
