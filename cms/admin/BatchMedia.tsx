@@ -10,6 +10,7 @@ type Entry = {
   mediaID?: number; error?: string;
 };
 const sortNames = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
+const supportedImageTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml']);
 
 export function BatchMedia({ targetPath = 'pages' }: { targetPath?: string }) {
   const { addFieldRow, getDataByPath, moveFieldRow, setProcessing } = useForm();
@@ -77,7 +78,7 @@ export function BatchMedia({ targetPath = 'pages' }: { targetPath?: string }) {
         if (cancel.current || !mounted.current) break;
         update(entry.key, { state: 'uploading', progress: 0, error: undefined });
         try {
-          if (!entry.file.type.startsWith('image/')) throw new Error('Choose an image file.');
+          if (!supportedImageTypes.has(entry.file.type)) throw new Error('Unsupported image format. Choose JPG, PNG, WebP, GIF, or SVG.');
           if (entry.file.size > 40 * 1024 * 1024) throw new Error('Maximum file size is 40 MB.');
           if (!entry.alt.trim()) throw new Error('Add descriptive alt text before uploading.');
           const mediaID = await upload(entry);
@@ -104,7 +105,17 @@ export function BatchMedia({ targetPath = 'pages' }: { targetPath?: string }) {
   return (
     <section className="batch-media" aria-label={`Batch ${singular} upload`}>
       <h3>Add multiple {targetPath}</h3>
-      <p>Choose images, review filename order and alt text, upload, then attach. Save draft or publish to keep the list. Unattached uploads remain in Media and are not publicly accessible.</p>
+      {targetPath === 'pages' ? <>
+        <h4>COMIC UPLOAD</h4>
+        <ol>
+          <li>Select the Comic for this Chapter; its Project determines where the reader appears.</li>
+          <li>Choose all page images together. Each selection sorts naturally by filename (page-1, page-2, page-10); review the queue before uploading.</li>
+          <li>Add descriptive alt text, upload, then attach the completed pages to this Chapter.</li>
+          <li>Confirm the final row order below or use row handles and move buttons. That saved order is the reader order; there is no separate page-number field.</li>
+          <li>Save as draft or publish. For a public reader, publish the Project, Comic, and Chapter as PUBLIC. Batch Media is published automatically with the Chapter access level; single-file Media must be published separately. Then check the reader.</li>
+        </ol>
+        <p>For one file, use Media &gt; Create and attach existing Media in the page rows. Batch uploads create Media records first; unattached files stay in Media and are not publicly accessible.</p>
+      </> : <p>Choose images, review filename order and alt text, upload, then attach them here. Each selection sorts naturally (1, 2, 10); review and adjust the final row order before saving. Batch uploads create Media records first; unattached files stay in Media and are not publicly accessible.</p>}
       <label>Choose {targetPath}
         <input type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml" multiple disabled={busy}
           onChange={event => {
@@ -114,7 +125,7 @@ export function BatchMedia({ targetPath = 'pages' }: { targetPath?: string }) {
             setEntries(current => [...current, ...added]); event.target.value = '';
           }} />
       </label>
-      <p>Each selection is sorted naturally: 1, 2, 10. After attaching, use the row handles or move buttons to change the final order.</p>
+      {targetPath !== 'pages' && <p>After attaching, use the row handles or move buttons to change the final order.</p>}
       <ol className="batch-queue">
         {entries.map(entry => <li key={entry.key} data-filename={entry.file.name}>
           <img src={entry.preview} alt="" width={48} height={64} />

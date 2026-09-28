@@ -35,6 +35,19 @@ The question for this spike was:
 This was important because the CMS will determine whether the website can actually function as a long-term portfolio and studio website instead of just being a static class project.
 
 ## Test
+### Test Evidence
+
+Payload CMS admin running:
+
+![Payload CMS Admin](images/payload-admin.png)
+
+Payload CMS managing uploaded content:
+
+![Payload Content Test](images/payload-content.png)
+
+Studio Migrainz frontend running:
+
+![Studio Migrainz Result](images/site-result.png)
 
 I began implementing Payload CMS into the existing Studio Migrainz website.
 

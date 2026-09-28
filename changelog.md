@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-28 / Payload media upload guidance
+
+- Add concise single-file and comic batch upload instructions to the existing Payload Media and Chapter admin surfaces.
+- Explain chapter/comic/project assignment, alt text, natural filename sorting, saved row order and public publishing requirements; show a clear unsupported-format error for batch pages.
+- Validation: `npm.cmd run typecheck` passed. Admin browser review remains manual.
+
 ## 2026-09-27 / Factions and equipment
 
 - Add Factions and Equipment to Payload with optional character affiliation relationships and project-filtered choices.

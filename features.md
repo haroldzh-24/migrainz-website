@@ -1,5 +1,11 @@
 # Features
 
+## Implemented - 2026-09-28 / Payload media upload guidance
+
+- Clarify single-file Media uploads and the existing Chapter batch workflow in the admin, including Comic/Project assignment, alt text, natural filename sorting, saved page order and publishing.
+- Reject unsupported batch image MIME types with a direct list of accepted formats before sending the upload request.
+- Validation: `npm.cmd run typecheck` passed. Admin browser review remains manual.
+
 ## Implemented - 2026-09-27 / Factions and equipment
 
 - Add published/versioned Factions and Equipment collections, project-scoped slugs, media attachments and display order.

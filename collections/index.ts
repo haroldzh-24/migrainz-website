@@ -109,7 +109,7 @@ export function mediaCollection(directory: string): CollectionConfig {
       { name: 'uploadKey', type: 'text', unique: true, admin: { hidden: true } },
       { ...projectRelation, required: false },
     ]),
-    admin: { useAsTitle: 'filename', group: 'Media library', description: 'Files become public only when published, PUBLIC, and attached to published public content.' },
+    admin: { useAsTitle: 'filename', group: 'Media library', description: 'For one file, choose Create, upload JPG, PNG, WebP, GIF, SVG, or PDF, add required alt text, optionally select its Project, then save as draft or publish. Comic pages must be images; use Add multiple pages on a Chapter for a naturally filename-sorted batch. Files are public only when published, PUBLIC, and attached to published public content.' },
     access: editorialAccess(mediaRead),
     upload: { staticDir: directory, mimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml', 'application/pdf'],
       imageSizes: [{ name: 'thumbnail', width: 320, height: 320, fit: 'inside', withoutEnlargement: true }],
