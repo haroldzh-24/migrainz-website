@@ -62,19 +62,35 @@ export const Characters = content('characters', [
 Characters.indexes = [{ fields: ['project', 'slug'], unique: true }];
 export const Factions = content('factions', [
   { name: 'name', type: 'text', required: true }, slugField, projectRelation,
+  { name: 'routeKey', type: 'text', unique: true, admin: { hidden: true } },
   { name: 'type', type: 'select', required: true, defaultValue: 'Faction',
     options: ['Faction', 'Organization', 'Association', 'Military Unit', 'Corporation', 'Government', 'Group', 'Other'] },
   { name: 'status', type: 'text' }, description, writing,
   { name: 'emblem', type: 'upload', relationTo: 'media', filterOptions: { mimeType: { contains: 'image/' } } },
   { name: 'order', type: 'number', defaultValue: 0 },
 ], 'projects');
-Factions.indexes = [{ fields: ['project', 'slug'], unique: true }];
+Factions.hooks!.beforeValidate = [({ data, originalDoc }) => {
+  if (!data) return data;
+  const project = data.project ?? originalDoc?.project;
+  const projectID = typeof project === 'object' ? project?.id : project;
+  const slug = data.slug ?? originalDoc?.slug;
+  if (projectID != null && slug) data.routeKey = `${projectID}/${slug}`;
+  return data;
+}];
 export const Equipment = content('equipment', [
   { name: 'name', type: 'text', required: true }, slugField, projectRelation,
+  { name: 'routeKey', type: 'text', unique: true, admin: { hidden: true } },
   factionRelation('faction'), { name: 'category', type: 'text' }, description, mediaRows('images'),
   { name: 'order', type: 'number', defaultValue: 0 },
 ], 'projects');
-Equipment.indexes = [{ fields: ['project', 'slug'], unique: true }];
+Equipment.hooks!.beforeValidate = [({ data, originalDoc }) => {
+  if (!data) return data;
+  const project = data.project ?? originalDoc?.project;
+  const projectID = typeof project === 'object' ? project?.id : project;
+  const slug = data.slug ?? originalDoc?.slug;
+  if (projectID != null && slug) data.routeKey = `${projectID}/${slug}`;
+  return data;
+}];
 // Equipment inherits both its project's access and its optional faction's access.
 // Characters retain project-based access so existing character URLs stay independent.
 Equipment.access!.read = async (args) => {

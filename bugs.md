@@ -28,6 +28,12 @@
 
 ## Resolved Bugs
 
+### 2026-09-28 - Factions/equipment compound index collision
+
+- Cause: Payload 3.88 does not support explicit names for collection compound indexes and derives names from field paths, so Factions, Characters and Equipment competed for `project_slug_idx` and version-index names.
+- Fix: Preserve the foundation Characters compound indexes. Replace new Factions/Equipment composites with hidden unique `routeKey` fields derived from project ID and slug, using collection-specific unique indexes. Correct the unapplied migration and schema snapshot without dropping or recreating Character indexes.
+- Status: Source and migration corrected; migration remains unapplied. `npm.cmd run typecheck` passed.
+
 ### 2026-09-15 - Regression suite depended on editorial publication state
 
 - Cause: the browser suite expected the published legacy BLUSHLAND comic/chapter and STALKER project in the editing database, where these records are now drafts. Anonymous queries correctly omit them, including The Observer's related chapter link.

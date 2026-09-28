@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-09-28 / Factions and equipment index collision
+
+- Replace the unnamed project/slug composites on Factions and Equipment with collection-specific unique route-key indexes because Payload 3.88 does not expose custom compound-index names.
+- Preserve the existing Characters project/slug and version indexes. Correct the unapplied faction/equipment migration and snapshot; no data migration or application performed.
+- Validation: `npm.cmd run typecheck` passed; migration remains unapplied.
+
+## 2026-09-28 / Monitor comic reader
+
+- Render existing `/comics/[project]/[chapter]` content in the existing pixel-monitor COMIC READER window and taskbar without changing route lookup or CMS models.
+- Reuse the ART VIEWER zoom/pan canvas and WindowManager controls; add Comic/chapter metadata, page navigation and directional CSS 3D page turns with mobile and reduced-motion fallbacks.
+- Validation: `npm.cmd run typecheck` passed; browser/manual checks remain.
+
 ## 2026-09-28 / Payload media upload guidance
 
 - Add concise single-file and comic batch upload instructions to the existing Payload Media and Chapter admin surfaces.

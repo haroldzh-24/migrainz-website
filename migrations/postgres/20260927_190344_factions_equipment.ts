@@ -21,6 +21,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   	"name" varchar,
   	"slug" varchar,
   	"project_id" integer,
+    "route_key" varchar,
   	"type" "enum_factions_type" DEFAULT 'Faction',
   	"status" varchar,
   	"description" varchar,
@@ -42,6 +43,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   	"version_name" varchar,
   	"version_slug" varchar,
   	"version_project_id" integer,
+    "version_route_key" varchar,
   	"version_type" "enum__factions_v_version_type" DEFAULT 'Faction',
   	"version_status" varchar,
   	"version_description" varchar,
@@ -74,6 +76,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   	"name" varchar,
   	"slug" varchar,
   	"project_id" integer,
+    "route_key" varchar,
   	"faction_id" integer,
   	"category" varchar,
   	"description" varchar,
@@ -103,6 +106,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   	"version_name" varchar,
   	"version_slug" varchar,
   	"version_project_id" integer,
+    "version_route_key" varchar,
   	"version_faction_id" integer,
   	"version_category" varchar,
   	"version_description" varchar,
@@ -119,8 +123,6 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   	"latest" boolean
   );
   
-  DROP INDEX "project_slug_idx";
-  DROP INDEX "version_project_version_slug_idx";
   ALTER TABLE "characters" ADD COLUMN "primary_faction_id" integer;
   ALTER TABLE "characters_rels" ADD COLUMN "factions_id" integer;
   ALTER TABLE "_characters_v" ADD COLUMN "version_primary_faction_id" integer;
@@ -148,7 +150,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   CREATE INDEX "factions_updated_at_idx" ON "factions" USING btree ("updated_at");
   CREATE INDEX "factions_created_at_idx" ON "factions" USING btree ("created_at");
   CREATE INDEX "factions__status_idx" ON "factions" USING btree ("_status");
-  CREATE UNIQUE INDEX "project_slug_idx" ON "factions" USING btree ("project_id","slug");
+  CREATE UNIQUE INDEX "factions_route_key_idx" ON "factions" USING btree ("route_key");
   CREATE INDEX "_factions_v_parent_idx" ON "_factions_v" USING btree ("parent_id");
   CREATE INDEX "_factions_v_version_version_slug_idx" ON "_factions_v" USING btree ("version_slug");
   CREATE INDEX "_factions_v_version_version_project_idx" ON "_factions_v" USING btree ("version_project_id");
@@ -160,7 +162,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   CREATE INDEX "_factions_v_created_at_idx" ON "_factions_v" USING btree ("created_at");
   CREATE INDEX "_factions_v_updated_at_idx" ON "_factions_v" USING btree ("updated_at");
   CREATE INDEX "_factions_v_latest_idx" ON "_factions_v" USING btree ("latest");
-  CREATE INDEX "version_project_version_slug_idx" ON "_factions_v" USING btree ("version_project_id","version_slug");
+  CREATE INDEX "_factions_v_version_version_route_key_idx" ON "_factions_v" USING btree ("version_route_key");
   CREATE INDEX "equipment_images_order_idx" ON "equipment_images" USING btree ("_order");
   CREATE INDEX "equipment_images_parent_id_idx" ON "equipment_images" USING btree ("_parent_id");
   CREATE INDEX "equipment_images_media_idx" ON "equipment_images" USING btree ("media_id");
@@ -171,7 +173,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   CREATE INDEX "equipment_updated_at_idx" ON "equipment" USING btree ("updated_at");
   CREATE INDEX "equipment_created_at_idx" ON "equipment" USING btree ("created_at");
   CREATE INDEX "equipment__status_idx" ON "equipment" USING btree ("_status");
-  CREATE UNIQUE INDEX "project_slug_2_idx" ON "equipment" USING btree ("project_id","slug");
+  CREATE UNIQUE INDEX "equipment_route_key_idx" ON "equipment" USING btree ("route_key");
   CREATE INDEX "_equipment_v_version_images_order_idx" ON "_equipment_v_version_images" USING btree ("_order");
   CREATE INDEX "_equipment_v_version_images_parent_id_idx" ON "_equipment_v_version_images" USING btree ("_parent_id");
   CREATE INDEX "_equipment_v_version_images_media_idx" ON "_equipment_v_version_images" USING btree ("media_id");
@@ -186,7 +188,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   CREATE INDEX "_equipment_v_created_at_idx" ON "_equipment_v" USING btree ("created_at");
   CREATE INDEX "_equipment_v_updated_at_idx" ON "_equipment_v" USING btree ("updated_at");
   CREATE INDEX "_equipment_v_latest_idx" ON "_equipment_v" USING btree ("latest");
-  CREATE INDEX "version_project_version_slug_2_idx" ON "_equipment_v" USING btree ("version_project_id","version_slug");
+  CREATE INDEX "_equipment_v_version_version_route_key_idx" ON "_equipment_v" USING btree ("version_route_key");
   ALTER TABLE "characters" ADD CONSTRAINT "characters_primary_faction_id_factions_id_fk" FOREIGN KEY ("primary_faction_id") REFERENCES "public"."factions"("id") ON DELETE set null ON UPDATE no action;
   ALTER TABLE "characters_rels" ADD CONSTRAINT "characters_rels_factions_fk" FOREIGN KEY ("factions_id") REFERENCES "public"."factions"("id") ON DELETE cascade ON UPDATE no action;
   ALTER TABLE "_characters_v" ADD CONSTRAINT "_characters_v_version_primary_faction_id_factions_id_fk" FOREIGN KEY ("version_primary_faction_id") REFERENCES "public"."factions"("id") ON DELETE set null ON UPDATE no action;
@@ -194,10 +196,8 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   ALTER TABLE "payload_locked_documents_rels" ADD CONSTRAINT "payload_locked_documents_rels_factions_fk" FOREIGN KEY ("factions_id") REFERENCES "public"."factions"("id") ON DELETE cascade ON UPDATE no action;
   ALTER TABLE "payload_locked_documents_rels" ADD CONSTRAINT "payload_locked_documents_rels_equipment_fk" FOREIGN KEY ("equipment_id") REFERENCES "public"."equipment"("id") ON DELETE cascade ON UPDATE no action;
   CREATE INDEX "characters_primary_faction_idx" ON "characters" USING btree ("primary_faction_id");
-  CREATE UNIQUE INDEX "project_slug_1_idx" ON "characters" USING btree ("project_id","slug");
   CREATE INDEX "characters_rels_factions_id_idx" ON "characters_rels" USING btree ("factions_id");
   CREATE INDEX "_characters_v_version_version_primary_faction_idx" ON "_characters_v" USING btree ("version_primary_faction_id");
-  CREATE INDEX "version_project_version_slug_1_idx" ON "_characters_v" USING btree ("version_project_id","version_slug");
   CREATE INDEX "_characters_v_rels_factions_id_idx" ON "_characters_v_rels" USING btree ("factions_id");
   CREATE INDEX "payload_locked_documents_rels_factions_id_idx" ON "payload_locked_documents_rels" USING btree ("factions_id");
   CREATE INDEX "payload_locked_documents_rels_equipment_id_idx" ON "payload_locked_documents_rels" USING btree ("equipment_id");`)
@@ -230,15 +230,11 @@ export async function down({ db, payload, req }: MigrateDownArgs): Promise<void>
   DROP TABLE "_equipment_v_version_images" CASCADE;
   DROP TABLE "_equipment_v" CASCADE;
   DROP INDEX "characters_primary_faction_idx";
-  DROP INDEX "project_slug_1_idx";
   DROP INDEX "characters_rels_factions_id_idx";
   DROP INDEX "_characters_v_version_version_primary_faction_idx";
-  DROP INDEX "version_project_version_slug_1_idx";
   DROP INDEX "_characters_v_rels_factions_id_idx";
   DROP INDEX "payload_locked_documents_rels_factions_id_idx";
   DROP INDEX "payload_locked_documents_rels_equipment_id_idx";
-  CREATE UNIQUE INDEX "project_slug_idx" ON "characters" USING btree ("project_id","slug");
-  CREATE INDEX "version_project_version_slug_idx" ON "_characters_v" USING btree ("version_project_id","version_slug");
   ALTER TABLE "characters" DROP COLUMN "primary_faction_id";
   ALTER TABLE "characters_rels" DROP COLUMN "factions_id";
   ALTER TABLE "_characters_v" DROP COLUMN "version_primary_faction_id";

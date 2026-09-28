@@ -2639,6 +2639,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "route_key": {
+          "name": "route_key",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
         "type": {
           "name": "type",
           "type": "enum_factions_type",
@@ -2835,17 +2841,11 @@
           "method": "btree",
           "with": {}
         },
-        "project_slug_idx": {
-          "name": "project_slug_idx",
+        "factions_route_key_idx": {
+          "name": "factions_route_key_idx",
           "columns": [
             {
-              "expression": "project_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "slug",
+              "expression": "route_key",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -2922,6 +2922,12 @@
         "version_project_id": {
           "name": "version_project_id",
           "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version_route_key": {
+          "name": "version_route_key",
+          "type": "varchar",
           "primaryKey": false,
           "notNull": false
         },
@@ -3199,17 +3205,11 @@
           "method": "btree",
           "with": {}
         },
-        "version_project_version_slug_idx": {
-          "name": "version_project_version_slug_idx",
+        "_factions_v_version_version_route_key_idx": {
+          "name": "_factions_v_version_version_route_key_idx",
           "columns": [
             {
-              "expression": "version_project_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "version_slug",
+              "expression": "version_route_key",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -3599,8 +3599,8 @@
           "method": "btree",
           "with": {}
         },
-        "project_slug_1_idx": {
-          "name": "project_slug_1_idx",
+        "project_slug_idx": {
+          "name": "project_slug_idx",
           "columns": [
             {
               "expression": "project_id",
@@ -4275,8 +4275,8 @@
           "method": "btree",
           "with": {}
         },
-        "version_project_version_slug_1_idx": {
-          "name": "version_project_version_slug_1_idx",
+        "version_project_version_slug_idx": {
+          "name": "version_project_version_slug_idx",
           "columns": [
             {
               "expression": "version_project_id",
@@ -4693,6 +4693,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "route_key": {
+          "name": "route_key",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
         "faction_id": {
           "name": "faction_id",
           "type": "integer",
@@ -4875,17 +4881,11 @@
           "method": "btree",
           "with": {}
         },
-        "project_slug_2_idx": {
-          "name": "project_slug_2_idx",
+        "equipment_route_key_idx": {
+          "name": "equipment_route_key_idx",
           "columns": [
             {
-              "expression": "project_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "slug",
+              "expression": "route_key",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -5090,6 +5090,12 @@
         "version_project_id": {
           "name": "version_project_id",
           "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version_route_key": {
+          "name": "version_route_key",
+          "type": "varchar",
           "primaryKey": false,
           "notNull": false
         },
@@ -5353,17 +5359,11 @@
           "method": "btree",
           "with": {}
         },
-        "version_project_version_slug_2_idx": {
-          "name": "version_project_version_slug_2_idx",
+        "_equipment_v_version_version_route_key_idx": {
+          "name": "_equipment_v_version_version_route_key_idx",
           "columns": [
             {
-              "expression": "version_project_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "version_slug",
+              "expression": "version_route_key",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
