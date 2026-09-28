@@ -1,5 +1,11 @@
 # Studio Migrainz content management
 
+**Production update — 2026-09-28:** Follow [the production storage runbook](PRODUCTION-STORAGE.md)
+for the current five-migration chain, required private S3-compatible storage,
+existing-file transfer, and parked access/sections work. Earlier "unapplied"
+statements below describe historical development status, not the live database.
+Vercel `/tmp` is no longer an allowed final production storage backend.
+
 The frontend still uses the terminal components and existing URLs. Payload 3.88
 runs in the same Next.js app at `/admin`. The public layout lives in
 `app/(frontend)`; the CMS has its own `app/(payload)` layout and styles.
@@ -64,9 +70,10 @@ faction; characters retain their existing project-based access. Hiding a listing
 does not make content or its files private. Unpublishing a faction revokes media
 used only by it or its equipment, through the existing media authorization layer.
 
-The additive PostgreSQL migration `20260927_190344_factions_equipment` is generated
-but not applied. Apply pending migrations through the existing production
-migration workflow before running this schema against PostgreSQL. It adds nullable
+The additive PostgreSQL migration `20260927_190344_factions_equipment` and subsequent
+forward repairs are registered; inspect the target database's migration ledger
+to determine what is applied. Apply pending migrations through the production
+runbook before running this schema against PostgreSQL. They add nullable
 character relationships without rewriting records. Development SQLite uses its
 existing development schema synchronization; back up the local database before
 starting the updated app. No data import or fabricated assignments are required.
@@ -91,7 +98,7 @@ are denied, while derivative URLs remain public only under
 the existing published-content/media access rules. PDFs continue using originals.
 
 Existing Media files are not rewritten when these sizes are added. Public
-rendering falls back to the best existing derivative or legacy `thumbnailURL`;
+rendering falls back to available named derivatives (including legacy thumbnails);
 when an image has no derivative, it is omitted rather than requesting the
 original. Existing records need
 to be regenerated/reprocessed through Payload or re-uploaded to receive the new
@@ -182,9 +189,9 @@ Before public production deployment:
    transfer from development with record-ID/relationship reconciliation and backups.
    The legacy importer is not a general SQLite-to-PostgreSQL transfer tool.
 2. Configure private object storage (S3 or R2 via the S3 adapter; evaluate private
-   delivery carefully for Vercel Blob). Copy originals and derivatives, verify
-   checksums, preserve Media relationships, then switch the adapter. No cloud
-   storage adapter or service has been provisioned in this foundation.
+   delivery carefully for Vercel Blob). The installed S3 adapter is now configured;
+   provision its private bucket, copy originals and derivatives, verify checksums
+   and preserve Media relationships before switching traffic. See the runbook.
 3. Verify anonymous denial for patron originals/derivatives, draft access, parent
    publication, and cache behavior on the actual host. Public bucket URLs must
    never bypass Payload's authorization.
@@ -245,11 +252,10 @@ After schema initialization, `/admin` should offer Payload's first-user setup on
 an empty database or login on an existing database. Create the real administrator
 interactively; no default user is provisioned. Existing staff access rules remain.
 
-`/tmp/studio-migrainz-media` is only a temporary class-demo filesystem location.
-Payload creates the directory on upload. Files can disappear on restart and are
-not shared across functions/instances; database records can outlive them. Keep
-originals elsewhere. Existing file authorization remains in force. R2 integration
-and durable production media remain deferred.
+`/tmp/studio-migrainz-media` is now only a compatibility/scratch path. Production
+requires `CMS_STORAGE=s3`; originals and derivatives are persisted by the adapter.
+Earlier temporary files must be recovered and copied to the bucket before the
+switch. Database metadata cannot recover files already lost from ephemeral disk.
 
 ## Local verification commands
 

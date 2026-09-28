@@ -403,6 +403,8 @@ button {
   position: absolute;
 }
 .art-viewer-window[data-maximized="true"] {
+  max-width: calc(100% - 8px);
+  max-height: calc(100% - 8px);
   top: 4px !important;
   left: 4px !important;
   width: calc(100% - 8px) !important;
@@ -506,6 +508,8 @@ button {
   pointer-events: none;
 }
 .comic-reader-window[data-maximized="true"] {
+  max-width: calc(100% - 8px);
+  max-height: calc(100% - 8px);
   top: 4px !important;
   left: 4px !important;
   width: calc(100% - 8px) !important;
@@ -1238,6 +1242,7 @@ footer {
   .pixel-monitor-header { font-size: 10px; gap: 4px; padding-bottom: 3px; }
   .pixel-monitor-header button { min-height: 28px; }
   .pixel-monitor-screen { border-width: 3px; }
+  .pixel-monitor-screen[data-window-maximized="true"] .pixel-monitor-dock { display: block; }
   .pixel-monitor-hardware { min-height: 24px; font-size: 9px; }
   .pixel-monitor-vents { display: none; }
   .desktop-windows { overflow: auto; padding: 6px; overscroll-behavior: contain; }
@@ -1246,7 +1251,7 @@ footer {
   .retro-window-body { max-height: none; }
   .art-viewer-window, .art-viewer-window[data-maximized="true"] { inset: auto !important; width: 100% !important; height: max(400px, calc(100dvh - 230px)) !important; }
   .comic-reader-window, .comic-reader-window[data-maximized="true"] { inset: auto !important; width: 100% !important; height: max(400px, calc(100dvh - 230px)) !important; }
-  .comic-reader-window, .comic-reader-window[data-maximized="true"] { inset: auto !important; width: 100% !important; height: max(400px, calc(100dvh - 230px)) !important; }
+  .art-viewer-window[data-maximized="true"], .comic-reader-window[data-maximized="true"] { max-width: 100%; max-height: none; }
   .window-taskbar button { min-height: 36px; }
   .art-viewer-canvas { padding: 10px; }
 

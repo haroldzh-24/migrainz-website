@@ -1,10 +1,10 @@
 "use client";
 
 import { useWindowManager, type ViewerTab } from "@/components/WindowManager";
-import type { Character, Project } from "@/lib/content/types";
+import type { AccessControl, Character, Project } from "@/lib/content/types";
 import DesktopFile from "@/components/DesktopFile";
 
-type ViewerCharacter = Pick<Character, "slug" | "name" | "role" | "description" | "images" | "updated">;
+type ViewerCharacter = Pick<Character, "slug" | "name" | "role" | "description" | "images" | "updated"> & { access?: AccessControl };
 
 function tabFor(project: Pick<Project, "slug" | "title">, character: ViewerCharacter): ViewerTab {
   return {
@@ -20,18 +20,22 @@ function tabFor(project: Pick<Project, "slug" | "title">, character: ViewerChara
 
 export function CharacterViewerLink({ project, character }: { project: Pick<Project, "slug" | "title">; character: ViewerCharacter }) {
   const tab = tabFor(project, character);
+  const locked = character.access?.state === "redacted" || character.access?.state === "patron";
+  const shownName = locked ? character.access?.displayTitle || character.name : character.name;
   return <DesktopFile
-    label={`${character.name.replace(/\s+/g, "_")}.CHR`}
+    label={`${shownName.replace(/\s+/g, "_")}.CHR`}
     type="CHR"
     href={tab.href}
-    viewerTab={tab}
+    subtitle={locked ? character.access?.teaser || (character.access?.state === "patron" ? "CLASSIFIED / PATRON" : character.access?.redactionLabel || "REDACTED") : character.role}
+    viewerTab={locked ? undefined : tab}
     metadata={[
-      { label: "NAME", value: character.name },
+      { label: "NAME", value: shownName },
       { label: "PROJECT", value: project.title },
-      ...(character.role ? [{ label: "ROLE", value: character.role }] : []),
-      { label: "IMAGE COUNT", value: String(character.images.length) },
-      { label: "TYPE", value: "CHARACTER" },
-      ...(character.updated ? [{ label: "UPDATED", value: character.updated }] : []),
+      ...(locked ? [{ label: "ACCESS", value: character.access?.state === "patron" ? "CLASSIFIED" : "REDACTED" }] : [
+        ...(character.role ? [{ label: "ROLE", value: character.role }] : []),
+        { label: "IMAGE COUNT", value: String(character.images.length) }, { label: "TYPE", value: "CHARACTER" },
+        ...(character.updated ? [{ label: "UPDATED", value: character.updated }] : []),
+      ]),
     ]}
   />;
 }

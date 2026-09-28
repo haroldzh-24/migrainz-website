@@ -1,6 +1,7 @@
 import { Directory, DirectoryLink } from "@/components/Directory";
 import { getProjects, getArchiveItems } from "@/lib/content/queries";
 import ContentGallery from "@/components/ContentGallery";
+import { AccessPlaceholder, ContentSections } from "@/components/PublicContent";
 
 export const metadata = { title: "ARCHIVE" };
 
@@ -20,9 +21,12 @@ export default async function Page() {
           <div className="archive-list">
             {items.map((item) => (
               <article className="section-block" id={`item-${item.slug}`} key={item.slug}>
+                {item.access?.state !== "public" ? <AccessPlaceholder access={item.access} kind="file" /> : <>
                 <p className="eyebrow">{item.category} / {item.date}</p>
                 <h3>{item.title}</h3><p>{item.description}</p>
                 <ContentGallery images={item.files} />
+                <ContentSections sections={item.sections} />
+                </>}
               </article>
             ))}
             <DirectoryLink

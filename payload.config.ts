@@ -5,6 +5,7 @@ import { postgresAdapter } from '@payloadcms/db-postgres';
 import { lexicalEditor, FixedToolbarFeature } from '@payloadcms/richtext-lexical';
 import sharp from 'sharp';
 import { validateProductionEnv } from './scripts/production-env.mjs';
+import { mediaStorage } from './cms/storage';
 import { ArchiveItems, Characters, Chapters, Comics, Equipment, Factions, Galleries, mediaCollection, Projects, ProjectUpdates, taxonomies, TrackerItems, Users } from './collections';
 
 const database = process.env.CMS_DATABASE;
@@ -39,6 +40,7 @@ export default buildConfig({
     FixedToolbarFeature(),
   ] }),
   sharp,
+  plugins: [mediaStorage],
   collections: [Users, Projects, Comics, Chapters, Factions, Characters, Equipment, ProjectUpdates, TrackerItems, Galleries, ArchiveItems, mediaCollection(mediaDirectory), ...taxonomies],
   typescript: { outputFile: path.resolve('payload-types.ts') },
   graphQL: { disable: true },

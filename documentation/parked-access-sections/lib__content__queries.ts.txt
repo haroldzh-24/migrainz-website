@@ -2,27 +2,33 @@ import 'server-only';
 import { cache } from 'react';
 import { getPayload } from 'payload';
 import config from '@payload-config';
+import { publicRecordWhere } from '@/cms/access';
 import type { Media } from '@/payload-types';
 import type { AccessControl, ComicPage, Project, PublicSection } from './types';
 
-const publicWhere = { listingVisibility: { equals: 'public' as const } };
+const publicWhere = publicRecordWhere;
 const idOf = (value: number | { id: number } | null | undefined) => value == null ? -1 : typeof value === 'object' ? value.id : value;
 function accessOf(value: unknown): AccessControl {
-  // Compatibility with existing route props only. Payload enforces publication
-  // and accessLevel; parked accessControl fields must never grant access.
-  void value;
-  return { state: 'public', showInListings: true };
+  const record = value && typeof value === 'object' ? value as Record<string, unknown> : {};
+  const raw = record.accessControl && typeof record.accessControl === 'object' ? record.accessControl as Record<string, unknown> : {};
+  const state = ['public', 'redacted', 'patron', 'hidden'].includes(String(raw.state))
+    ? raw.state as AccessControl['state']
+    : record.listingVisibility === 'hidden' ? 'hidden' : record.accessLevel === 'patron' ? 'patron' : 'public';
+  return { state, displayTitle: typeof raw.displayTitle === 'string' ? raw.displayTitle : null,
+    redactionLabel: typeof raw.redactionLabel === 'string' ? raw.redactionLabel : null,
+    teaser: typeof raw.teaser === 'string' ? raw.teaser : null, showInListings: raw.showInListings !== false };
 }
 export const isPublicListing = (access?: AccessControl) => access?.state !== 'hidden' && (access?.state === 'public' || access?.showInListings !== false);
 function sectionsOf(value: unknown): PublicSection[] {
-  void value;
-  return []; // Unfinished sections are parked, including any old database values.
+  if (!value || typeof value !== 'object') return [];
+  const sections = (value as Record<string, unknown>).sections;
+  return Array.isArray(sections) ? sections as PublicSection[] : [];
 }
 function image(media?: number | Media | null, alt?: string | null, caption?: string | null): ComicPage | undefined {
   if (!media || typeof media !== 'object') return undefined;
-  const thumbnail = media.sizes?.thumbnail?.url ?? undefined;
+  const thumbnail = media.sizes?.thumbnail?.url ?? media.thumbnailURL ?? undefined;
   const isPDF = media.mimeType === 'application/pdf';
-  const preview = media.sizes?.preview?.url ?? thumbnail ?? media.sizes?.viewer?.url ?? (isPDF ? media.url : undefined);
+  const preview = media.sizes?.preview?.url ?? thumbnail ?? (isPDF ? media.url : undefined);
   const viewer = media.sizes?.viewer?.url ?? media.sizes?.preview?.url ?? thumbnail ?? (isPDF ? media.url : undefined);
   if (!preview) return undefined;
   return { src: preview, viewerSrc: viewer ?? preview, thumbnailSrc: thumbnail ?? preview,

@@ -4,6 +4,7 @@ import ProjectTracker from "@/components/ProjectTracker";
 import ContentWriting from "@/components/ContentWriting";
 import DesktopFile, { DesktopFolder } from "@/components/DesktopFile";
 import ContentGallery from "@/components/ContentGallery";
+import { AccessPlaceholder, ContentSections } from "@/components/PublicContent";
 import { getProject, getArchiveItems } from "@/lib/content/queries";
 import { projectHref, chapterHref } from "@/lib/content/types";
 export async function generateMetadata({
@@ -27,6 +28,7 @@ export default async function ProjectPage({
       path={`SYS:/PROJECTS/${project.slug.toUpperCase()}/`}
       title={project.title}
     >
+      {project.access?.state !== "public" ? <AccessPlaceholder access={project.access} /> : <>
       <p className="eyebrow">
         {project.id} / {project.status} / UPDATED{" "}
         <time dateTime={project.updated}>{project.updated}</time>
@@ -34,16 +36,20 @@ export default async function ProjectPage({
       <p className="lede">{project.description}</p>
       {project.hero && <ContentGallery images={[project.hero]} />}
       <ContentWriting data={project.writing} />
+      <ContentSections sections={project.sections} />
       {archiveItems.length > 0 && <div className="directory-list">
         {archiveItems.map(item => <DirectoryLink key={item.slug} href={`/archive#item-${item.slug}`} name={item.title} meta="ARCHIVE RECORD" />)}
       </div>}
       {project.galleries.map((gallery) => (
         <section className="section-block" id={`gallery-${gallery.slug}`} key={gallery.slug}>
-          <h2>{gallery.title}</h2><p>{gallery.description}</p>
+          {gallery.access?.state === "public" ? <><h2>{gallery.title}</h2><p>{gallery.description}</p></> : <AccessPlaceholder access={gallery.access} kind="art" />}
+          {gallery.access?.state !== "public" ? null : <>
           <DesktopFile label={gallery.title + ".ART"} type="ART" href={projectHref(project) + "#gallery-" + gallery.slug}
             viewerTab={{ id: "gallery:" + project.slug + ":" + gallery.slug, href: projectHref(project) + "#gallery-" + gallery.slug, title: gallery.title, project: project.title, description: gallery.description, images: gallery.images.filter(image => !/\.pdf(?:\?|$)/i.test(image.src)) }}
             metadata={[{ label: "NAME", value: gallery.title }, { label: "PROJECT", value: project.title }, { label: "TYPE", value: "GALLERY" }, { label: "IMAGE COUNT", value: String(gallery.images.filter(image => !/\.pdf(?:\?|$)/i.test(image.src)).length) }]} />
           <ContentGallery images={gallery.images} />
+          <ContentSections sections={gallery.sections} />
+          </>}
         </section>
       ))}
       <div className="directory-list">
@@ -57,7 +63,7 @@ export default async function ProjectPage({
             key={chapter.slug}
             href={chapterHref(project, chapter)}
             name={chapter.title}
-            meta={`${chapter.pages.length} PAGES`}
+            meta={chapter.access?.state === "public" ? `${chapter.pages.length} PAGES` : chapter.access?.displayTitle || chapter.access?.redactionLabel || "CLASSIFIED"}
           />
         ))}
         <DirectoryLink
@@ -87,15 +93,19 @@ export default async function ProjectPage({
         <div className="production-notes">
           {project.notes.map((note, index) => (
             <div key={`${note.date}-${index}`}>
+            {note.access?.state !== "public" ? <AccessPlaceholder access={note.access} /> : <>
             <p>
               <time dateTime={note.date}>{note.date}</time> // {note.text}
             </p>
             <ContentWriting data={note.writing} />
             <ContentGallery images={note.images ?? []} />
+            <ContentSections sections={note.sections} />
+            </>}
             </div>
           ))}
         </div>
       </section>
+      </>}
     </Directory>
   );
 }

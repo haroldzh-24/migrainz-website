@@ -1,6 +1,6 @@
 import type { CollectionConfig, CollectionSlug, Field } from 'payload';
-import { editorialAccess, mediaRead, preventReferencedDelete, publicContent, staff } from '@/cms/access';
-import { factionRelation, mediaRows, projectRelation, publishingFields, slugField, tags, writing } from '@/cms/fields';
+import { editorialAccess, mediaRead, preventReferencedDelete, publicContent, redactPublicRecord, staff } from '@/cms/access';
+import { accessControlField, factionRelation, mediaRows, projectRelation, publishingFields, sectionsField, slugField, tags, writing } from '@/cms/fields';
 import { validatePublishedMedia } from '@/cms/validate-content';
 
 function content(slug: CollectionSlug, fields: Field[], parent?: CollectionSlug, relation = 'project', optional = false): CollectionConfig {
@@ -8,8 +8,8 @@ function content(slug: CollectionSlug, fields: Field[], parent?: CollectionSlug,
     slug, admin: { useAsTitle: ['characters', 'factions', 'equipment'].includes(slug) ? 'name' : 'title', group: 'Studio content' },
     access: editorialAccess(publicContent(parent, relation, optional)),
     versions: { drafts: true, maxPerDoc: 25 },
-    fields: [...fields, ...publishingFields],
-    hooks: { beforeChange: [validatePublishedMedia], beforeDelete: [({ req, id }) => preventReferencedDelete(req, slug, id)] },
+    fields: [...fields, sectionsField, ...publishingFields],
+    hooks: { afterRead: [redactPublicRecord], beforeChange: [validatePublishedMedia], beforeDelete: [({ req, id }) => preventReferencedDelete(req, slug, id)] },
   };
 }
 const title: Field = { name: 'title', type: 'text', required: true };
@@ -134,8 +134,8 @@ export function mediaCollection(directory: string): CollectionConfig {
         { name: 'viewer', width: 2400, height: 2400, fit: 'inside', withoutEnlargement: true, formatOptions: { format: 'webp', options: { quality: 84 } } },
       ],
       handlers: [(req, { doc, params }) => {
-        const media = doc as unknown as { filename?: string; mimeType?: string } | null;
-        if (!staff({ req }) && media?.mimeType?.startsWith('image/') && params.filename === media.filename) {
+        const media = doc as unknown as { filename?: string; mimeType?: string };
+        if (!req.user && media.mimeType?.startsWith('image/') && params.filename === media.filename) {
           return new Response(null, { status: 404, headers: { 'Cache-Control': 'private, no-store' } });
         }
         return undefined;
@@ -145,7 +145,11 @@ export function mediaCollection(directory: string): CollectionConfig {
 }
 export const taxonomies: CollectionConfig[] = (['tags', 'categories'] as const).map((slug) => ({
   slug, admin: { useAsTitle: 'title', group: 'Organization' },
-  access: { read: () => true, create: staff, update: staff, delete: staff },
-  fields: [title, { ...slugField, unique: true }, description],
-  hooks: { beforeDelete: [({ req, id }) => preventReferencedDelete(req, slug, id)] },
+  // Taxonomies have neither drafts nor the legacy publishing fields.
+  access: { read: ({ req }) => staff({ req }) ? true : { or: [
+    { 'accessControl.state': { in: ['public', 'redacted', 'patron'] } },
+    { 'accessControl.state': { exists: false } },
+  ] }, create: staff, update: staff, delete: staff },
+  fields: [title, { ...slugField, unique: true }, description, accessControlField],
+  hooks: { afterRead: [redactPublicRecord], beforeDelete: [({ req, id }) => preventReferencedDelete(req, slug, id)] },
 }));

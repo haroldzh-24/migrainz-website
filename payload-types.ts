@@ -242,6 +242,7 @@ export interface Media {
    */
   listingSummary?: string | null;
   legacyKey?: string | null;
+  prefix?: string | null;
   updatedAt: string;
   createdAt: string;
   _status?: ('draft' | 'published') | null;
@@ -263,22 +264,22 @@ export interface Media {
       filesize?: number | null;
       filename?: string | null;
     };
-      preview?: {
-        url?: string | null;
-        width?: number | null;
-        height?: number | null;
-        mimeType?: string | null;
-        filesize?: number | null;
-        filename?: string | null;
-      };
-      viewer?: {
-        url?: string | null;
-        width?: number | null;
-        height?: number | null;
-        mimeType?: string | null;
-        filesize?: number | null;
-        filename?: string | null;
-      };
+    preview?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+    viewer?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
   };
 }
 /**
@@ -1082,6 +1083,7 @@ export interface MediaSelect<T extends boolean = true> {
   accessLevel?: T;
   listingSummary?: T;
   legacyKey?: T;
+  prefix?: T;
   updatedAt?: T;
   createdAt?: T;
   _status?: T;
@@ -1098,6 +1100,26 @@ export interface MediaSelect<T extends boolean = true> {
     | T
     | {
         thumbnail?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        preview?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        viewer?:
           | T
           | {
               url?: T;

@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
 import { Directory } from "@/components/Directory";
 import ComicReader from "@/components/ComicReader";
+import { AccessPlaceholder, ContentSections } from "@/components/PublicContent";
 import { getProject } from "@/lib/content/queries";
-import { projectHref, chapterHref } from "@/lib/content/types";
 export const metadata = { title: "Comic reader" };
 export default async function ReaderPage({
   params,
@@ -19,8 +19,11 @@ export default async function ReaderPage({
       path={`SYS:/COMICS/${project.slug.toUpperCase()}/${chapter.slug.toUpperCase()}/`}
       title={chapter.title}
     >
-      <p className="lede">{chapter.description}</p>
-      <ComicReader key={`${project.slug}/${chapter.slug}`} project={{ slug: project.slug, title: project.title }} chapter={chapter} />
+      {chapter.access?.state !== "public" ? <AccessPlaceholder access={chapter.access} kind="art" /> : <>
+        <p className="lede">{chapter.description}</p>
+        <ContentSections sections={chapter.sections} />
+        <ComicReader key={`${project.slug}/${chapter.slug}`} project={{ slug: project.slug, title: project.title }} chapter={chapter} />
+      </>}
     </Directory>
   );
 }

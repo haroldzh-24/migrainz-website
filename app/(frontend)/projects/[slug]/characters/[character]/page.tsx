@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Directory, DirectoryLink } from "@/components/Directory";
 import ContentWriting from "@/components/ContentWriting";
 import ContentGallery from "@/components/ContentGallery";
+import { AccessPlaceholder, ContentSections } from "@/components/PublicContent";
 import { getProject } from "@/lib/content/queries";
 import { projectHref, chapterHref } from "@/lib/content/types";
 import { CharacterViewerButton } from "@/components/CharacterViewerLink";
@@ -39,6 +40,7 @@ export default async function CharacterPage({
       >
         ← CHARACTER DIRECTORY
       </Link>
+      {character.access?.state !== "public" ? <AccessPlaceholder access={character.access} kind="art" /> : <>
       <CharacterViewerButton project={project} character={{ slug: character.slug, name: character.name, role: character.role, description: character.description, images: character.images }} />
       <div className="split character-record">
         {character.images.length ? <ContentGallery images={character.images} /> : <div
@@ -55,6 +57,8 @@ export default async function CharacterPage({
           <p>RECORD STATUS: PUBLIC</p>
         </div>
       </div>
+      <ContentSections sections={character.sections} />
+      </>}
       <h2>RELATED COMIC CHAPTERS</h2>
       <div className="directory-list">
         {project.chapters
