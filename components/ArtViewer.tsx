@@ -72,7 +72,7 @@ export function ArtworkCanvas({ image, view, onChange }: { image: ViewerImage; v
         onChange({ scale, x: Math.max(-limitX, Math.min(limitX, start.x + event.clientX - start.clientX)), y: Math.max(-limitY, Math.min(limitY, start.y + event.clientY - start.clientY)) });
       }}
       onPointerUp={stopPan} onPointerCancel={stopPan} onLostPointerCapture={stopPan}>
-      <img src={image.src} alt={image.alt} draggable={false}
+      <img src={image.viewerSrc ?? image.src} alt={image.alt} draggable={false}
         onError={() => setFailed(true)}
         onLoad={(event) => setNatural({ width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight })}
         style={ready ? { width: natural.width * scale, height: natural.height * scale, transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))` } : { visibility: "hidden" }} />
@@ -93,6 +93,12 @@ export default function ArtViewer() {
   if (!active) return null;
   const image = active.images[imageIndex] ?? active.images[0];
   const viewKey = JSON.stringify([active.id, image?.src, imageIndex]);
+  const tabs = <div className="art-viewer-tabs" role="tablist" aria-label="Open artwork">
+    {viewerTabs.map((tab) => <div className={`art-viewer-tab${tab.id === active.id ? " is-active" : ""}`} key={tab.id}>
+      <button type="button" role="tab" aria-selected={tab.id === active.id} onClick={() => switchViewerTab(tab.id)}>{tab.title}</button>
+      <button type="button" className="art-viewer-tab-close" aria-label={`Close ${tab.title}`} onClick={() => closeViewerTab(tab.id)}>×</button>
+    </div>)}
+  </div>;
 
   return <RetroWindow
     id="art-viewer"
@@ -100,22 +106,17 @@ export default function ArtViewer() {
     className="art-viewer-window"
     defaultPosition={{ x: 70, y: 50 }}
     defaultSize={{ width: 900, height: 650 }}
+    titlebarContent={tabs}
     onToggleMaximize={() => {
       if (maximized) setViews(normalViews.current);
       else normalViews.current = views;
       toggleMaximizeWindow("art-viewer");
     }}
   >
-    <div className="art-viewer-tabs" role="tablist" aria-label="Open artwork">
-      {viewerTabs.map((tab) => <div className={`art-viewer-tab${tab.id === active.id ? " is-active" : ""}`} key={tab.id}>
-        <button type="button" role="tab" aria-selected={tab.id === active.id} onClick={() => switchViewerTab(tab.id)}>{tab.title}</button>
-        <button type="button" className="art-viewer-tab-close" aria-label={`Close ${tab.title}`} onClick={() => closeViewerTab(tab.id)}>×</button>
-      </div>)}
-    </div>
     {image ? <ArtworkCanvas key={viewKey} image={image} view={views[viewKey] ?? fitView} onChange={(view) => setViews((current) => ({ ...current, [viewKey]: view }))} /> : <div className="art-viewer-canvas"><div className="art-viewer-placeholder">NO PUBLIC ARTWORK FILED</div></div>}
     {active.images.length > 1 && <div className="art-viewer-thumbs" aria-label={`${active.title} artwork pages`}>
       {active.images.map((item, index) => <button type="button" key={`${item.src}-${index}`} className={index === imageIndex ? "is-active" : ""} aria-label={`Show image ${index + 1}`} onClick={() => setImageIndex(index)}>
-        <img src={item.src} alt="" loading="lazy" />
+        <img src={item.thumbnailSrc ?? item.src} alt="" loading="lazy" />
       </button>)}
     </div>}
     <div className="art-viewer-meta">

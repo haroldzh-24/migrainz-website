@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-09-28 / Art-first monitor and public image derivatives
+
+- Reduce monitor and window chrome, place ART VIEWER tabs in the titlebar, maximize within the monitor screen, and collapse the dock while maximized. Consolidate COMIC READER page controls into a compact row.
+- Generate 400px thumbnail, 1200px preview and 2400px viewer WebP derivatives at quality 84; public surfaces select size-appropriate URLs with a legacy-thumbnail fallback. Deny anonymous access to original image files; retain originals for staff.
+- Existing files are unchanged and are not backfilled by this config change; they need regeneration to receive the new preview/viewer sizes. The removed comic page-turn animation remains removed.
+- Validation: `npm.cmd run typecheck` only; no build or regression suite.
+
 ## 2026-09-28 / PostgreSQL route-key repair
 
 - Add and register `20260928_120000_route_key_repair` as a new forward migration for existing Factions and Equipment schemas, including version-table route keys.
@@ -16,7 +23,7 @@
 ## 2026-09-28 / Monitor comic reader
 
 - Render existing `/comics/[project]/[chapter]` content in the existing pixel-monitor COMIC READER window and taskbar without changing route lookup or CMS models.
-- Reuse the ART VIEWER zoom/pan canvas and WindowManager controls; add Comic/chapter metadata, page navigation and directional CSS 3D page turns with mobile and reduced-motion fallbacks.
+- Reuse the ART VIEWER zoom/pan canvas and WindowManager controls; add Comic/chapter metadata and immediate page navigation.
 - Validation: `npm.cmd run typecheck` passed; browser/manual checks remain.
 
 ## 2026-09-28 / Payload media upload guidance

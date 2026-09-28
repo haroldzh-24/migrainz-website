@@ -5,7 +5,8 @@ import { useWindowManager, WindowTaskbar } from "@/components/WindowManager";
 
 /** Presentation only: windows and dock share the public WindowManager. */
 export default function PixelMonitorDesktop() {
-  const { desktopVisible, showDesktop, hideDesktop, setWorkspace } = useWindowManager();
+  const { desktopVisible, showDesktop, hideDesktop, setWorkspace, windows } = useWindowManager();
+  const maximized = windows.some(window => window.open && !window.minimized && window.maximized);
   const hideButton = useRef<HTMLButtonElement>(null);
   const monitor = useRef<HTMLElement>(null);
 
@@ -35,7 +36,7 @@ export default function PixelMonitorDesktop() {
         <span>MGZ / STUDIO COMPUTER</span>
         <button ref={hideButton} type="button" onClick={hideDesktop} aria-label="Hide desktop and return to terminal">RETURN TO TERMINAL [×]</button>
       </div>
-      <div className="pixel-monitor-screen">
+      <div className="pixel-monitor-screen" data-window-maximized={maximized || undefined}>
         <div ref={setWorkspace} className="desktop-windows" aria-label="Desktop window workspace" />
         <div className="pixel-monitor-dock"><WindowTaskbar /></div>
       </div>

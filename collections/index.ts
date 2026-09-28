@@ -128,7 +128,18 @@ export function mediaCollection(directory: string): CollectionConfig {
     admin: { useAsTitle: 'filename', group: 'Media library', description: 'For one file, choose Create, upload JPG, PNG, WebP, GIF, SVG, or PDF, add required alt text, optionally select its Project, then save as draft or publish. Comic pages must be images; use Add multiple pages on a Chapter for a naturally filename-sorted batch. Files are public only when published, PUBLIC, and attached to published public content.' },
     access: editorialAccess(mediaRead),
     upload: { staticDir: directory, mimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml', 'application/pdf'],
-      imageSizes: [{ name: 'thumbnail', width: 320, height: 320, fit: 'inside', withoutEnlargement: true }],
+      imageSizes: [
+        { name: 'thumbnail', width: 400, height: 400, fit: 'inside', withoutEnlargement: true, formatOptions: { format: 'webp', options: { quality: 84 } } },
+        { name: 'preview', width: 1200, height: 1200, fit: 'inside', withoutEnlargement: true, formatOptions: { format: 'webp', options: { quality: 84 } } },
+        { name: 'viewer', width: 2400, height: 2400, fit: 'inside', withoutEnlargement: true, formatOptions: { format: 'webp', options: { quality: 84 } } },
+      ],
+      handlers: [(req, { doc, params }) => {
+        const media = doc as unknown as { filename?: string; mimeType?: string };
+        if (!req.user && media.mimeType?.startsWith('image/') && params.filename === media.filename) {
+          return new Response(null, { status: 404, headers: { 'Cache-Control': 'private, no-store' } });
+        }
+        return undefined;
+      }],
     },
   };
 }

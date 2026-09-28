@@ -8,8 +8,14 @@ import type { ComicPage, Project } from './types';
 const publicWhere = { listingVisibility: { equals: 'public' as const } };
 const idOf = (value: number | { id: number } | null | undefined) => value == null ? -1 : typeof value === 'object' ? value.id : value;
 function image(media?: number | Media | null, alt?: string | null, caption?: string | null): ComicPage | undefined {
-  if (!media || typeof media !== 'object' || !media.url) return undefined;
-  return { src: media.url, alt: alt || media.alt, caption: caption || media.caption || undefined,
+  if (!media || typeof media !== 'object') return undefined;
+  const thumbnail = media.sizes?.thumbnail?.url ?? media.thumbnailURL ?? undefined;
+  const isPDF = media.mimeType === 'application/pdf';
+  const preview = media.sizes?.preview?.url ?? thumbnail ?? (isPDF ? media.url : undefined);
+  const viewer = media.sizes?.viewer?.url ?? media.sizes?.preview?.url ?? thumbnail ?? (isPDF ? media.url : undefined);
+  if (!preview) return undefined;
+  return { src: preview, viewerSrc: viewer ?? preview, thumbnailSrc: thumbnail ?? preview,
+    alt: alt || media.alt, caption: caption || media.caption || undefined,
     width: media.width || undefined, height: media.height || undefined };
 }
 function images(rows?: { media: number | Media; alt?: string | null; caption?: string | null }[] | null): ComicPage[] {

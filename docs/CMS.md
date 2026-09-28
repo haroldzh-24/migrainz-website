@@ -83,6 +83,22 @@ For the basic comic workflow:
    Rows are displayed in their saved order. Save a draft or publish the chapter.
 6. Visit `/comics/PROJECT-SLUG/CHAPTER-SLUG`. No deployment or source edit is needed.
 
+New image uploads preserve the original for staff/admin and generate WebP
+derivatives: a 400px thumbnail, 1200px preview and 2400px viewer image at quality
+84. Public galleries use previews; ART VIEWER and COMIC READER use the viewer
+size; thumbnail strips use the thumbnail. Anonymous original-image file requests
+are denied, while derivative URLs remain public only under
+the existing published-content/media access rules. PDFs continue using originals.
+
+Existing Media files are not rewritten when these sizes are added. Public
+rendering falls back to the best existing derivative or legacy `thumbnailURL`;
+when an image has no derivative, it is omitted rather than requesting the
+original. Existing records need
+to be regenerated/reprocessed through Payload or re-uploaded to receive the new
+preview and viewer sizes; older thumbnail-only records may display at thumbnail
+resolution in the viewer until then. Anonymous original-image file requests are
+denied; staff can still access originals in the admin.
+
 Project writing, update writing, character writing, hero images, attached galleries
 and archive files render through the existing terminal styles. The reader retains
 its controls and boundary behavior. Keep slugs stable once links are shared;

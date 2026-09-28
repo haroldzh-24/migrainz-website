@@ -263,6 +263,22 @@ export interface Media {
       filesize?: number | null;
       filename?: string | null;
     };
+      preview?: {
+        url?: string | null;
+        width?: number | null;
+        height?: number | null;
+        mimeType?: string | null;
+        filesize?: number | null;
+        filename?: string | null;
+      };
+      viewer?: {
+        url?: string | null;
+        width?: number | null;
+        height?: number | null;
+        mimeType?: string | null;
+        filesize?: number | null;
+        filename?: string | null;
+      };
   };
 }
 /**

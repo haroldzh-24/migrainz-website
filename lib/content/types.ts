@@ -2,7 +2,7 @@ import type { ComponentProps } from 'react';
 import type { RichText } from '@payloadcms/richtext-lexical/react';
 
 export type Writing = ComponentProps<typeof RichText>['data'];
-export type ComicPage = { src: string; alt: string; caption?: string; width?: number; height?: number };
+export type ComicPage = { src: string; viewerSrc?: string; thumbnailSrc?: string; alt: string; caption?: string; width?: number; height?: number };
 export type Chapter = { slug: string; title: string; description: string; pages: ComicPage[]; chapterNumber?: number; comicTitle?: string };
 export type Gallery = { slug: string; title: string; description: string; images: ComicPage[] };
 export type Character = {

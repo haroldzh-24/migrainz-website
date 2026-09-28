@@ -1,5 +1,12 @@
 # Features
 
+## Implemented - 2026-09-28 / Art-first monitor and public image sizes
+
+- Compact monitor/window chrome and maximize ART VIEWER or COMIC READER within the internal screen; collapse the dock while maximized and keep viewer tabs in its titlebar.
+- Generate 400px thumbnail, 1200px preview and 2400px viewer WebP derivatives at quality 84. Public rendering selects the matching derivative; older media falls back to an existing thumbnail and omits images with no derivative rather than sending originals.
+- Preserve uploaded originals for staff/admin; anonymous original-image requests are blocked. Existing records need regeneration to receive the new sizes.
+- Validation: `npm.cmd run typecheck` only; manual UI and media checks remain.
+
 ## Implemented - 2026-09-28 / PostgreSQL route-key repair
 
 - Add a new forward migration to repair route-key fields for existing Factions and Equipment tables without changing migration history or content relationships.
@@ -10,7 +17,7 @@
 
 - Open existing comic routes inside the shared PixelMonitorDesktop using the existing WindowManager, RetroWindow styling and taskbar; clean up the route window on navigation.
 - Retain CMS chapter/page data, add Comic title and chapter number, and add page controls, page selection, keyboard navigation, fullscreen window controls, and the ART VIEWER's zoom/pan canvas.
-- Add directional 3D page turns with mobile fade and reduced-motion immediate transitions. Preserve page colors and aspect ratio without CRT tint.
+- Switch pages immediately with reduced-motion-safe navigation. Preserve page colors and aspect ratio without CRT tint.
 - Validation: `npm.cmd run typecheck` passed; browser/manual checks remain.
 
 ## Implemented - 2026-09-28 / Payload media upload guidance

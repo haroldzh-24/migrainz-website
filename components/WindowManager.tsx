@@ -14,7 +14,7 @@ import { createPortal } from "react-dom";
 
 type WindowPosition = { x: number; y: number };
 type WindowSize = { width: number; height: number };
-export type ViewerImage = { src: string; alt: string; caption?: string; width?: number; height?: number };
+export type ViewerImage = { src: string; viewerSrc?: string; thumbnailSrc?: string; alt: string; caption?: string; width?: number; height?: number };
 export type ViewerTab = {
   id: string;
   href: string;
@@ -59,7 +59,7 @@ type WindowManagerValue = {
 
 const WindowManagerContext = createContext<WindowManagerValue | null>(null);
 const viewerWindowId = "art-viewer";
-const viewerStorageKey = "migrainz-art-viewer-tabs";
+const viewerStorageKey = "migrainz-art-viewer-tabs-v2";
 const viewerWindowDefaults = {
   position: { x: 70, y: 50 },
   size: { width: 900, height: 650 },
@@ -226,7 +226,7 @@ export function useWindowManager() {
   return context;
 }
 
-export function RetroWindow({ id, title, defaultPosition, defaultSize, defaultOpen = true, className, children, onToggleMaximize }: {
+export function RetroWindow({ id, title, defaultPosition, defaultSize, defaultOpen = true, className, children, titlebarContent, onToggleMaximize }: {
   id: string;
   title: string;
   defaultPosition: WindowPosition;
@@ -234,6 +234,7 @@ export function RetroWindow({ id, title, defaultPosition, defaultSize, defaultOp
   defaultOpen?: boolean;
   className?: string;
   children: ReactNode;
+  titlebarContent?: ReactNode;
   onToggleMaximize?: () => void;
 }) {
   const manager = useWindowManager();
@@ -254,7 +255,7 @@ export function RetroWindow({ id, title, defaultPosition, defaultSize, defaultOp
 
   const current = record ?? { id, title, open: defaultOpen, minimized: false, focused: false, zIndex: 1, position: defaultPosition, size: defaultSize };
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0 || (event.target as HTMLElement).closest("button")) return;
+    if (event.button !== 0 || (event.target as HTMLElement).closest("button, a")) return;
     if (current.maximized) return;
     if (window.matchMedia("(max-width: 700px)").matches) return;
     const windowBounds = event.currentTarget.parentElement?.getBoundingClientRect();
@@ -281,8 +282,9 @@ export function RetroWindow({ id, title, defaultPosition, defaultSize, defaultOp
   return createPortal(<section ref={windowElement} className={`retro-window${className ? ` ${className}` : ""}`} data-maximized={current.maximized || undefined} data-focused={current.focused} style={{ left: current.position.x, top: current.position.y, width: current.size.width, height: current.size.height, zIndex: current.zIndex }} onFocusCapture={() => { if (!current.focused) manager.focusWindow(id, "click"); }} onPointerDown={() => manager.focusWindow(id)} aria-label={`${title} window`}>
     <div className="retro-window-titlebar" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={stopDragging} onPointerCancel={stopDragging}>
       <strong>{title}</strong>
+      {titlebarContent}
       <span className="retro-window-controls">
-        {onToggleMaximize && <button type="button" className="art-viewer-maximize" aria-label={`${current.maximized ? "Restore" : "Maximize"} ${title}`} onClick={onToggleMaximize}>{current.maximized ? "RESTORE" : "MAXIMIZE"}</button>}
+        {onToggleMaximize && <button type="button" className="art-viewer-maximize" aria-label={`${current.maximized ? "Restore" : "Maximize"} ${title}`} onClick={onToggleMaximize}>{current.maximized ? "❐" : "□"}</button>}
         <button type="button" aria-label={`Minimize ${title}`} onClick={() => manager.minimizeWindow(id)}>_</button>
         <button type="button" aria-label={`Close ${title}`} onClick={() => manager.closeWindow(id)}>×</button>
       </span>
