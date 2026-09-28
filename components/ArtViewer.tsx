@@ -3,10 +3,10 @@
 import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { RetroWindow, useWindowManager, type ViewerImage } from "@/components/WindowManager";
 
-type View = { scale: number | null; x: number; y: number };
-const fitView: View = { scale: null, x: 0, y: 0 };
+export type View = { scale: number | null; x: number; y: number };
+export const fitView: View = { scale: null, x: 0, y: 0 };
 
-function ArtworkCanvas({ image, view, onChange }: { image: ViewerImage; view: View; onChange: (view: View) => void }) {
+export function ArtworkCanvas({ image, view, onChange }: { image: ViewerImage; view: View; onChange: (view: View) => void }) {
   const canvas = useRef<HTMLDivElement>(null);
   const [space, setSpace] = useState({ width: 0, height: 0 });
   const [natural, setNatural] = useState({ width: 0, height: 0 });

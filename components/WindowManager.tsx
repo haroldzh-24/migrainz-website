@@ -43,6 +43,7 @@ type WindowManagerValue = {
   hideDesktop: () => void;
   windows: WindowRecord[];
   registerWindow: (window: Omit<WindowRecord, "focused" | "zIndex">) => void;
+  unregisterWindow: (id: string) => void;
   focusWindow: (id: string, sound?: "click" | "open") => void;
   minimizeWindow: (id: string) => void;
   restoreWindow: (id: string) => void;
@@ -138,6 +139,15 @@ export function WindowManagerProvider({ children }: { children: ReactNode }) {
       return [...current, { ...window, position: clampPosition(window.position, window.size, workspace), focused: current.length === 0, zIndex: nextZIndex.current }];
     });
   };
+  const unregisterWindow = (id: string) => {
+    setWindows((current) => {
+      const remaining = current.filter((window) => window.id !== id);
+      if (remaining.some((window) => window.focused)) return remaining;
+      const topmost = remaining.filter((window) => window.open && !window.minimized)
+        .sort((left, right) => right.zIndex - left.zIndex)[0];
+      return remaining.map((window) => ({ ...window, focused: window.id === topmost?.id }));
+    });
+  };
   const focusWindow = (id: string, sound: "click" | "open" = "open") => {
     nextZIndex.current += 1;
     setWindows((current) => current.map((window) => ({
@@ -207,7 +217,7 @@ export function WindowManagerProvider({ children }: { children: ReactNode }) {
     else playSound("close");
   };
 
-  return <WindowManagerContext.Provider value={{ workspace, setWorkspace, desktopVisible, showDesktop, hideDesktop, windows, registerWindow, focusWindow, minimizeWindow, restoreWindow, closeWindow, moveWindow, toggleMaximizeWindow, viewerTabs, activeViewerTab, openViewerTab, switchViewerTab, closeViewerTab }}>{children}</WindowManagerContext.Provider>;
+  return <WindowManagerContext.Provider value={{ workspace, setWorkspace, desktopVisible, showDesktop, hideDesktop, windows, registerWindow, unregisterWindow, focusWindow, minimizeWindow, restoreWindow, closeWindow, moveWindow, toggleMaximizeWindow, viewerTabs, activeViewerTab, openViewerTab, switchViewerTab, closeViewerTab }}>{children}</WindowManagerContext.Provider>;
 }
 
 export function useWindowManager() {

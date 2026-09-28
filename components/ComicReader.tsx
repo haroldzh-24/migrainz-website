@@ -1,112 +1,92 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type KeyboardEvent } from "react";
+import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
+import { ArtworkCanvas, fitView, type View } from "@/components/ArtViewer";
+import { RetroWindow, useWindowManager } from "@/components/WindowManager";
 import { projectHref, type Project, type Chapter } from "@/lib/content/types";
+
+const windowID = "comic-reader";
 
 export default function ComicReader({
   project,
   chapter,
 }: {
-  project: Pick<Project, 'slug' | 'title'>;
+  project: Pick<Project, "slug" | "title">;
   chapter: Chapter;
 }) {
   const [page, setPage] = useState(0);
+  const [view, setView] = useState<View>(fitView);
+  const [turnDirection, setTurnDirection] = useState<"next" | "previous" | null>(null);
+  const pageSelectID = useId();
+  const { toggleMaximizeWindow, unregisterWindow } = useWindowManager();
+  const unregisterRef = useRef(unregisterWindow);
+  unregisterRef.current = unregisterWindow;
+  useEffect(() => () => unregisterRef.current(windowID), []);
   const current = chapter.pages[page];
+
+  function goToPage(nextPage: number) {
+    const bounded = Math.max(0, Math.min(chapter.pages.length - 1, nextPage));
+    if (bounded === page) return;
+    setTurnDirection(bounded > page ? "next" : "previous");
+    setPage(bounded);
+    setView(fitView);
+  }
+
   function keyboard(event: KeyboardEvent<HTMLElement>) {
-    if (
-      (event.target as HTMLElement).tagName === "SELECT" ||
-      event.altKey ||
-      event.ctrlKey ||
-      event.metaKey
-    )
-      return;
+    const target = event.target as HTMLElement;
+    if (event.defaultPrevented || target.closest("select, input, textarea, [contenteditable='true']") || event.altKey || event.ctrlKey || event.metaKey) return;
     if (event.key === "ArrowRight") {
       event.preventDefault();
-      setPage((value) => Math.min(chapter.pages.length - 1, value + 1));
+      goToPage(page + 1);
     }
     if (event.key === "ArrowLeft") {
       event.preventDefault();
-      setPage((value) => Math.max(0, value - 1));
+      goToPage(page - 1);
     }
   }
-  if (!current)
-    return (
-      <p>
-        No public pages filed yet.{" "}
-        <Link href={projectHref(project)}>Return to {project.title}</Link>
-      </p>
-    );
-  const controls = (
-    <>
-      <button
-        className="terminal-button"
-        disabled={page === 0}
-        onClick={() => setPage(page - 1)}
-      >
-        ← PREVIOUS
-      </button>
-      <span>
-        PAGE {page + 1} / {chapter.pages.length}
-      </span>
-      <button
-        className="terminal-button"
-        disabled={page === chapter.pages.length - 1}
-        onClick={() => setPage(page + 1)}
-      >
-        NEXT →
-      </button>
-    </>
-  );
+
   return (
-    <section
-      className="comic-reader"
-      aria-label="Comic reader"
-      tabIndex={0}
-      onKeyDown={keyboard}
+    <RetroWindow
+      id={windowID}
+      title="COMIC READER"
+      className="comic-reader-window"
+      defaultPosition={{ x: 32, y: 24 }}
+      defaultSize={{ width: 1040, height: 700 }}
+      onToggleMaximize={() => toggleMaximizeWindow(windowID)}
     >
-      <Link className="section-link" href={projectHref(project)}>
-        ← RETURN TO {project.title}
-      </Link>
-      <div className="reader-toolbar">
-        <label htmlFor="page-select">GO TO PAGE </label>
-        <select
-          id="page-select"
-          value={page}
-          onChange={(event) => setPage(Number(event.target.value))}
-        >
-          {chapter.pages.map((_, index) => (
-            <option key={index} value={index}>
-              {index + 1}
-            </option>
-          ))}
-        </select>
-        <span>SINGLE PAGE / LEFT & RIGHT ARROW KEYS</span>
-      </div>
-      <nav
-        className="reader-controls"
-        aria-label="Page navigation above artwork"
-      >
-        {controls}
-      </nav>
-      <figure className="comic-figure">
-        <img src={current.src} alt={current.alt} width={900} height={1200} />
-        <figcaption aria-live="polite" aria-atomic="true">
-          PAGE {page + 1} / {chapter.pages.length} — {current.alt}
-        </figcaption>
-      </figure>
-      <nav
-        className="reader-controls"
-        aria-label="Page navigation below artwork"
-      >
-        {controls}
-      </nav>
-      {page === chapter.pages.length - 1 && (
-        <p className="reader-end">
-          END OF CHAPTER /{" "}
-          <Link href={projectHref(project)}>RETURN TO {project.title} →</Link>
-        </p>
-      )}
-    </section>
+      <section className="comic-reader-content" aria-label="Comic reader" tabIndex={0} onKeyDown={keyboard}>
+        <header className="comic-reader-heading">
+          <div>
+            <p>{project.title}</p>
+            <h2>{chapter.comicTitle || project.title}</h2>
+            <span>{chapter.chapterNumber !== undefined ? `CHAPTER ${chapter.chapterNumber} / ` : "CHAPTER / "}{chapter.title}</span>
+          </div>
+          <Link href={projectHref(project)}>RETURN TO PROJECT</Link>
+        </header>
+        <div className="comic-reader-page-picker">
+          <label htmlFor={pageSelectID}>PAGE</label>
+          <select
+            id={pageSelectID}
+            aria-label="Go to page"
+            value={page}
+            onChange={(event) => goToPage(Number(event.target.value))}
+            disabled={!chapter.pages.length}
+          >
+            {chapter.pages.map((_, index) => <option key={index} value={index}>{index + 1}</option>)}
+          </select>
+        </div>
+        <div className="comic-page-stage">
+          {current ? <div key={`${page}-${current.src}`} className={`comic-page-leaf${turnDirection ? ` comic-page-turn-${turnDirection}` : ""}`}>
+            <ArtworkCanvas key={`${page}-${current.src}`} image={current} view={view} onChange={setView} />
+          </div> : <p className="comic-page-empty">NO PUBLIC PAGES FILED</p>}
+        </div>
+        <footer className="comic-reader-navigation">
+          <button type="button" disabled={page === 0 || !current} onClick={() => goToPage(page - 1)}>PREV</button>
+          <output aria-live="polite">PAGE {chapter.pages.length ? page + 1 : 0} / {chapter.pages.length}</output>
+          <button type="button" disabled={page >= chapter.pages.length - 1 || !current} onClick={() => goToPage(page + 1)}>NEXT</button>
+        </footer>
+      </section>
+    </RetroWindow>
   );
 }

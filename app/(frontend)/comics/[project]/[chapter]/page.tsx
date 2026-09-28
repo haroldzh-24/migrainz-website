@@ -20,7 +20,7 @@ export default async function ReaderPage({
       title={chapter.title}
     >
       <p className="lede">{chapter.description}</p>
-      <ComicReader project={{ slug: project.slug, title: project.title }} chapter={chapter} />
+      <ComicReader key={`${project.slug}/${chapter.slug}`} project={{ slug: project.slug, title: project.title }} chapter={chapter} />
     </Directory>
   );
 }

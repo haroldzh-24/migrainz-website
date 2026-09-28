@@ -221,7 +221,7 @@ export interface Project {
   _status?: ('draft' | 'published') | null;
 }
 /**
- * Files become public only when published, PUBLIC, and attached to published public content.
+ * For one file, choose Create, upload JPG, PNG, WebP, GIF, SVG, or PDF, add required alt text, optionally select its Project, then save as draft or publish. Comic pages must be images; use Add multiple pages on a Chapter for a naturally filename-sorted batch. Files are public only when published, PUBLIC, and attached to published public content.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "media".

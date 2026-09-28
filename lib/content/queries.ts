@@ -30,7 +30,8 @@ export const getProjects = cache(async (): Promise<Project[]> => {
     cms.find({ collection: 'galleries', overrideAccess: false, depth: 1, pagination: false, where: publicWhere }),
   ]);
   return projects.docs.map((project) => {
-    const comicIDs = comics.docs.filter((comic) => idOf(comic.project) === project.id).map((comic) => comic.id);
+    const projectComics = comics.docs.filter((comic) => idOf(comic.project) === project.id);
+    const comicIDs = projectComics.map((comic) => comic.id);
     const projectChapters = chapters.docs.filter((chapter) => comicIDs.includes(idOf(chapter.comic)));
     const projectTracker = tracker.docs.filter((item) => idOf(item.project) === project.id);
     return {
@@ -56,8 +57,11 @@ export const getProjects = cache(async (): Promise<Project[]> => {
           const chapter = projectChapters.find((c) => c.id === idOf(value)); return chapter ? [chapter.slug] : [];
         }),
       })),
-      chapters: projectChapters.map((chapter) => ({ slug: chapter.slug, title: chapter.title,
-        description: chapter.description || '', pages: images(chapter.pages) })),
+      chapters: projectChapters.map((chapter) => {
+        const comic = projectComics.find((entry) => entry.id === idOf(chapter.comic));
+        return { slug: chapter.slug, title: chapter.title, chapterNumber: chapter.chapterNumber,
+          comicTitle: comic?.title, description: chapter.description || '', pages: images(chapter.pages) };
+      }),
     };
   });
 });

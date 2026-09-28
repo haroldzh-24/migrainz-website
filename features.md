@@ -1,5 +1,12 @@
 # Features
 
+## Implemented - 2026-09-28 / Monitor comic reader
+
+- Open existing comic routes inside the shared PixelMonitorDesktop using the existing WindowManager, RetroWindow styling and taskbar; clean up the route window on navigation.
+- Retain CMS chapter/page data, add Comic title and chapter number, and add page controls, page selection, keyboard navigation, fullscreen window controls, and the ART VIEWER's zoom/pan canvas.
+- Add directional 3D page turns with mobile fade and reduced-motion immediate transitions. Preserve page colors and aspect ratio without CRT tint.
+- Validation: `npm.cmd run typecheck` passed; browser/manual checks remain.
+
 ## Implemented - 2026-09-28 / Payload media upload guidance
 
 - Clarify single-file Media uploads and the existing Chapter batch workflow in the admin, including Comic/Project assignment, alt text, natural filename sorting, saved page order and publishing.
