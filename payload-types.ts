@@ -394,6 +394,7 @@ export interface Faction {
   name: string;
   slug: string;
   project: number | Project;
+  routeKey?: string | null;
   type: 'Faction' | 'Organization' | 'Association' | 'Military Unit' | 'Corporation' | 'Government' | 'Group' | 'Other';
   status?: string | null;
   description?: string | null;
@@ -498,6 +499,7 @@ export interface Equipment {
   name: string;
   slug: string;
   project: number | Project;
+  routeKey?: string | null;
   /**
    * Optional. Select a project first; only its factions are available.
    */
@@ -874,6 +876,7 @@ export interface FactionsSelect<T extends boolean = true> {
   name?: T;
   slug?: T;
   project?: T;
+  routeKey?: T;
   type?: T;
   status?: T;
   description?: T;
@@ -927,6 +930,7 @@ export interface EquipmentSelect<T extends boolean = true> {
   name?: T;
   slug?: T;
   project?: T;
+  routeKey?: T;
   faction?: T;
   category?: T;
   description?: T;

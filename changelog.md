@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-09-28 / PostgreSQL route-key repair
+
+- Add and register `20260928_120000_route_key_repair` as a new forward migration for existing Factions and Equipment schemas, including version-table route keys.
+- Backfill route keys from project IDs and slugs before creating the unique indexes; all table operations are conditional and no Character schema/indexes are touched.
+- Keep previously recorded migrations immutable; no production or local database migration was applied.
+- Validation: `npm.cmd run typecheck` only.
+
 ## 2026-09-28 / Factions and equipment index collision
 
 - Replace the unnamed project/slug composites on Factions and Equipment with collection-specific unique route-key indexes because Payload 3.88 does not expose custom compound-index names.

@@ -1,5 +1,11 @@
 # Features
 
+## Implemented - 2026-09-28 / PostgreSQL route-key repair
+
+- Add a new forward migration to repair route-key fields for existing Factions and Equipment tables without changing migration history or content relationships.
+- Backfill live and version records using the collection hook format (`projectID/slug`); add collection-specific unique indexes and version lookup indexes.
+- Validation: `npm.cmd run typecheck` only; production migration is not applied locally.
+
 ## Implemented - 2026-09-28 / Monitor comic reader
 
 - Open existing comic routes inside the shared PixelMonitorDesktop using the existing WindowManager, RetroWindow styling and taskbar; clean up the route window on navigation.
