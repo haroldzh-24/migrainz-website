@@ -3,9 +3,12 @@ import type { ReactNode } from "react";
 import StartupSequence from "@/components/StartupSequence";
 import TerminalHeader from "@/components/TerminalHeader";
 import { SoundProvider } from "@/components/SoundProvider";
-import { WindowManagerProvider } from "@/components/WindowManager";
+import { PublicWindowWorkspace, WindowManagerProvider } from "@/components/WindowManager";
 import ArtViewer from "@/components/ArtViewer";
 import PixelMonitorDesktop from "@/components/PixelMonitorDesktop";
+import { AccessDeniedWindow, PatreonAccessProvider } from '@/components/PatreonAccess';
+import { viewerAccess } from '@/lib/patreon/viewer';
+import { patreonConfig, patreonJoinURL } from '@/lib/patreon/server';
 import "./globals.css";
 
 export const dynamic = "force-dynamic";
@@ -19,10 +22,11 @@ export const metadata: Metadata = {
     "Studio Migrainz: a public terminal for projects, artwork, comics, production logs and studio archives.",
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  const viewer = await viewerAccess();
   return (
     <html lang="en" data-scroll-behavior="smooth">
-      <body><SoundProvider><WindowManagerProvider><StartupSequence>
+      <body><PatreonAccessProvider viewer={viewer} enabled={Boolean(patreonConfig())} joinURL={patreonJoinURL()}><SoundProvider><WindowManagerProvider><StartupSequence>
           <a className="skip-link" href="#top">
             SKIP TO CONTENT
           </a>
@@ -31,13 +35,15 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <main className="shell" id="top" tabIndex={-1}>
             {children}
           </main>
+          <PublicWindowWorkspace />
           <PixelMonitorDesktop />
           <ArtViewer />
+          <AccessDeniedWindow />
           <footer className="shell footer">
             <span>© 2026 MIGRAINZ</span>
-            <span>PUBLIC NODE / UNAUTHENTICATED ACCESS</span>
+            <span>{viewer.signedIn ? 'PATREON ID VERIFIED' : 'PUBLIC NODE / UNAUTHENTICATED ACCESS'}</span>
           </footer>
-        </StartupSequence></WindowManagerProvider></SoundProvider></body>
+        </StartupSequence></WindowManagerProvider></SoundProvider></PatreonAccessProvider></body>
     </html>
   );
 }

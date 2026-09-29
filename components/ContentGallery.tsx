@@ -1,9 +1,10 @@
 import type { ComicPage } from '@/lib/content/types';
+import ClassifiedPlaceholder from '@/components/ClassifiedPlaceholder';
 
 export default function ContentGallery({ images }: { images: ComicPage[] }) {
   if (!images.length) return null;
   return <div className="content-gallery">{images.map((image, index) => (
-    <figure key={`${image.src}-${index}`}>
+    image.classification ? <ClassifiedPlaceholder key={index} classification={image.classification} label={image.safeLabel} variant="media" /> : <figure key={`${image.src}-${index}`}>
       {/\.pdf(?:\?|$)/i.test(image.src)
         ? <a className="terminal-button" href={image.src}>{image.caption || image.alt} / OPEN FILE</a>
         : <img src={image.src} alt={image.alt} width={image.width} height={image.height} loading="lazy" />}

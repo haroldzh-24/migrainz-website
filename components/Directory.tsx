@@ -1,5 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import ClassifiedPlaceholder from '@/components/ClassifiedPlaceholder';
+import type { Classified } from '@/lib/content/types';
 
 export function Directory({
   path,
@@ -29,11 +31,14 @@ export function DirectoryLink({
   href,
   name,
   meta,
+  classification,
+  safeLabel,
 }: {
   href: string;
   name: string;
   meta: string;
-}) {
+} & Classified) {
+  if (classification) return <ClassifiedPlaceholder classification={classification} label={safeLabel} />;
   return (
     <Link className="directory-row" href={href}>
       <span aria-hidden="true">↳</span>

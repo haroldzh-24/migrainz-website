@@ -1,5 +1,5 @@
+import { lockedPageOrNotFound } from "@/components/LockedContentPage";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { Directory } from "@/components/Directory";
 import { getProject } from "@/lib/content/queries";
 import { projectHref } from "@/lib/content/types";
@@ -11,7 +11,7 @@ export default async function CharactersPage({
   params: Promise<{ slug: string }>;
 }) {
   const project = await getProject((await params).slug);
-  if (!project) notFound();
+  if (!project) return lockedPageOrNotFound({ projectSlug: (await params).slug });
   return (
     <Directory
       path={`SYS:/PROJECTS/${project.slug.toUpperCase()}/CHARACTERS/`}
@@ -25,7 +25,7 @@ export default async function CharactersPage({
           <CharacterViewerLink
             key={character.slug}
             project={{ slug: project.slug, title: project.title }}
-            character={{ slug: character.slug, name: character.name, role: character.role, description: character.description, images: character.images, updated: character.updated }}
+            character={{ classification: character.classification, safeLabel: character.safeLabel, slug: character.slug, name: character.name, role: character.role, description: character.description, images: character.images, updated: character.updated }}
           />
         ))}
       </div>

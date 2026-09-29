@@ -2,12 +2,15 @@ import type { Field, TextField, RelationshipField } from 'payload';
 
 export const publishingFields: Field[] = [
   { name: 'listingVisibility', type: 'select', required: true, defaultValue: 'public',
-    options: [{ label: 'PUBLIC listing (future locked previews)', value: 'public' }, { label: 'Hidden listing', value: 'hidden' }],
-    admin: { position: 'sidebar', description: 'Metadata visibility only. Does not grant access to writing or files. Locked listings are not exposed in this foundation.' } },
+    options: [{ label: 'VISIBLE listing', value: 'public' }, { label: 'HIDDEN listing', value: 'hidden' }],
+    admin: { position: 'sidebar', description: 'HIDDEN omits this record from public output. VISIBLE respects the access state below; it never grants access to protected content.' } },
   { name: 'accessLevel', type: 'select', required: true, defaultValue: 'public',
-    options: [{ label: 'PUBLIC', value: 'public' }, { label: 'PATRON (staff only until membership is implemented)', value: 'patron' }],
-    admin: { position: 'sidebar' } },
-  { name: 'listingSummary', type: 'textarea', admin: { description: 'Optional safe teaser for future directory listings. Never put restricted writing here.' } },
+    options: [{ label: 'PUBLIC — visible and accessible', value: 'public' }, { label: 'REDACTED — visible censor bars, no access', value: 'redacted' }, { label: 'PATRON — visible locked placeholder, no public access', value: 'patron' }, { label: 'HIDDEN — omitted entirely', value: 'hidden' }],
+    admin: { position: 'sidebar', description: 'PUBLIC is accessible to everyone. PATRON requires verified active membership and any tier restriction below. REDACTED remains censored for everyone. HIDDEN is omitted. Hidden listings override access.' } },
+  { name: 'patreonTierIDs', type: 'json', label: 'Allowed Patreon tier IDs',
+    admin: { position: 'sidebar', condition: (_, siblingData) => siblingData?.accessLevel === 'patron', description: 'Optional JSON array of numeric tier ID strings copied from Patreon. At least one listed tier must match. Empty/null allows any active paid Studio Migrainz patron. Use IDs, not tier names.' },
+    validate: (value: unknown) => value == null || (Array.isArray(value) && value.length <= 100 && value.every(id => typeof id === 'string' && /^\d+$/.test(id))) || 'Enter a JSON array of numeric Patreon tier ID strings, or leave empty.' },
+  { name: 'listingSummary', type: 'textarea', label: 'Safe public placeholder label', admin: { description: 'Optional text explicitly approved for public display on REDACTED/PATRON placeholders. Never include restricted titles, writing or file URLs.' } },
   { name: 'legacyKey', type: 'text', unique: true, index: true, admin: { hidden: true } },
 ];
 export const slugField: TextField = { name: 'slug', type: 'text', required: true, index: true,

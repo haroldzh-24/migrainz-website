@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { ArtworkCanvas, fitView, type View } from "@/components/ArtViewer";
 import { RetroWindow, useWindowManager } from "@/components/WindowManager";
+import ClassifiedPlaceholder from "@/components/ClassifiedPlaceholder";
 import { projectHref, type Project, type Chapter } from "@/lib/content/types";
 
 const windowID = "comic-reader";
@@ -62,7 +63,9 @@ export default function ComicReader({
     >
       <section className="comic-reader-content" aria-label="Comic reader" tabIndex={0} onKeyDown={keyboard}>
         <div className="comic-page-stage">
-          {current ? <ArtworkCanvas key={`${page}-${current.src}`} image={current} view={view} onChange={setView} /> : <p className="comic-page-empty">NO PUBLIC PAGES FILED</p>}
+          {current?.classification ? <ClassifiedPlaceholder classification={current.classification} label={current.safeLabel} variant="media" />
+            : current?.src ? <ArtworkCanvas key={`${page}-${current.src}`} image={current} view={view} onChange={setView} />
+            : <p className="comic-page-empty" role="status">{current ? "PAGE UNAVAILABLE" : "NO PUBLIC PAGES FILED"}</p>}
         </div>
         <footer className="comic-reader-navigation">
           <button type="button" disabled={page === 0 || !current} onClick={() => goToPage(page - 1)}>PREV</button>

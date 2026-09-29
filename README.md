@@ -66,9 +66,9 @@ The reader handles previous/next, direct page selection, and arrow keys while fo
 
 Replace `shopUrl` in `data/site.ts` when the real storefront is ready and remove the placeholder flag to update its labels. Commerce stays external.
 
-## Future membership access
+## Patreon membership access
 
-No OAuth, membership verification, private content or fake unlocks exist. `public/` and frontend data contain public files only. Future restrictions require private storage and server-side membership authorization on every protected request, including image delivery. Never put restricted files in public assets or client components.
+Patreon API v2 login verifies campaign membership and optional tier IDs on the server. Protected content and Media requests require authorization; visitors without access receive safe classified placeholders. See [Patreon setup and manual tests](docs/PATREON.md) for configuration, the pending migration and current media/session limitations. `public/` contains public files only. Never put restricted files in public assets or unauthenticated client data.
 
 ## Browser checks
 

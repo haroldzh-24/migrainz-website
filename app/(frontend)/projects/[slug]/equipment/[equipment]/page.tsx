@@ -1,5 +1,5 @@
+import { lockedPageOrNotFound, lockedPageTitle } from "@/components/LockedContentPage";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { Directory } from "@/components/Directory";
 import ContentGallery from "@/components/ContentGallery";
 import { EquipmentViewerButton } from "@/components/EquipmentViewerLink";
@@ -9,14 +9,15 @@ type Props = { params: Promise<{ slug: string; equipment: string }> };
 export async function generateMetadata({ params }: Props) {
   const ids = await params;
   const project = await getProjectIdentity(ids.slug);
-  return { title: project ? (await getEquipment(project.id, ids.equipment))?.name ?? "Record not found" : "Record not found" };
+  const equipment = project ? await getEquipment(project.id, ids.equipment) : undefined;
+  return { title: equipment?.name ?? await lockedPageTitle({ projectSlug: ids.slug, kind: "equipment", slug: ids.equipment }) };
 }
 export default async function EquipmentPage({ params }: Props) {
   const ids = await params;
   const project = await getProjectIdentity(ids.slug);
-  if (!project) notFound();
+  if (!project) return lockedPageOrNotFound({ projectSlug: ids.slug, kind: "equipment", slug: ids.equipment });
   const equipment = await getEquipment(project.id, ids.equipment);
-  if (!equipment) notFound();
+  if (!equipment) return lockedPageOrNotFound({ projectSlug: ids.slug, kind: "equipment", slug: ids.equipment });
   return <Directory path={`SYS:/PROJECTS/${project.slug.toUpperCase()}/EQUIPMENT/${equipment.slug.toUpperCase()}`} title={equipment.name}>
     <Link className="section-link" href={`/projects/${project.slug}/factions`}>RETURN TO FACTIONS</Link>
     <EquipmentViewerButton project={project} equipment={equipment} />

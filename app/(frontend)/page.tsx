@@ -1,3 +1,4 @@
+import ClassifiedPlaceholder from "@/components/ClassifiedPlaceholder";
 import Watcher from "@/components/Watcher";
 import TerminalNav from "@/components/TerminalNav";
 import Link from "next/link";
@@ -18,7 +19,7 @@ export default async function Home() {
     .flatMap((project) =>
       project.notes.map((note) => ({ ...note, project })),
     )
-    .sort((a, b) => b.date.localeCompare(a.date))
+    .sort((a, b) => (a.listingOrder ?? 0) - (b.listingOrder ?? 0))
     .slice(0, 5);
   const chapters = projects.flatMap((project) =>
     project.chapters.map((chapter) => ({ project, chapter })),
@@ -31,11 +32,11 @@ export default async function Home() {
         <div className="hero-copy">
           <p className="eyebrow">PUBLIC SYSTEM INDEX / REV. 0.2</p>
           <h1>
-            ARCHIVE.
+            MIGRAINZ
             <br />
-            PROJECTS.
+            ARCHIVE &amp;
             <br />
-            OBJECTS.
+            PROJECTS
           </h1>
           <p className="lede">
             A public terminal for ongoing work, finished projects, studio
@@ -60,7 +61,7 @@ export default async function Home() {
               <h2>LATEST</h2><Link href="/tracker">OPEN FEED →</Link>
             </div>
             <div className="home-feed">
-              {updates.length ? updates.map((update, index) => (
+              {updates.length ? updates.map((update, index) => update.classification ? <ClassifiedPlaceholder key={index} classification={update.classification} label={update.safeLabel} variant="inline" /> : (
                 <Link className="home-feed-row" href={projectHref(update.project)} key={`${update.project.slug}-${update.date}-${index}`}>
                   <time dateTime={update.date}>{dateLabel(update.date)}</time>
                   <span><b>{update.project.id}</b> / {update.text}</span>
@@ -68,13 +69,6 @@ export default async function Home() {
                 </Link>
               )) : <p className="terminal-empty">NO PUBLIC ACTIVITY FILED.</p>}
             </div>
-          </RetroWindow>
-          <RetroWindow id="system" title="SYSTEM" defaultOpen={false} defaultPosition={{ x: 650, y: 50 }} defaultSize={{ width: 430, height: 220 }}>
-            <div className="terminal-panel-head"><h2>SYSTEM</h2><span>NODE STATUS</span></div>
-            <p><b>VERSION</b> 0.2.0 / <b>STATUS</b> ONLINE</p>
-            <p><b>ACCESS</b> PUBLIC / UNAUTHENTICATED</p>
-            <p><b>CHANNELS</b> PROJECTS / COMICS / ARCHIVE</p>
-            <Link className="system-link" href="/about">READ SYSTEM INFORMATION →</Link>
           </RetroWindow>
         </div>
         <div className="home-terminal-grid">
@@ -84,7 +78,7 @@ export default async function Home() {
               <h2>PROJECTS</h2><Link href="/projects">DATABASE →</Link>
             </div>
             <div className="home-project-list">
-              {featured.length ? featured.map((project) => (
+              {featured.length ? featured.map((project) => project.classification ? <ClassifiedPlaceholder key={project.slug} classification={project.classification} label={project.safeLabel} /> : (
                 <Link className="home-project-row" href={projectHref(project)} key={project.slug}>
                   <span className={`home-project-mark ${project.art}`}>{project.id}</span>
                   <span><b>{project.title}</b><small>{project.status} / UPDATED {project.updated}</small></span>
@@ -98,7 +92,7 @@ export default async function Home() {
             <div className="terminal-panel-head">
               <h2>COMICS</h2><Link href="/comics">READER →</Link>
             </div>
-            {chapters.length ? chapters.slice(0, 3).map(({ project, chapter }) => (
+            {chapters.length ? chapters.slice(0, 3).map(({ project, chapter }) => chapter.classification ? <ClassifiedPlaceholder key={`${project.slug}-${chapter.slug}`} classification={chapter.classification} label={chapter.safeLabel} /> : (
               <Link className="home-directory-row" href={chapterHref(project, chapter)} key={`${project.slug}-${chapter.slug}`}>
                 <span>↳</span><b>{project.title} / {chapter.title}</b><em>{chapter.pages.length} PAGES</em>
               </Link>
@@ -111,7 +105,7 @@ export default async function Home() {
             </div>
             {trackerProject ? <>
               <Link className="tracker-project-link" href={projectHref(trackerProject)}>{trackerProject.id} / {trackerProject.title}</Link>
-              {trackerProject.phases.slice(0, 3).map((phase) => (
+              {trackerProject.phases.slice(0, 3).map((phase, index) => phase.classification ? <ClassifiedPlaceholder key={index} classification={phase.classification} label={phase.safeLabel} variant="inline" /> : (
                 <div className="home-progress-row" key={phase.label}>
                   <span>{phase.label}</span><i><b style={{ width: `${phase.percent}%` }} /></i><strong>{phase.percent}%</strong>
                 </div>
@@ -123,7 +117,7 @@ export default async function Home() {
         <div className="home-terminal-lower">
           <section className="terminal-panel archive-panel">
             <div className="terminal-panel-head"><h2>ARCHIVE</h2><Link href="/archive">RECOVERED FILES →</Link></div>
-            {archiveItems.length ? archiveItems.slice(0, 3).map((item) => (
+            {archiveItems.length ? archiveItems.slice(0, 3).map((item) => item.classification ? <ClassifiedPlaceholder key={item.slug} classification={item.classification} label={item.safeLabel} /> : (
               <Link className="home-directory-row" href={`/archive#item-${item.slug}`} key={item.slug}>
                 <span>{dateLabel(item.date)}</span><b>{item.title}</b><em>{item.category || "UNFILED"}</em>
               </Link>

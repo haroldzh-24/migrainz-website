@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useWindowManager, type ViewerTab } from "@/components/WindowManager";
+import ClassifiedPlaceholder from '@/components/ClassifiedPlaceholder';
+import type { Classified } from '@/lib/content/types';
 
-type Props = {
+type Props = Classified & {
   label: string;
   type: string;
   href: string;
@@ -14,7 +16,12 @@ type Props = {
   metadata?: { label: string; value: string }[];
 };
 
-export default function DesktopFile({ label, type, href, subtitle, viewerTab, metadata = [] }: Props) {
+export default function DesktopFile(props: Props) {
+  if (props.classification) return <ClassifiedPlaceholder classification={props.classification} label={props.safeLabel} />;
+  return <PublicDesktopFile {...props} />;
+}
+
+function PublicDesktopFile({ label, type, href, subtitle, viewerTab, metadata = [] }: Props) {
   const { openViewerTab } = useWindowManager();
   const id = useId();
   const root = useRef<HTMLDivElement>(null);

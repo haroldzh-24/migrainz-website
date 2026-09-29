@@ -6,7 +6,7 @@ import { validatePublishedMedia } from '@/cms/validate-content';
 function content(slug: CollectionSlug, fields: Field[], parent?: CollectionSlug, relation = 'project', optional = false): CollectionConfig {
   return {
     slug, admin: { useAsTitle: ['characters', 'factions', 'equipment'].includes(slug) ? 'name' : 'title', group: 'Studio content' },
-    access: editorialAccess(publicContent(parent, relation, optional)),
+    access: editorialAccess(publicContent(parent, relation, optional, slug)),
     versions: { drafts: true, maxPerDoc: 25 },
     fields: [...fields, ...publishingFields],
     hooks: { beforeChange: [validatePublishedMedia], beforeDelete: [({ req, id }) => preventReferencedDelete(req, slug, id)] },
@@ -94,8 +94,8 @@ Equipment.hooks!.beforeValidate = [({ data, originalDoc }) => {
 // Equipment inherits both its project's access and its optional faction's access.
 // Characters retain project-based access so existing character URLs stay independent.
 Equipment.access!.read = async (args) => {
-  const project = await publicContent('projects')(args);
-  const faction = await publicContent('factions', 'faction', true)(args);
+  const project = await publicContent('projects', 'project', false, 'equipment')(args);
+  const faction = await publicContent('factions', 'faction', true, 'equipment')(args);
   if (project === false || faction === false) return false;
   if (project === true) return faction;
   if (faction === true) return project;

@@ -149,7 +149,7 @@ export default function PromoWindow({
                 ? site.shopIsPlaceholder
                   ? "Placeholder store URL — real storefront coming later."
                   : "Visit the separate Studio Migrainz storefront."
-                : "Access preview only. Account connection is a future feature."}
+                : "Connect Patreon to verify your studio access."}
             </small>
           </div>
         </div>

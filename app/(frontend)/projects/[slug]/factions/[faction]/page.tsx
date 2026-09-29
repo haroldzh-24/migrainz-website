@@ -1,5 +1,5 @@
+import { lockedPageOrNotFound, lockedPageTitle } from "@/components/LockedContentPage";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { Directory } from "@/components/Directory";
 import ContentWriting from "@/components/ContentWriting";
 import ContentGallery from "@/components/ContentGallery";
@@ -11,14 +11,15 @@ type Props = { params: Promise<{ slug: string; faction: string }> };
 export async function generateMetadata({ params }: Props) {
   const ids = await params;
   const project = await getProjectIdentity(ids.slug);
-  return { title: project ? (await getFaction(project.id, ids.faction))?.name ?? "Record not found" : "Record not found" };
+  const faction = project ? await getFaction(project.id, ids.faction) : undefined;
+  return { title: faction?.name ?? await lockedPageTitle({ projectSlug: ids.slug, kind: "factions", slug: ids.faction }) };
 }
 export default async function FactionPage({ params }: Props) {
   const ids = await params;
   const project = await getProjectIdentity(ids.slug);
-  if (!project) notFound();
+  if (!project) return lockedPageOrNotFound({ projectSlug: ids.slug, kind: "factions", slug: ids.faction });
   const faction = await getFaction(project.id, ids.faction);
-  if (!faction) notFound();
+  if (!faction) return lockedPageOrNotFound({ projectSlug: ids.slug, kind: "factions", slug: ids.faction });
   const contents = await getFactionContents(project.id, faction.id);
   return <Directory path={`SYS:/PROJECTS/${project.slug.toUpperCase()}/FACTIONS/${faction.slug.toUpperCase()}/`} title={faction.name}>
     <Link className="section-link" href={`/projects/${project.slug}/factions`}>RETURN TO FACTIONS</Link>

@@ -9,6 +9,7 @@ export default async function ProjectIndex() {
       {projects.map((project) => (
         <DesktopFolder
           key={project.slug}
+          classification={project.classification} safeLabel={project.safeLabel}
           label={`${project.title}/`}
           href={projectHref(project)}
           metadata={[

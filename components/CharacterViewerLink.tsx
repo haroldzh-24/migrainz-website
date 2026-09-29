@@ -3,8 +3,9 @@
 import { useWindowManager, type ViewerTab } from "@/components/WindowManager";
 import type { Character, Project } from "@/lib/content/types";
 import DesktopFile from "@/components/DesktopFile";
+import ClassifiedPlaceholder from '@/components/ClassifiedPlaceholder';
 
-type ViewerCharacter = Pick<Character, "slug" | "name" | "role" | "description" | "images" | "updated">;
+type ViewerCharacter = Pick<Character, "slug" | "name" | "role" | "description" | "images" | "updated" | "classification" | "safeLabel">;
 
 function tabFor(project: Pick<Project, "slug" | "title">, character: ViewerCharacter): ViewerTab {
   return {
@@ -14,11 +15,12 @@ function tabFor(project: Pick<Project, "slug" | "title">, character: ViewerChara
     project: project.title,
     role: character.role,
     description: character.description,
-    images: character.images,
+    images: character.images.filter(image => !image.classification),
   };
 }
 
 export function CharacterViewerLink({ project, character }: { project: Pick<Project, "slug" | "title">; character: ViewerCharacter }) {
+  if (character.classification) return <ClassifiedPlaceholder classification={character.classification} label={character.safeLabel} />;
   const tab = tabFor(project, character);
   return <DesktopFile
     label={`${character.name.replace(/\s+/g, "_")}.CHR`}
@@ -38,5 +40,6 @@ export function CharacterViewerLink({ project, character }: { project: Pick<Proj
 
 export function CharacterViewerButton({ project, character }: { project: Pick<Project, "slug" | "title">; character: ViewerCharacter }) {
   const { openViewerTab } = useWindowManager();
+  if (character.classification) return <ClassifiedPlaceholder classification={character.classification} label={character.safeLabel} />;
   return <button type="button" className="terminal-button character-viewer-button" onClick={() => openViewerTab(tabFor(project, character))}>OPEN IN ART VIEWER</button>;
 }

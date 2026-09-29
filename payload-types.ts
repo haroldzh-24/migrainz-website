@@ -207,12 +207,27 @@ export interface Project {
   placeholderArt?: ('art-a' | 'art-b' | 'art-c') | null;
   contentUpdated?: string | null;
   /**
-   * Metadata visibility only. Does not grant access to writing or files. Locked listings are not exposed in this foundation.
+   * HIDDEN omits this record from public output. VISIBLE respects the access state below; it never grants access to protected content.
    */
   listingVisibility: 'public' | 'hidden';
-  accessLevel: 'public' | 'patron';
   /**
-   * Optional safe teaser for future directory listings. Never put restricted writing here.
+   * PUBLIC is accessible to everyone. PATRON requires verified active membership and any tier restriction below. REDACTED remains censored for everyone. HIDDEN is omitted. Hidden listings override access.
+   */
+  accessLevel: 'public' | 'redacted' | 'patron' | 'hidden';
+  /**
+   * Optional JSON array of numeric tier ID strings copied from Patreon. At least one listed tier must match. Empty/null allows any active paid Studio Migrainz patron. Use IDs, not tier names.
+   */
+  patreonTierIDs?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Optional text explicitly approved for public display on REDACTED/PATRON placeholders. Never include restricted titles, writing or file URLs.
    */
   listingSummary?: string | null;
   legacyKey?: string | null;
@@ -233,12 +248,27 @@ export interface Media {
   uploadKey?: string | null;
   project?: (number | null) | Project;
   /**
-   * Metadata visibility only. Does not grant access to writing or files. Locked listings are not exposed in this foundation.
+   * HIDDEN omits this record from public output. VISIBLE respects the access state below; it never grants access to protected content.
    */
   listingVisibility: 'public' | 'hidden';
-  accessLevel: 'public' | 'patron';
   /**
-   * Optional safe teaser for future directory listings. Never put restricted writing here.
+   * PUBLIC is accessible to everyone. PATRON requires verified active membership and any tier restriction below. REDACTED remains censored for everyone. HIDDEN is omitted. Hidden listings override access.
+   */
+  accessLevel: 'public' | 'redacted' | 'patron' | 'hidden';
+  /**
+   * Optional JSON array of numeric tier ID strings copied from Patreon. At least one listed tier must match. Empty/null allows any active paid Studio Migrainz patron. Use IDs, not tier names.
+   */
+  patreonTierIDs?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Optional text explicitly approved for public display on REDACTED/PATRON placeholders. Never include restricted titles, writing or file URLs.
    */
   listingSummary?: string | null;
   legacyKey?: string | null;
@@ -263,22 +293,22 @@ export interface Media {
       filesize?: number | null;
       filename?: string | null;
     };
-      preview?: {
-        url?: string | null;
-        width?: number | null;
-        height?: number | null;
-        mimeType?: string | null;
-        filesize?: number | null;
-        filename?: string | null;
-      };
-      viewer?: {
-        url?: string | null;
-        width?: number | null;
-        height?: number | null;
-        mimeType?: string | null;
-        filesize?: number | null;
-        filename?: string | null;
-      };
+    preview?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+    viewer?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
   };
 }
 /**
@@ -304,12 +334,27 @@ export interface Gallery {
     | null;
   tags?: (number | Tag)[] | null;
   /**
-   * Metadata visibility only. Does not grant access to writing or files. Locked listings are not exposed in this foundation.
+   * HIDDEN omits this record from public output. VISIBLE respects the access state below; it never grants access to protected content.
    */
   listingVisibility: 'public' | 'hidden';
-  accessLevel: 'public' | 'patron';
   /**
-   * Optional safe teaser for future directory listings. Never put restricted writing here.
+   * PUBLIC is accessible to everyone. PATRON requires verified active membership and any tier restriction below. REDACTED remains censored for everyone. HIDDEN is omitted. Hidden listings override access.
+   */
+  accessLevel: 'public' | 'redacted' | 'patron' | 'hidden';
+  /**
+   * Optional JSON array of numeric tier ID strings copied from Patreon. At least one listed tier must match. Empty/null allows any active paid Studio Migrainz patron. Use IDs, not tier names.
+   */
+  patreonTierIDs?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Optional text explicitly approved for public display on REDACTED/PATRON placeholders. Never include restricted titles, writing or file URLs.
    */
   listingSummary?: string | null;
   legacyKey?: string | null;
@@ -353,12 +398,27 @@ export interface Comic {
   description?: string | null;
   cover?: (number | null) | Media;
   /**
-   * Metadata visibility only. Does not grant access to writing or files. Locked listings are not exposed in this foundation.
+   * HIDDEN omits this record from public output. VISIBLE respects the access state below; it never grants access to protected content.
    */
   listingVisibility: 'public' | 'hidden';
-  accessLevel: 'public' | 'patron';
   /**
-   * Optional safe teaser for future directory listings. Never put restricted writing here.
+   * PUBLIC is accessible to everyone. PATRON requires verified active membership and any tier restriction below. REDACTED remains censored for everyone. HIDDEN is omitted. Hidden listings override access.
+   */
+  accessLevel: 'public' | 'redacted' | 'patron' | 'hidden';
+  /**
+   * Optional JSON array of numeric tier ID strings copied from Patreon. At least one listed tier must match. Empty/null allows any active paid Studio Migrainz patron. Use IDs, not tier names.
+   */
+  patreonTierIDs?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Optional text explicitly approved for public display on REDACTED/PATRON placeholders. Never include restricted titles, writing or file URLs.
    */
   listingSummary?: string | null;
   legacyKey?: string | null;
@@ -388,12 +448,27 @@ export interface Chapter {
   }[];
   routeKey?: string | null;
   /**
-   * Metadata visibility only. Does not grant access to writing or files. Locked listings are not exposed in this foundation.
+   * HIDDEN omits this record from public output. VISIBLE respects the access state below; it never grants access to protected content.
    */
   listingVisibility: 'public' | 'hidden';
-  accessLevel: 'public' | 'patron';
   /**
-   * Optional safe teaser for future directory listings. Never put restricted writing here.
+   * PUBLIC is accessible to everyone. PATRON requires verified active membership and any tier restriction below. REDACTED remains censored for everyone. HIDDEN is omitted. Hidden listings override access.
+   */
+  accessLevel: 'public' | 'redacted' | 'patron' | 'hidden';
+  /**
+   * Optional JSON array of numeric tier ID strings copied from Patreon. At least one listed tier must match. Empty/null allows any active paid Studio Migrainz patron. Use IDs, not tier names.
+   */
+  patreonTierIDs?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Optional text explicitly approved for public display on REDACTED/PATRON placeholders. Never include restricted titles, writing or file URLs.
    */
   listingSummary?: string | null;
   legacyKey?: string | null;
@@ -432,12 +507,27 @@ export interface Faction {
   emblem?: (number | null) | Media;
   order?: number | null;
   /**
-   * Metadata visibility only. Does not grant access to writing or files. Locked listings are not exposed in this foundation.
+   * HIDDEN omits this record from public output. VISIBLE respects the access state below; it never grants access to protected content.
    */
   listingVisibility: 'public' | 'hidden';
-  accessLevel: 'public' | 'patron';
   /**
-   * Optional safe teaser for future directory listings. Never put restricted writing here.
+   * PUBLIC is accessible to everyone. PATRON requires verified active membership and any tier restriction below. REDACTED remains censored for everyone. HIDDEN is omitted. Hidden listings override access.
+   */
+  accessLevel: 'public' | 'redacted' | 'patron' | 'hidden';
+  /**
+   * Optional JSON array of numeric tier ID strings copied from Patreon. At least one listed tier must match. Empty/null allows any active paid Studio Migrainz patron. Use IDs, not tier names.
+   */
+  patreonTierIDs?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Optional text explicitly approved for public display on REDACTED/PATRON placeholders. Never include restricted titles, writing or file URLs.
    */
   listingSummary?: string | null;
   legacyKey?: string | null;
@@ -493,12 +583,27 @@ export interface Character {
   relatedChapters?: (number | Chapter)[] | null;
   tags?: (number | Tag)[] | null;
   /**
-   * Metadata visibility only. Does not grant access to writing or files. Locked listings are not exposed in this foundation.
+   * HIDDEN omits this record from public output. VISIBLE respects the access state below; it never grants access to protected content.
    */
   listingVisibility: 'public' | 'hidden';
-  accessLevel: 'public' | 'patron';
   /**
-   * Optional safe teaser for future directory listings. Never put restricted writing here.
+   * PUBLIC is accessible to everyone. PATRON requires verified active membership and any tier restriction below. REDACTED remains censored for everyone. HIDDEN is omitted. Hidden listings override access.
+   */
+  accessLevel: 'public' | 'redacted' | 'patron' | 'hidden';
+  /**
+   * Optional JSON array of numeric tier ID strings copied from Patreon. At least one listed tier must match. Empty/null allows any active paid Studio Migrainz patron. Use IDs, not tier names.
+   */
+  patreonTierIDs?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Optional text explicitly approved for public display on REDACTED/PATRON placeholders. Never include restricted titles, writing or file URLs.
    */
   listingSummary?: string | null;
   legacyKey?: string | null;
@@ -535,12 +640,27 @@ export interface Equipment {
     | null;
   order?: number | null;
   /**
-   * Metadata visibility only. Does not grant access to writing or files. Locked listings are not exposed in this foundation.
+   * HIDDEN omits this record from public output. VISIBLE respects the access state below; it never grants access to protected content.
    */
   listingVisibility: 'public' | 'hidden';
-  accessLevel: 'public' | 'patron';
   /**
-   * Optional safe teaser for future directory listings. Never put restricted writing here.
+   * PUBLIC is accessible to everyone. PATRON requires verified active membership and any tier restriction below. REDACTED remains censored for everyone. HIDDEN is omitted. Hidden listings override access.
+   */
+  accessLevel: 'public' | 'redacted' | 'patron' | 'hidden';
+  /**
+   * Optional JSON array of numeric tier ID strings copied from Patreon. At least one listed tier must match. Empty/null allows any active paid Studio Migrainz patron. Use IDs, not tier names.
+   */
+  patreonTierIDs?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Optional text explicitly approved for public display on REDACTED/PATRON placeholders. Never include restricted titles, writing or file URLs.
    */
   listingSummary?: string | null;
   legacyKey?: string | null;
@@ -587,12 +707,27 @@ export interface ProjectUpdate {
   milestone?: (number | null) | TrackerItem;
   statusInfo?: string | null;
   /**
-   * Metadata visibility only. Does not grant access to writing or files. Locked listings are not exposed in this foundation.
+   * HIDDEN omits this record from public output. VISIBLE respects the access state below; it never grants access to protected content.
    */
   listingVisibility: 'public' | 'hidden';
-  accessLevel: 'public' | 'patron';
   /**
-   * Optional safe teaser for future directory listings. Never put restricted writing here.
+   * PUBLIC is accessible to everyone. PATRON requires verified active membership and any tier restriction below. REDACTED remains censored for everyone. HIDDEN is omitted. Hidden listings override access.
+   */
+  accessLevel: 'public' | 'redacted' | 'patron' | 'hidden';
+  /**
+   * Optional JSON array of numeric tier ID strings copied from Patreon. At least one listed tier must match. Empty/null allows any active paid Studio Migrainz patron. Use IDs, not tier names.
+   */
+  patreonTierIDs?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Optional text explicitly approved for public display on REDACTED/PATRON placeholders. Never include restricted titles, writing or file URLs.
    */
   listingSummary?: string | null;
   legacyKey?: string | null;
@@ -614,12 +749,27 @@ export interface TrackerItem {
   status?: string | null;
   lastUpdated?: string | null;
   /**
-   * Metadata visibility only. Does not grant access to writing or files. Locked listings are not exposed in this foundation.
+   * HIDDEN omits this record from public output. VISIBLE respects the access state below; it never grants access to protected content.
    */
   listingVisibility: 'public' | 'hidden';
-  accessLevel: 'public' | 'patron';
   /**
-   * Optional safe teaser for future directory listings. Never put restricted writing here.
+   * PUBLIC is accessible to everyone. PATRON requires verified active membership and any tier restriction below. REDACTED remains censored for everyone. HIDDEN is omitted. Hidden listings override access.
+   */
+  accessLevel: 'public' | 'redacted' | 'patron' | 'hidden';
+  /**
+   * Optional JSON array of numeric tier ID strings copied from Patreon. At least one listed tier must match. Empty/null allows any active paid Studio Migrainz patron. Use IDs, not tier names.
+   */
+  patreonTierIDs?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Optional text explicitly approved for public display on REDACTED/PATRON placeholders. Never include restricted titles, writing or file URLs.
    */
   listingSummary?: string | null;
   legacyKey?: string | null;
@@ -652,12 +802,27 @@ export interface ArchiveItem {
       }[]
     | null;
   /**
-   * Metadata visibility only. Does not grant access to writing or files. Locked listings are not exposed in this foundation.
+   * HIDDEN omits this record from public output. VISIBLE respects the access state below; it never grants access to protected content.
    */
   listingVisibility: 'public' | 'hidden';
-  accessLevel: 'public' | 'patron';
   /**
-   * Optional safe teaser for future directory listings. Never put restricted writing here.
+   * PUBLIC is accessible to everyone. PATRON requires verified active membership and any tier restriction below. REDACTED remains censored for everyone. HIDDEN is omitted. Hidden listings override access.
+   */
+  accessLevel: 'public' | 'redacted' | 'patron' | 'hidden';
+  /**
+   * Optional JSON array of numeric tier ID strings copied from Patreon. At least one listed tier must match. Empty/null allows any active paid Studio Migrainz patron. Use IDs, not tier names.
+   */
+  patreonTierIDs?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Optional text explicitly approved for public display on REDACTED/PATRON placeholders. Never include restricted titles, writing or file URLs.
    */
   listingSummary?: string | null;
   legacyKey?: string | null;
@@ -833,6 +998,7 @@ export interface ProjectsSelect<T extends boolean = true> {
   contentUpdated?: T;
   listingVisibility?: T;
   accessLevel?: T;
+  patreonTierIDs?: T;
   listingSummary?: T;
   legacyKey?: T;
   updatedAt?: T;
@@ -851,6 +1017,7 @@ export interface ComicsSelect<T extends boolean = true> {
   cover?: T;
   listingVisibility?: T;
   accessLevel?: T;
+  patreonTierIDs?: T;
   listingSummary?: T;
   legacyKey?: T;
   updatedAt?: T;
@@ -878,6 +1045,7 @@ export interface ChaptersSelect<T extends boolean = true> {
   routeKey?: T;
   listingVisibility?: T;
   accessLevel?: T;
+  patreonTierIDs?: T;
   listingSummary?: T;
   legacyKey?: T;
   updatedAt?: T;
@@ -901,6 +1069,7 @@ export interface FactionsSelect<T extends boolean = true> {
   order?: T;
   listingVisibility?: T;
   accessLevel?: T;
+  patreonTierIDs?: T;
   listingSummary?: T;
   legacyKey?: T;
   updatedAt?: T;
@@ -932,6 +1101,7 @@ export interface CharactersSelect<T extends boolean = true> {
   tags?: T;
   listingVisibility?: T;
   accessLevel?: T;
+  patreonTierIDs?: T;
   listingSummary?: T;
   legacyKey?: T;
   updatedAt?: T;
@@ -961,6 +1131,7 @@ export interface EquipmentSelect<T extends boolean = true> {
   order?: T;
   listingVisibility?: T;
   accessLevel?: T;
+  patreonTierIDs?: T;
   listingSummary?: T;
   legacyKey?: T;
   updatedAt?: T;
@@ -989,6 +1160,7 @@ export interface ProjectUpdatesSelect<T extends boolean = true> {
   statusInfo?: T;
   listingVisibility?: T;
   accessLevel?: T;
+  patreonTierIDs?: T;
   listingSummary?: T;
   legacyKey?: T;
   updatedAt?: T;
@@ -1009,6 +1181,7 @@ export interface TrackerItemsSelect<T extends boolean = true> {
   lastUpdated?: T;
   listingVisibility?: T;
   accessLevel?: T;
+  patreonTierIDs?: T;
   listingSummary?: T;
   legacyKey?: T;
   updatedAt?: T;
@@ -1035,6 +1208,7 @@ export interface GalleriesSelect<T extends boolean = true> {
   tags?: T;
   listingVisibility?: T;
   accessLevel?: T;
+  patreonTierIDs?: T;
   listingSummary?: T;
   legacyKey?: T;
   updatedAt?: T;
@@ -1063,6 +1237,7 @@ export interface ArchiveItemsSelect<T extends boolean = true> {
       };
   listingVisibility?: T;
   accessLevel?: T;
+  patreonTierIDs?: T;
   listingSummary?: T;
   legacyKey?: T;
   updatedAt?: T;
@@ -1080,6 +1255,7 @@ export interface MediaSelect<T extends boolean = true> {
   project?: T;
   listingVisibility?: T;
   accessLevel?: T;
+  patreonTierIDs?: T;
   listingSummary?: T;
   legacyKey?: T;
   updatedAt?: T;
@@ -1098,6 +1274,26 @@ export interface MediaSelect<T extends boolean = true> {
     | T
     | {
         thumbnail?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        preview?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        viewer?:
           | T
           | {
               url?: T;

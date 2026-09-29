@@ -27,7 +27,7 @@ No long-term media library belongs in Git.
 Open **http://127.0.0.1:3000/admin** (or the port printed by Next). On a fresh
 database, create your administrator there. No default password or persistent test
 account is supplied. All current CMS users are trusted administrators; public
-user registration and Patreon accounts are not implemented. Additional CMS users
+user registration is not implemented. Patreon sessions are separate from CMS accounts. Additional CMS users
 can be created by an administrator. Email delivery is not configured locally, so
 configure an email adapter before relying on password-reset emails in production.
 
@@ -75,7 +75,7 @@ For the basic comic workflow:
 
 1. Create a Project with a unique slug and Project ID. Add descriptions, writing,
    optional hero image, categories and galleries. Publish it.
-2. Upload images in Media, add descriptive alt text, choose PUBLIC or PATRON and
+2. Upload images in Media, add descriptive alt text, choose PUBLIC, REDACTED, PATRON or HIDDEN and
    publish the media record. An unattached file is still not publicly retrievable.
 3. Create a Comic related to that project and publish it.
 4. Create a Chapter related to the comic. Set its slug and chapter number.
@@ -92,12 +92,27 @@ the existing published-content/media access rules. PDFs continue using originals
 
 Existing Media files are not rewritten when these sizes are added. Public
 rendering falls back to the best existing derivative or legacy `thumbnailURL`;
-when an image has no derivative, it is omitted rather than requesting the
-original. Existing records need
-to be regenerated/reprocessed through Payload or re-uploaded to receive the new
-preview and viewer sizes; older thumbnail-only records may display at thumbnail
-resolution in the viewer until then. Anonymous original-image file requests are
+when an image has no derivative, comic readers preserve its saved position with
+PAGE UNAVAILABLE rather than requesting the original. Other image listings omit
+it. Viewers try the remaining authorized derivative URLs if a preferred file
+fails. Older thumbnail-only records display at thumbnail resolution until
+reprocessed. Anonymous original-image file requests are
 denied; staff can still access originals in the admin.
+
+Media listing visibility does not authorize attached files: published PUBLIC
+media can have a HIDDEN listing and still render through an accessible parent.
+Media accessLevel HIDDEN/REDACTED, drafts, unentitled PATRON files, and files without
+an accessible reference remain denied. Classified comic slots keep their saved
+positions and safe placeholders without exposing protected image metadata.
+
+For missing resized copies with an existing source, the smallest reprocessing
+path is a staff-authorized Payload update of that **same Media ID**, supplying
+the backed-up source via `filePath` (or `file`) with `overwriteExistingFiles: true`.
+Preserve publication/access fields, captions and all parent relationships; verify
+the resulting filenames and bytes before proceeding to another record. Back up
+the record and files first, and obtain approval before running this write. Do not
+create replacement records, bulk regenerate, or re-upload the archive. The
+2026-09-29 recovery performed no reprocessing or migration execution.
 
 Project writing, update writing, character writing, hero images, attached galleries
 and archive files render through the existing terminal styles. The reader retains
@@ -118,8 +133,10 @@ The chapter and gallery forms also include **Add multiple pages/images**:
 - The local limit is 40 MB per image. Uploads run sequentially to bound memory and
   make failures recoverable. The queue itself is not persisted across a reload.
 
-Publishing validates referenced media. Public documents must reference published,
-public media; chapter pages must be images. Removing a page row does not delete
+Publishing validates referenced media. Documents must reference published media;
+chapter pages must be images. PUBLIC and entitled PATRON media render normally;
+REDACTED and unentitled PATRON media use safe placeholders, and HIDDEN media is
+omitted. Removing a page row does not delete
 its media. Referenced records cannot be deleted until live/draft references are
 removed. Historical versions are not a substitute for backing up uploaded files.
 
@@ -127,23 +144,53 @@ removed. Historical versions are not a substitute for backing up uploaded files.
 
 `listingVisibility` and `listingSummary` are separate from `accessLevel`:
 
-- **Listing fields:** reserved for controlling safe metadata/directory previews.
+- **Listing fields:** control whether a record appears and its optional explicitly safe placeholder label.
 - **Access level:** controls access to the actual record and its files.
 
-The foundation intentionally exposes no locked-preview endpoint yet. PATRON
-records, even with PUBLIC listing visibility, remain staff-only. A future listing
-endpoint must explicitly select safe title/slug/teaser fields and never return
-the full document, writing, private filenames, or file URLs. Patreon OAuth and
-membership verification are a later phase.
+The access selector distinguishes PUBLIC (normal content), REDACTED (green censor
+bars), PATRON (membership/tier access or a locked placeholder), and HIDDEN (omitted). The separate HIDDEN
+listing setting also omits the record, regardless of access. Existing values are
+not rewritten. Drafts and children of inaccessible parents remain omitted.
 
-Public API reads require published PUBLIC content and accessible parents. Media
-also requires a published PUBLIC Media record and a reference from accessible
+Public listing adapters use a server-only, depth-zero metadata projection for
+REDACTED/PATRON records. It selects classification, the optional safe public
+placeholder label, IDs and relationships needed for placement, and tracker kind.
+It never selects source titles, slugs, writing, filenames or image URLs. Generic
+bar lengths and media dimensions do not depend on protected text or images.
+Do not put secrets in the safe public placeholder label: it is public by design.
+
+REDACTED placeholders remain inert. Unentitled PATRON placeholders use black text
+bars or CLASSIFIED image blocks; activation opens the existing gray-window
+ACCESS DENIED presentation. Known patron page URLs display safe locked shells,
+while document APIs and file delivery still deny unauthorized reads. Only
+authorized media is passed to art/comic viewers; classified page placeholders
+appear separately on the chapter route.
+
+Patreon API v2 now verifies the configured campaign and current paid membership
+on the server. Optional `patreonTierIDs` is a JSON array of tier ID strings;
+empty/null allows any active paid studio patron, otherwise one ID must match.
+Each parent, record and Media item has independent requirements. CMS staff
+authentication remains separate. Missing Patreon configuration leaves sign-in
+unavailable and patron content locked. See [Patreon setup and manual tests](PATREON.md)
+for exact OAuth, session, tier and media-security behavior.
+
+PostgreSQL requires the new additive `20260928_180000_classified_access` migration
+before using these access states. It adds enum values to live and version tables
+without changing existing records. `20260928_190000_patreon_tier_access` also adds
+nullable tier-policy fields to all eleven content collections and their version
+tables. Both migrations are registered but have not been applied locally or to production.
+
+Public API reads require published PUBLIC or entitled PATRON content and accessible
+parents. Media also requires its own access/tier authorization and a reference from accessible
 content. Unpublishing a chapter or its parent removes access to files used only by
 that content, including derivatives. Media still referenced by another public
 document remains public. Public-to-private conversion cannot recall copies that
 someone already downloaded while a file was public.
 
-Frontend queries are server-only and use `overrideAccess: false`. They do not
+Full-content frontend queries are server-only and use `overrideAccess: false` with
+the encrypted Patreon session. Only allowlisted placeholder and tier-policy
+metadata projections bypass document access; these never expose protected bodies.
+They do not
 fall back to the old source data if CMS content is absent or unpublished. File
 responses use `private, no-store`; a later CDN/storage integration must preserve
 authorization and revocation behavior.

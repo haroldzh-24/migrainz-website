@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode, type PointerEvent } from "react";
 import StartupArt from "@/components/StartupArt";
 import { announcement } from "@/data/announcement";
 
@@ -20,6 +20,36 @@ export default function StartupSequence({ children }: { children: ReactNode }) {
   const enterRef = useRef<HTMLButtonElement>(null);
   const restoreFocus = useRef(false);
   const contentRef = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
+  const drag = useRef<{ id: number; x: number; y: number } | null>(null);
+  const clamp = (x: number, y: number) => {
+    const bounds = windowRef.current?.getBoundingClientRect();
+    return { x: Math.max(8, Math.min(x, document.documentElement.clientWidth - (bounds?.width ?? 0) - 8)),
+      y: Math.max(8, Math.min(y, window.innerHeight - (bounds?.height ?? 0) - 8)) };
+  };
+  const startDrag = (event: PointerEvent<HTMLDivElement>) => {
+    if (state !== "announcement" || event.button !== 0 || !event.isPrimary || window.matchMedia("(max-width: 700px)").matches || (event.target as HTMLElement).closest("button, a, .window-controls")) return;
+    const bounds = windowRef.current?.getBoundingClientRect();
+    if (!bounds) return;
+    drag.current = { id: event.pointerId, x: event.clientX - bounds.left, y: event.clientY - bounds.top };
+    setPosition(clamp(bounds.left, bounds.top));
+    event.currentTarget.setPointerCapture(event.pointerId);
+    event.preventDefault();
+  };
+  const stopDrag = (event: PointerEvent<HTMLDivElement>) => {
+    if (drag.current?.id !== event.pointerId) return;
+    drag.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+  };
+  useEffect(() => {
+    if (state !== "announcement") return;
+    const resize = () => {
+      drag.current = null;
+      setPosition(current => window.matchMedia("(max-width: 700px)").matches ? null : current ? clamp(current.x, current.y) : null);
+    };
+    window.addEventListener("resize", resize);
+    return () => { window.removeEventListener("resize", resize); drag.current = null; };
+  }, [state]);
   useEffect(() => {
     let dismissed = false;
     try { dismissed = sessionStorage.getItem(storageKey) === announcement.id; } catch { /* Optional storage. */ }
@@ -67,6 +97,7 @@ export default function StartupSequence({ children }: { children: ReactNode }) {
   return <>
     {state !== "closed" && <div className="startup-sequence" data-phase={state} style={{ position: "fixed", inset: 0, background: state === "boot" ? "#010301" : "transparent", zIndex: 10000, pointerEvents: state === "boot" ? "auto" : "none" }}>
       <div ref={windowRef} className="startup-takeover startup-window" role="dialog" aria-modal={state === "boot" ? true : undefined} aria-labelledby="startup-title" tabIndex={-1}
+        style={state === "announcement" && position ? { left: position.x, top: position.y, right: "auto", bottom: "auto" } : undefined}
         onKeyDown={event => {
           if (event.key === "Escape") { event.preventDefault(); close(); }
           if (event.key === "Tab" && state === "boot") {
@@ -77,7 +108,9 @@ export default function StartupSequence({ children }: { children: ReactNode }) {
             else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
           }
         }}>
-        <div className="promo-title">
+        <div className="promo-title" onPointerDown={startDrag} onPointerMove={event => {
+          if (drag.current?.id === event.pointerId) setPosition(clamp(event.clientX - drag.current.x, event.clientY - drag.current.y));
+        }} onPointerUp={stopDrag} onPointerCancel={stopDrag} onLostPointerCapture={stopDrag}>
           <span id="startup-title">MIGRAINZ / PUBLIC TRANSMISSION</span>
           <span className="window-controls"><span aria-hidden="true">_ &#9633;</span><button type="button" aria-label="Close announcement" data-sound="close" disabled={state === "boot"} onClick={close}>&#215;</button></span>
         </div>

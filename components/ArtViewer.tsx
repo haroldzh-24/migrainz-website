@@ -11,6 +11,8 @@ export function ArtworkCanvas({ image, view, onChange }: { image: ViewerImage; v
   const [space, setSpace] = useState({ width: 0, height: 0 });
   const [natural, setNatural] = useState({ width: 0, height: 0 });
   const [failed, setFailed] = useState(false);
+  const [sourceIndex, setSourceIndex] = useState(0);
+  const sources = [...new Set([image.viewerSrc, image.src, image.thumbnailSrc].filter((src): src is string => Boolean(src)))];
   const drag = useRef<{ id: number; clientX: number; clientY: number; x: number; y: number } | null>(null);
   const [dragging, setDragging] = useState(false);
 
@@ -72,8 +74,11 @@ export function ArtworkCanvas({ image, view, onChange }: { image: ViewerImage; v
         onChange({ scale, x: Math.max(-limitX, Math.min(limitX, start.x + event.clientX - start.clientX)), y: Math.max(-limitY, Math.min(limitY, start.y + event.clientY - start.clientY)) });
       }}
       onPointerUp={stopPan} onPointerCancel={stopPan} onLostPointerCapture={stopPan}>
-      <img src={image.viewerSrc ?? image.src} alt={image.alt} draggable={false}
-        onError={() => setFailed(true)}
+      <img src={sources[sourceIndex]} alt={image.alt} draggable={false}
+        onError={() => {
+          if (sourceIndex + 1 < sources.length) setSourceIndex(sourceIndex + 1);
+          else setFailed(true);
+        }}
         onLoad={(event) => setNatural({ width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight })}
         style={ready ? { width: natural.width * scale, height: natural.height * scale, transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))` } : { visibility: "hidden" }} />
       {failed && <div className="art-viewer-placeholder">ARTWORK UNAVAILABLE</div>}

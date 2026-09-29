@@ -276,11 +276,24 @@ button {
 .home-terminal-grid { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 16px; }
 .home-terminal-lower { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 16px; margin-top: 16px; }
 .desktop-launchers { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
-.monitor-launcher { padding-block: 12px; }
+.public-window-layer { position: fixed; inset: 8px 8px 56px; z-index: 41; pointer-events: none; }
+.public-window-layer[data-system-focused="true"] { z-index: 39; }
+.public-windows { position: relative; width: 100%; height: 100%; pointer-events: none; }
+.public-windows > .retro-window { pointer-events: auto; }
+.public-window-dock { position: fixed; inset: auto 8px 8px; z-index: 42; }
+.public-window-dock .window-taskbar { flex-wrap: nowrap; overflow-x: auto; }
+.public-window-dock .window-taskbar button { flex-shrink: 0; }
+.public-windows > .retro-window[data-maximized="true"] {
+  inset: 4px !important;
+  width: calc(100% - 8px) !important;
+  height: calc(100% - 8px) !important;
+  max-width: none;
+  max-height: none;
+}
 .pixel-monitor {
   position: fixed;
   z-index: 40;
-  inset: 60px 24px 28px;
+  inset: 60px 24px 60px;
   width: min(1220px, calc(100% - 48px));
   margin-inline: auto;
   display: flex;
@@ -316,7 +329,6 @@ button {
 }
 .desktop-windows { position: relative; flex: 1; min-height: 0; min-width: 0; overflow: hidden; isolation: isolate; }
 .pixel-monitor-dock { flex-shrink: 0; min-height: 31px; max-height: 30%; overflow: auto; background: #c0c0c0; border-top: 2px solid #eee; }
-.pixel-monitor-screen[data-window-maximized="true"] .pixel-monitor-dock { display: none; }
 .pixel-monitor-hardware { display: flex; align-items: center; gap: 12px; min-height: 32px; padding: 4px 4px; }
 .pixel-monitor-hardware > span:nth-child(2) { margin-left: auto; }
 .pixel-monitor-hardware b { color: #315b32; margin-inline: 8px; }
@@ -903,6 +915,27 @@ button {
   gap: 16px;
 }
 
+.classified-placeholder { display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: 18px; border: 1px solid var(--line); background: #151a15; color: var(--green); }
+.classified-placeholder-label { font: 11px monospace; overflow-wrap: anywhere; }
+.classified-placeholder-bars { display: grid; gap: 7px; width: 100%; }
+.classified-placeholder-bars i { display: block; width: 72%; height: 12px; background: var(--green); }
+.classified-placeholder-bars i:nth-child(2) { width: 43%; }
+.classified-placeholder-bars i:nth-child(3) { width: 88%; }
+.classified-placeholder--inline { padding: 10px; margin-block: 6px; }
+.classified-placeholder--card { min-height: 110px; }
+.classified-placeholder--media { justify-content: center; width: 100%; min-height: 200px; aspect-ratio: 4 / 3; background: #292929; }
+.patron-locked-trigger { width: 100%; text-align: left; cursor: pointer; font: inherit; }
+.patron-locked-trigger:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
+.classified-placeholder--patron { background: #959a90; color: #101510; }
+.classified-placeholder--patron .classified-placeholder-bars i { background: #000; }
+.classified-placeholder--patron.classified-placeholder--media { background: #171b17; color: var(--green); border: 4px solid var(--green); }
+.classified-image { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.classified-x { display: block; color: var(--green); font: bold 72px/1 monospace; text-align: center; }
+.patreon-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-block: 16px; }
+.patreon-actions form { margin: 0; }
+.access-denied-content { text-align: center; }
+.access-denied-content h2 { font: bold 16px monospace; }
+.access-denied-content .patreon-actions { justify-content: center; }
 .desktop-file-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(190px, 100%), 1fr));
@@ -1234,7 +1267,7 @@ footer {
   .home-terminal-grid,
   .home-terminal-lower { grid-template-columns: 1fr; }
 
-  .pixel-monitor { inset: 54px 6px 10px; width: calc(100% - 12px); padding: 5px 5px 0; border-width: 3px; }
+  .pixel-monitor { inset: 54px 6px 60px; width: calc(100% - 12px); padding: 5px 5px 0; border-width: 3px; }
   .pixel-monitor-header { font-size: 10px; gap: 4px; padding-bottom: 3px; }
   .pixel-monitor-header button { min-height: 28px; }
   .pixel-monitor-screen { border-width: 3px; }
@@ -1244,10 +1277,18 @@ footer {
   .retro-window { position: relative; inset: auto !important; width: 100% !important; height: auto !important; max-width: 100%; max-height: none; margin: 0 0 12px; }
   .retro-window-titlebar { cursor: default; touch-action: auto; }
   .retro-window-body { max-height: none; }
-  .art-viewer-window, .art-viewer-window[data-maximized="true"] { inset: auto !important; width: 100% !important; height: max(400px, calc(100dvh - 230px)) !important; }
-  .comic-reader-window, .comic-reader-window[data-maximized="true"] { inset: auto !important; width: 100% !important; height: max(400px, calc(100dvh - 230px)) !important; }
-  .comic-reader-window, .comic-reader-window[data-maximized="true"] { inset: auto !important; width: 100% !important; height: max(400px, calc(100dvh - 230px)) !important; }
   .window-taskbar button { min-height: 36px; }
+  .public-window-layer { inset: 4px 4px 60px; }
+  .public-windows > .retro-window,
+  .public-windows > .retro-window[data-maximized="true"] {
+    position: absolute;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100%;
+    max-height: 100%;
+    margin: 0;
+  }
   .art-viewer-canvas { padding: 10px; }
 
   .topbar-meta span:first-child {
@@ -1701,6 +1742,10 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
 .startup-window { pointer-events: auto; }
 .startup-sequence[data-phase="announcement"] { overflow: visible; }
 .startup-sequence[data-phase="announcement"] .startup-window { position: absolute; right: 20px; bottom: 20px; }
+@media (min-width: 701px) {
+  .startup-sequence[data-phase="announcement"] .promo-title { cursor: grab; touch-action: none; user-select: none; }
+  .startup-sequence[data-phase="announcement"] .promo-title:active { cursor: grabbing; }
+}
 .startup-compromised { border: 1px dashed var(--green); padding: 16px 8px; margin-top: 12px; }
 .startup-compromised p { font-size: 11px; text-align: center; margin-top: 12px; }
 @media (max-width: 700px) {

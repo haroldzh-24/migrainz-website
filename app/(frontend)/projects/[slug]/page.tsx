@@ -1,4 +1,5 @@
-import { notFound } from "next/navigation";
+import { lockedPageOrNotFound, lockedPageTitle } from "@/components/LockedContentPage";
+import ClassifiedPlaceholder from "@/components/ClassifiedPlaceholder";
 import { Directory, DirectoryLink } from "@/components/Directory";
 import ProjectTracker from "@/components/ProjectTracker";
 import ContentWriting from "@/components/ContentWriting";
@@ -12,7 +13,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }) {
   const project = await getProject((await params).slug);
-  return { title: project?.title ?? "Record not found" };
+  return { title: project?.title ?? await lockedPageTitle({ projectSlug: (await params).slug }) };
 }
 export default async function ProjectPage({
   params,
@@ -20,7 +21,7 @@ export default async function ProjectPage({
   params: Promise<{ slug: string }>;
 }) {
   const project = await getProject((await params).slug);
-  if (!project) notFound();
+  if (!project) return lockedPageOrNotFound({ projectSlug: (await params).slug });
   const archiveItems = (await getArchiveItems()).filter(item => item.projectSlug === project.slug);
   return (
     <Directory
@@ -35,14 +36,14 @@ export default async function ProjectPage({
       {project.hero && <ContentGallery images={[project.hero]} />}
       <ContentWriting data={project.writing} />
       {archiveItems.length > 0 && <div className="directory-list">
-        {archiveItems.map(item => <DirectoryLink key={item.slug} href={`/archive#item-${item.slug}`} name={item.title} meta="ARCHIVE RECORD" />)}
+        {archiveItems.map(item => <DirectoryLink key={item.slug} classification={item.classification} safeLabel={item.safeLabel} href={`/archive#item-${item.slug}`} name={item.title} meta="ARCHIVE RECORD" />)}
       </div>}
-      {project.galleries.map((gallery) => (
+      {project.galleries.map((gallery) => gallery.classification ? <ClassifiedPlaceholder key={gallery.slug} classification={gallery.classification} label={gallery.safeLabel} variant="media" /> : (
         <section className="section-block" id={`gallery-${gallery.slug}`} key={gallery.slug}>
           <h2>{gallery.title}</h2><p>{gallery.description}</p>
           <DesktopFile label={gallery.title + ".ART"} type="ART" href={projectHref(project) + "#gallery-" + gallery.slug}
-            viewerTab={{ id: "gallery:" + project.slug + ":" + gallery.slug, href: projectHref(project) + "#gallery-" + gallery.slug, title: gallery.title, project: project.title, description: gallery.description, images: gallery.images.filter(image => !/\.pdf(?:\?|$)/i.test(image.src)) }}
-            metadata={[{ label: "NAME", value: gallery.title }, { label: "PROJECT", value: project.title }, { label: "TYPE", value: "GALLERY" }, { label: "IMAGE COUNT", value: String(gallery.images.filter(image => !/\.pdf(?:\?|$)/i.test(image.src)).length) }]} />
+            viewerTab={{ id: "gallery:" + project.slug + ":" + gallery.slug, href: projectHref(project) + "#gallery-" + gallery.slug, title: gallery.title, project: project.title, description: gallery.description, images: gallery.images.filter(image => !image.classification && !/\.pdf(?:\?|$)/i.test(image.src)) }}
+            metadata={[{ label: "NAME", value: gallery.title }, { label: "PROJECT", value: project.title }, { label: "TYPE", value: "GALLERY" }, { label: "IMAGE COUNT", value: String(gallery.images.filter(image => !image.classification && !/\.pdf(?:\?|$)/i.test(image.src)).length) }]} />
           <ContentGallery images={gallery.images} />
         </section>
       ))}
@@ -55,6 +56,7 @@ export default async function ProjectPage({
         {project.chapters.map((chapter) => (
           <DirectoryLink
             key={chapter.slug}
+            classification={chapter.classification} safeLabel={chapter.safeLabel}
             href={chapterHref(project, chapter)}
             name={chapter.title}
             meta={`${chapter.pages.length} PAGES`}
@@ -85,7 +87,7 @@ export default async function ProjectPage({
           <p>No production updates filed yet.</p>
         )}
         <div className="production-notes">
-          {project.notes.map((note, index) => (
+          {project.notes.map((note, index) => note.classification ? <ClassifiedPlaceholder key={index} classification={note.classification} label={note.safeLabel} variant="inline" /> : (
             <div key={`${note.date}-${index}`}>
             <p>
               <time dateTime={note.date}>{note.date}</time> // {note.text}

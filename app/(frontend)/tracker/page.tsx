@@ -10,7 +10,7 @@ export default async function TrackerPage() {
         Public phases, milestones and production notes.
       </p>
       {projects
-        .filter((project) => project.phases.length > 0)
+        .filter((project) => project.classification || project.phases.length > 0)
         .map((project) => (
           <ProjectTracker key={project.slug} project={project} />
         ))}

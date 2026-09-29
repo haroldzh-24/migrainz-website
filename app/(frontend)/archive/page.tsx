@@ -1,3 +1,4 @@
+import ClassifiedPlaceholder from "@/components/ClassifiedPlaceholder";
 import { Directory, DirectoryLink } from "@/components/Directory";
 import { getProjects, getArchiveItems } from "@/lib/content/queries";
 import ContentGallery from "@/components/ContentGallery";
@@ -18,7 +19,7 @@ export default async function Page() {
             </div>
           </div>
           <div className="archive-list">
-            {items.map((item) => (
+            {items.map((item) => item.classification ? <ClassifiedPlaceholder key={item.slug} classification={item.classification} label={item.safeLabel} /> : (
               <article className="section-block" id={`item-${item.slug}`} key={item.slug}>
                 <p className="eyebrow">{item.category} / {item.date}</p>
                 <h3>{item.title}</h3><p>{item.description}</p>
@@ -52,7 +53,7 @@ export default async function Page() {
           </div>
           <p className="eyebrow">SAMPLE PRODUCTION LOG</p>
           <div className="activity-feed">
-            {(projects[0]?.notes ?? []).map((note) => (
+            {(projects[0]?.notes ?? []).map((note, index) => note.classification ? <ClassifiedPlaceholder key={index} classification={note.classification} label={note.safeLabel} variant="inline" /> : (
               <p key={note.date}>
                 <time dateTime={note.date}>
                   {note.date.slice(5).replace("-", "/")}

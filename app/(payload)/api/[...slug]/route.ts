@@ -7,6 +7,7 @@ export const GET: typeof get = async (...args) => {
   // Public-to-private changes must not leave originals or thumbnails in a
   // shared/browser cache. Object-storage delivery must retain this policy.
   response.headers.set('Cache-Control', 'private, no-store');
+  response.headers.append('Vary', 'Cookie');
   return response;
 };
 export const POST = REST_POST(config);

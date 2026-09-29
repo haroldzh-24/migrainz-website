@@ -1,23 +1,41 @@
 import type { Access, CollectionSlug, PayloadRequest, Where } from 'payload';
 import { APIError } from 'payload';
+import { viewerAccessFromHeaders } from '@/lib/patreon/server';
+import { entitledTo } from '@/lib/patreon/types';
 
 export const staff = ({ req }: { req: PayloadRequest }): boolean => Boolean(req.user?.collection === 'users');
 export const publishedPublic: Where = {
-  and: [{ _status: { equals: 'published' } }, { accessLevel: { equals: 'public' } }],
+  and: [{ _status: { equals: 'published' } }, { accessLevel: { equals: 'public' } }, { listingVisibility: { equals: 'public' } }],
 };
 
-// Listing visibility deliberately does not grant content access. A future listing
-// endpoint must explicitly project only approved metadata, never full documents.
-export function publicContent(parent?: CollectionSlug, field = 'project', optional = false): Access {
+// Return IDs only for entitled patron records. Never trust a client-supplied role,
+// request body or JWT claim as proof of membership; verify the Patreon session.
+export async function readableContent(req: PayloadRequest, collection: CollectionSlug): Promise<Where> {
+  // Attached media need not appear in listings. Publication, access/tier policy
+  // and the accessible-parent reference below still authorize every file read.
+  const publication: Where[] = [{ _status: { equals: 'published' } }];
+  if (collection !== 'media') publication.push({ listingVisibility: { equals: 'public' } });
+  const publicRule: Where = { and: [...publication, { accessLevel: { equals: 'public' } }] };
+  const viewer = await viewerAccessFromHeaders(req.headers);
+  if (!viewer.activePatron) return publicRule;
+  const candidates = await req.payload.find({ collection, req, overrideAccess: true, depth: 0, pagination: false,
+    where: { and: [...publication, { accessLevel: { equals: 'patron' } }] },
+    select: { patreonTierIDs: true } });
+  const ids = candidates.docs.filter(doc => entitledTo((doc as unknown as { patreonTierIDs?: unknown }).patreonTierIDs, viewer)).map(doc => doc.id);
+  return { or: [publicRule, { and: [...publication, { accessLevel: { equals: 'patron' } }, { id: { in: ids } }] }] };
+}
+
+export function publicContent(parent?: CollectionSlug, field = 'project', optional = false, collection: CollectionSlug = 'projects'): Access {
   return async ({ req }) => {
     if (req.user?.collection === 'users') return true;
-    if (!parent) return publishedPublic;
+    const readable = await readableContent(req, collection);
+    if (!parent) return readable;
     const records = await req.payload.find({
       collection: parent, depth: 0, pagination: false, overrideAccess: false,
       req,
     });
     const relation: Where = { [field]: { in: records.docs.map((doc) => doc.id) } };
-    return { and: [publishedPublic, optional ? { or: [relation, { [field]: { exists: false } }] } : relation] };
+    return { and: [readable, optional ? { or: [relation, { [field]: { exists: false } }] } : relation] };
   };
 }
 
@@ -52,7 +70,7 @@ async function buildMediaRule(req: PayloadRequest): Promise<Where> {
       }
     }
   }
-  return { and: [publishedPublic, { id: { in: [...ids] } }] };
+  return { and: [await readableContent(req, 'media'), { id: { in: [...ids] } }] };
 }
 
 export async function preventReferencedDelete(req: PayloadRequest, collection: CollectionSlug, id: number | string) {

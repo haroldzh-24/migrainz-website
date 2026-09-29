@@ -15,9 +15,9 @@ export const validatePublishedMedia: CollectionBeforeChangeHook = async ({ data,
   }
   for (const reference of references) {
     const file = await req.payload.findByID({ collection: 'media', id: reference.id, depth: 0, overrideAccess: true, req });
-    if (file._status !== 'published' || (record.accessLevel === 'public' && file.accessLevel !== 'public')) {
+    if (file._status !== 'published') {
       throw new ValidationError({ collection: collection.slug, errors: [{ path: reference.path,
-        message: 'Publish this media first. PUBLIC content must use PUBLIC media.' }] });
+        message: 'Publish this media first. Restricted media renders only as a safe placeholder in PUBLIC content.' }] });
     }
     if (collection.slug === 'chapters' && !file.mimeType?.startsWith('image/')) {
       throw new ValidationError({ collection: collection.slug, errors: [{ path: reference.path, message: 'Comic pages must be images.' }] });

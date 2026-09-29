@@ -2,6 +2,13 @@
 
 ## Open Bugs
 
+### 2026-09-29 - Local runtime blocked by SQLite schema synchronization
+
+- Focused recovery browser check timed out loading `/` on the already-running port 3000 server.
+- Server log reports failed `INSERT INTO __new_characters ... SELECT ... FROM characters` during development schema synchronization, including `primary_faction_id` and `patreon_tier_i_ds`.
+- A SQLite-aware backup exists at ignored `test-results/recovery.db`. The separate recovery server could not start alongside the existing Next dev lock; the existing process was left untouched.
+- Status: Runtime validation blocked. Reconcile local development schema against a backup before retrying; this is not evidence of production PostgreSQL schema status. No production writes or migrations performed.
+
 ### 2026-09-10 - Vercel production admin initialization
 
 - Evidence: public GET `/admin` returns HTTP 500; reported runtime error indicates one or more missing CMS environment variables.
@@ -27,6 +34,18 @@
 - Status: Open
 
 ## Resolved Bugs
+
+### 2026-09-29 - Public comic media denied by hidden listing metadata
+
+- Local `rcb-001` chapter retains three published PUBLIC Media references (5, 6, 7); all original and thumbnail files exist. HIDDEN listing visibility incorrectly denied their file access and mapper output.
+- Fix: Separate attached Media listing visibility from access authorization, preserve missing/classified page positions, and try other authorized derivatives when the preferred file fails. Do not expose originals or weaken protected access.
+- Status: Source repair; typecheck and production build pass. Browser validation blocked by the separate local schema issue above. See documentation/recovery-20260929.md.
+
+### 2026-09-28 - Restricted content disappeared from public listings
+
+- Cause: the CMS only offered PUBLIC/PATRON access; all public document queries required PUBLIC, and no safe listing projection existed for restricted content.
+- Fix: add distinct REDACTED/HIDDEN access states and a server-only allowlisted metadata path for visible REDACTED/PATRON placeholders. Full document/file reads stay PUBLIC-only; hidden records and inaccessible descendants are omitted.
+- Status: Source implemented; PostgreSQL enum migration remains unapplied. `npm.cmd run typecheck` passed; manual access and rendering checks remain.
 
 ### 2026-09-28 - Factions/equipment compound index collision
 

@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { lockedPageOrNotFound } from "@/components/LockedContentPage";
 import { Directory } from "@/components/Directory";
 import ComicReader from "@/components/ComicReader";
 import { getProject } from "@/lib/content/queries";
@@ -11,9 +11,9 @@ export default async function ReaderPage({
 }) {
   const ids = await params;
   const project = await getProject(ids.project);
-  if (!project) notFound();
-  const chapter = project.chapters.find((c) => c.slug === ids.chapter);
-  if (!chapter) notFound();
+  if (!project) return lockedPageOrNotFound({ projectSlug: ids.project, kind: "chapters", slug: ids.chapter });
+  const chapter = project.chapters.find((c) => c.slug === ids.chapter && !c.classification);
+  if (!chapter) return lockedPageOrNotFound({ projectSlug: ids.project, kind: "chapters", slug: ids.chapter });
   return (
     <Directory
       path={`SYS:/COMICS/${project.slug.toUpperCase()}/${chapter.slug.toUpperCase()}/`}

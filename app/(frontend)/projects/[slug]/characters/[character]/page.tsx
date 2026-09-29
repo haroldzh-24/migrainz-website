@@ -1,5 +1,5 @@
+import { lockedPageOrNotFound, lockedPageTitle } from "@/components/LockedContentPage";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { Directory, DirectoryLink } from "@/components/Directory";
 import ContentWriting from "@/components/ContentWriting";
 import ContentGallery from "@/components/ContentGallery";
@@ -14,8 +14,8 @@ export async function generateMetadata({
   const ids = await params;
   return {
     title:
-      (await getProject(ids.slug))?.characters.find((c) => c.slug === ids.character)
-        ?.name ?? "Record not found",
+      (await getProject(ids.slug))?.characters.find((c) => c.slug === ids.character && !c.classification)
+        ?.name ?? await lockedPageTitle({ projectSlug: ids.slug, kind: "characters", slug: ids.character }),
   };
 }
 export default async function CharacterPage({
@@ -25,9 +25,9 @@ export default async function CharacterPage({
 }) {
   const ids = await params;
   const project = await getProject(ids.slug);
-  if (!project) notFound();
-  const character = project.characters.find((c) => c.slug === ids.character);
-  if (!character) notFound();
+  if (!project) return lockedPageOrNotFound({ projectSlug: ids.slug, kind: "characters", slug: ids.character });
+  const character = project.characters.find((c) => c.slug === ids.character && !c.classification);
+  if (!character) return lockedPageOrNotFound({ projectSlug: ids.slug, kind: "characters", slug: ids.character });
   return (
     <Directory
       path={`SYS:/PROJECTS/${project.slug.toUpperCase()}/CHARACTERS/${character.slug.toUpperCase()}`}
@@ -62,6 +62,7 @@ export default async function CharacterPage({
           .map((chapter) => (
             <DirectoryLink
               key={chapter.slug}
+              classification={chapter.classification} safeLabel={chapter.safeLabel}
               href={chapterHref(project, chapter)}
               name={chapter.title}
               meta="OPEN READER"

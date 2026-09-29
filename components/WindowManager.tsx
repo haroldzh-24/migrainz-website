@@ -38,8 +38,9 @@ type WindowRecord = {
 type WindowManagerValue = {
   workspace: HTMLDivElement | null;
   setWorkspace: (element: HTMLDivElement | null) => void;
+  systemWorkspace: HTMLDivElement | null;
+  setSystemWorkspace: (element: HTMLDivElement | null) => void;
   desktopVisible: boolean;
-  showDesktop: () => void;
   hideDesktop: () => void;
   windows: WindowRecord[];
   registerWindow: (window: Omit<WindowRecord, "focused" | "zIndex">) => void;
@@ -75,6 +76,13 @@ function readViewerTabs() {
   }
 }
 
+function windowSize(id: string, size: WindowSize, workspace: HTMLDivElement | null) {
+  if (workspace && (id === viewerWindowId || id === "comic-reader")) {
+    return { width: workspace.clientWidth * 0.78, height: workspace.clientHeight * 0.8 };
+  }
+  return size;
+}
+
 function clampPosition(position: WindowPosition, size: WindowSize, workspace: HTMLDivElement | null) {
   if (!workspace?.clientWidth || !workspace.clientHeight) return position;
   const maxX = Math.max(12, workspace.clientWidth - size.width - 12);
@@ -87,6 +95,8 @@ function clampPosition(position: WindowPosition, size: WindowSize, workspace: HT
 
 export function WindowManagerProvider({ children }: { children: ReactNode }) {
   const [workspace, setWorkspace] = useState<HTMLDivElement | null>(null);
+  const [systemWorkspace, setSystemWorkspace] = useState<HTMLDivElement | null>(null);
+  const workspaceFor = (id: string) => id === "system" ? systemWorkspace : workspace;
   const [desktopVisible, setDesktopVisible] = useState(false);
   const returnFocus = useRef<HTMLElement | null>(null);
   const showDesktop = () => {
@@ -97,6 +107,7 @@ export function WindowManagerProvider({ children }: { children: ReactNode }) {
   };
   const hideDesktop = () => {
     setDesktopVisible(false);
+    setWindows((current) => current.map((window) => window.id === "system" ? { ...window, focused: false } : window));
     const target = returnFocus.current;
     (target?.isConnected ? target : document.getElementById("top"))?.focus({ preventScroll: true });
   };
@@ -108,16 +119,17 @@ export function WindowManagerProvider({ children }: { children: ReactNode }) {
   const { playSound } = useSound();
 
   useEffect(() => {
-    if (!workspace || !desktopVisible) return;
     const observer = new ResizeObserver(() => {
       setWindows((current) => current.map((entry) => {
-        const position = clampPosition(entry.position, entry.size, workspace);
+        const target = entry.id === "system" ? systemWorkspace : workspace;
+        const position = clampPosition(entry.position, windowSize(entry.id, entry.size, target), target);
         return position.x === entry.position.x && position.y === entry.position.y ? entry : { ...entry, position };
       }));
     });
-    observer.observe(workspace);
+    if (workspace) observer.observe(workspace);
+    if (systemWorkspace) observer.observe(systemWorkspace);
     return () => observer.disconnect();
-  }, [workspace, desktopVisible]);
+  }, [workspace, systemWorkspace]);
 
   useEffect(() => {
     const tabs = readViewerTabs();
@@ -132,11 +144,11 @@ export function WindowManagerProvider({ children }: { children: ReactNode }) {
   }, [viewerHydrated, viewerTabs]);
 
   const registerWindow = (window: Omit<WindowRecord, "focused" | "zIndex">) => {
-    if (!windows.some((entry) => entry.id === window.id) && window.open) showDesktop();
     setWindows((current) => {
       if (current.some((entry) => entry.id === window.id)) return current;
       nextZIndex.current += 1;
-      return [...current, { ...window, position: clampPosition(window.position, window.size, workspace), focused: current.length === 0, zIndex: nextZIndex.current }];
+      const target = workspaceFor(window.id);
+      return [...current.map((entry) => window.open ? { ...entry, focused: false } : entry), { ...window, position: clampPosition(window.position, windowSize(window.id, window.size, target), target), focused: window.open, zIndex: nextZIndex.current }];
     });
   };
   const unregisterWindow = (id: string) => {
@@ -158,23 +170,26 @@ export function WindowManagerProvider({ children }: { children: ReactNode }) {
     playSound(sound);
   };
   const minimizeWindow = (id: string) => {
+    if (id === "system") hideDesktop();
     setWindows((current) => current.map((window) => window.id === id ? { ...window, minimized: true, focused: false } : window));
     playSound("close");
   };
   const restoreWindow = (id: string) => {
-    showDesktop();
+    if (id === "system") showDesktop();
     setWindows((current) => current.map((window) => window.id === id ? { ...window, open: true, minimized: false } : window));
     focusWindow(id);
   };
   const closeWindow = (id: string) => {
+    if (id === "system") hideDesktop();
     setWindows((current) => current.map((window) => window.id === id ? { ...window, open: false, minimized: false, focused: false } : window));
     playSound("close");
   };
   const moveWindow = (id: string, position: WindowPosition) => {
-    setWindows((current) => current.map((window) => window.id === id ? { ...window, position: clampPosition(position, window.size, workspace) } : window));
+    const target = workspaceFor(id);
+    setWindows((current) => current.map((window) => window.id === id ? { ...window, position: clampPosition(position, windowSize(id, window.size, target), target) } : window));
   };
   const toggleMaximizeWindow = (id: string) => {
-    // Keep normal geometry intact; CSS supplies the monitor workspace bounds.
+    // Keep normal geometry intact; CSS supplies the target workspace bounds.
     setWindows((current) => current.map((window) => window.id === id ? { ...window, maximized: !window.maximized } : window));
   };
 
@@ -190,13 +205,12 @@ export function WindowManagerProvider({ children }: { children: ReactNode }) {
         minimized: false,
         focused: true,
         zIndex: nextZIndex.current,
-        position: clampPosition(viewerWindowDefaults.position, viewerWindowDefaults.size, workspace),
+        position: clampPosition(viewerWindowDefaults.position, windowSize(viewerWindowId, viewerWindowDefaults.size, workspace), workspace),
         size: viewerWindowDefaults.size,
       }];
     });
   };
   const openViewerTab = (tab: ViewerTab) => {
-    showDesktop();
     setViewerTabs((current) => current.some((entry) => entry.id === tab.id) ? current : [...current, tab]);
     setActiveViewerTab(tab.id);
     ensureViewerWindow();
@@ -217,7 +231,7 @@ export function WindowManagerProvider({ children }: { children: ReactNode }) {
     else playSound("close");
   };
 
-  return <WindowManagerContext.Provider value={{ workspace, setWorkspace, desktopVisible, showDesktop, hideDesktop, windows, registerWindow, unregisterWindow, focusWindow, minimizeWindow, restoreWindow, closeWindow, moveWindow, toggleMaximizeWindow, viewerTabs, activeViewerTab, openViewerTab, switchViewerTab, closeViewerTab }}>{children}</WindowManagerContext.Provider>;
+  return <WindowManagerContext.Provider value={{ workspace, setWorkspace, systemWorkspace, setSystemWorkspace, desktopVisible, hideDesktop, windows, registerWindow, unregisterWindow, focusWindow, minimizeWindow, restoreWindow, closeWindow, moveWindow, toggleMaximizeWindow, viewerTabs, activeViewerTab, openViewerTab, switchViewerTab, closeViewerTab }}>{children}</WindowManagerContext.Provider>;
 }
 
 export function useWindowManager() {
@@ -238,6 +252,7 @@ export function RetroWindow({ id, title, defaultPosition, defaultSize, defaultOp
   onToggleMaximize?: () => void;
 }) {
   const manager = useWindowManager();
+  const targetWorkspace = id === "system" ? manager.systemWorkspace : manager.workspace;
   const record = manager.windows.find((window) => window.id === id);
   const windowElement = useRef<HTMLElement>(null);
   const drag = useRef<{ pointerId: number; offsetX: number; offsetY: number; workspaceLeft: number; workspaceTop: number } | null>(null);
@@ -247,11 +262,11 @@ export function RetroWindow({ id, title, defaultPosition, defaultSize, defaultOp
   }, [defaultOpen, defaultPosition, defaultSize, id, manager, title]);
 
   useEffect(() => {
-    if (manager.desktopVisible && record?.open && !record.minimized && record.focused && window.matchMedia("(max-width: 700px)").matches) {
+    if ((id !== "system" || manager.desktopVisible) && record?.open && !record.minimized && record.focused && window.matchMedia("(max-width: 700px)").matches) {
       const element = windowElement.current;
-      if (element && manager.workspace) manager.workspace.scrollTop = element.offsetTop;
+      if (element && targetWorkspace) targetWorkspace.scrollTop = element.offsetTop;
     }
-  }, [manager.desktopVisible, manager.workspace, record?.open, record?.minimized, record?.focused]);
+  }, [id, manager.desktopVisible, targetWorkspace, record?.open, record?.minimized, record?.focused]);
 
   const current = record ?? { id, title, open: defaultOpen, minimized: false, focused: false, zIndex: 1, position: defaultPosition, size: defaultSize };
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -278,8 +293,9 @@ export function RetroWindow({ id, title, defaultPosition, defaultSize, defaultOp
     if (drag.current?.pointerId === event.pointerId && event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
     drag.current = null;
   };
-  if (!current.open || current.minimized || !manager.workspace) return null;
-  return createPortal(<section ref={windowElement} className={`retro-window${className ? ` ${className}` : ""}`} data-maximized={current.maximized || undefined} data-focused={current.focused} style={{ left: current.position.x, top: current.position.y, width: current.size.width, height: current.size.height, zIndex: current.zIndex }} onFocusCapture={() => { if (!current.focused) manager.focusWindow(id, "click"); }} onPointerDown={() => manager.focusWindow(id)} aria-label={`${title} window`}>
+  if (!current.open || current.minimized || !targetWorkspace) return null;
+  const size = windowSize(id, current.size, targetWorkspace);
+  return createPortal(<section ref={windowElement} className={`retro-window${className ? ` ${className}` : ""}`} data-maximized={current.maximized || undefined} data-focused={current.focused} style={{ left: current.position.x, top: current.position.y, width: size.width, height: size.height, zIndex: current.zIndex }} onFocusCapture={() => { if (!current.focused) manager.focusWindow(id, "click"); }} onPointerDown={() => manager.focusWindow(id)} aria-label={`${title} window`}>
     <div className="retro-window-titlebar" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={stopDragging} onPointerCancel={stopDragging}>
       <strong>{title}</strong>
       {titlebarContent}
@@ -290,19 +306,33 @@ export function RetroWindow({ id, title, defaultPosition, defaultSize, defaultOp
       </span>
     </div>
     <div className="retro-window-body">{children}</div>
-  </section>, manager.workspace);
+  </section>, targetWorkspace);
 }
 
 export function WindowLauncher({ id, children }: { id: string; children: ReactNode }) {
-  const { restoreWindow } = useWindowManager();
-  return <button className="terminal-button" type="button" onClick={() => restoreWindow(id)}>{children}</button>;
+  const { restoreWindow, desktopVisible } = useWindowManager();
+  return <button className="terminal-button" type="button" aria-controls={id === "system" ? "pixel-monitor" : undefined} aria-expanded={id === "system" ? desktopVisible : undefined} onClick={() => restoreWindow(id)}>{children}</button>;
 }
 
-export function WindowTaskbar() {
-  const { windows, viewerTabs, restoreWindow } = useWindowManager();
-  const visibleWindows = windows.filter((window) => window.id !== viewerWindowId || viewerTabs.length > 0);
+export function WindowTaskbar({ system = false }: { system?: boolean }) {
+  const { windows, viewerTabs, restoreWindow, desktopVisible } = useWindowManager();
+  const visibleWindows = windows.filter((window) => (!system || window.id === "system") && (window.id !== viewerWindowId || viewerTabs.length > 0));
   if (!visibleWindows.length) return null;
-  return <nav className="window-taskbar" aria-label="Window dock">
-    {visibleWindows.map((window) => <button type="button" key={window.id} className={window.open && !window.minimized ? "is-open" : ""} aria-label={`${window.open && !window.minimized ? "Focus" : "Restore"} ${window.title}`} onClick={() => restoreWindow(window.id)}>[{window.title}]</button>)}
+  return <nav className="window-taskbar" aria-label={system ? "SYSTEM window dock" : "Window dock"}>
+    {visibleWindows.map((window) => {
+      const visible = window.open && !window.minimized && (window.id !== "system" || desktopVisible);
+      return <button type="button" key={window.id} className={visible ? "is-open" : ""} aria-label={`${visible ? "Focus" : "Restore"} ${window.title}`} onClick={() => restoreWindow(window.id)}>[{window.title}]</button>;
+    })}
   </nav>;
+}
+
+export function PublicWindowWorkspace() {
+  const { setWorkspace, windows } = useWindowManager();
+  const systemFocused = windows.some((window) => window.id === "system" && window.focused);
+  return <>
+    <div className="public-window-layer" data-system-focused={systemFocused || undefined}>
+      <div ref={setWorkspace} className="public-windows" aria-label="Public terminal window workspace" />
+    </div>
+    <div className="public-window-dock"><WindowTaskbar /></div>
+  </>;
 }

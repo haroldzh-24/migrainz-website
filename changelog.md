@@ -1,5 +1,38 @@
 # Changelog
 
+## 2026-09-29 / Targeted website recovery
+
+- Retain existing local heading and SYSTEM-only monitor implementation without restoring the infrastructure commit or stash.
+- Fix PUBLIC attached Media being denied solely because its listing is hidden; publication, access/tier and accessible-parent checks remain required.
+- Retain comic page positions, render safe unavailable/classified slots, and fall back between authorized image derivatives when a preferred file fails.
+- Validate TypeScript and production compilation; preserve the original work in a private temporary snapshot and work on a recovery branch. No commits, deployment, media rewrite or production migration.
+
+## 2026-09-28 / Draggable announcement and verified Patreon access
+
+- Add bounded, titlebar-only Pointer Events dragging to the existing post-boot announcement; preserve dismissal and mobile behavior.
+- Add Patreon API v2 start/callback/signout routes, encrypted HttpOnly sessions using the existing secret, fresh campaign membership checks and optional tier-ID authorization in Payload.
+- Keep unauthorized patron metadata safe, show black censor bars/CLASSIFIED media, open ACCESS DENIED with the existing window manager, and render safe shells for known locked page routes. Preserve REDACTED/HIDDEN distinctions and separate CMS authentication.
+- Add `20260928_190000_patreon_tier_access` (22 nullable JSONB columns, no data rewrite, unapplied), optional environment documentation and docs/PATREON.md. No storage/provider changes.
+- Validation: `npm.cmd run typecheck` passed; live OAuth and browser checks remain manual. No build, regression, commit or push.
+
+## 2026-09-28 / Safe classified rendering
+
+- Add REDACTED and HIDDEN access choices alongside PUBLIC/PATRON, with clear listing-visibility precedence and safe-label guidance. Add `20260928_180000_classified_access` without rewriting records or applying migrations.
+- Introduce a server-only allowlisted teaser path while retaining PUBLIC-only document/file authorization. Render generic green censor cards, text bars and media placeholders for REDACTED/PATRON entries; omit HIDDEN and inaccessible descendants.
+- Block placeholder links, viewer/reader launches, inspectors and keyboard activation. Filter restricted media out of viewer payloads and show their placeholders on content pages.
+- Validation: `npm.cmd run typecheck` passed; no build, regression or browser run. Existing window/viewer components, storage and integrations are unchanged by this access-control change.
+
+## 2026-09-28 / Homepage display text
+
+- Replace the main hero wording with MIGRAINZ ARCHIVE & PROJECTS without changing typography, styling or unrelated homepage content.
+
+## 2026-09-28 / Public artwork workspace and SYSTEM monitor
+
+- Move normal gray windows out of the monitor into a viewport-sized public terminal layer while retaining the existing WindowManager, viewer tabs, canvas controls and reader.
+- Reserve PixelMonitorDesktop for explicit SYSTEM activation. Move its existing status content into the persistent public layout; closing/minimizing SYSTEM or returning to the terminal hides only the monitor.
+- Add a public dock with a SYSTEM restore entry; the monitor's internal dock contains only SYSTEM. Expand artwork/comic defaults and maximize bounds, with near-fullscreen nondraggable mobile windows.
+- Validation: `npm.cmd run typecheck` passed; no build, regression or browser validation.
+
 ## 2026-09-28 / PostgreSQL Media image-size repair
 
 - Add and register `20260928_160000_media_image_sizes` to supply missing preview/viewer columns on `media` and `_media_v`, plus their filename indexes.

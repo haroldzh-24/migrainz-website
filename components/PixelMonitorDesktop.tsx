@@ -1,12 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef } from "react";
-import { useWindowManager, WindowTaskbar } from "@/components/WindowManager";
+import { RetroWindow, useWindowManager, WindowTaskbar } from "@/components/WindowManager";
 
 /** Presentation only: windows and dock share the public WindowManager. */
 export default function PixelMonitorDesktop() {
-  const { desktopVisible, showDesktop, hideDesktop, setWorkspace, windows } = useWindowManager();
-  const maximized = windows.some(window => window.open && !window.minimized && window.maximized);
+  const { desktopVisible, hideDesktop, setSystemWorkspace, windows, focusWindow } = useWindowManager();
+  const systemFocused = windows.some(window => window.id === "system" && window.focused);
   const hideButton = useRef<HTMLButtonElement>(null);
   const monitor = useRef<HTMLElement>(null);
 
@@ -28,17 +29,21 @@ export default function PixelMonitorDesktop() {
   }, [desktopVisible, hideDesktop]);
 
   return <>
-    <div className="shell monitor-launcher">
-      <button type="button" className="terminal-button" aria-controls="pixel-monitor" aria-expanded={desktopVisible} onClick={showDesktop}>[ OPEN DESKTOP ]</button>
-    </div>
-    <section ref={monitor} id="pixel-monitor" className="pixel-monitor" hidden={!desktopVisible} aria-label="Studio Migrainz computer desktop">
+    <RetroWindow id="system" title="SYSTEM" defaultOpen={false} defaultPosition={{ x: 24, y: 24 }} defaultSize={{ width: 430, height: 220 }}>
+      <div className="terminal-panel-head"><h2>SYSTEM</h2><span>NODE STATUS</span></div>
+      <p><b>VERSION</b> 0.2.0 / <b>STATUS</b> ONLINE</p>
+      <p><b>ACCESS</b> PUBLIC / UNAUTHENTICATED</p>
+      <p><b>CHANNELS</b> PROJECTS / COMICS / ARCHIVE</p>
+      <Link className="system-link" href="/about">READ SYSTEM INFORMATION →</Link>
+    </RetroWindow>
+    <section ref={monitor} id="pixel-monitor" className="pixel-monitor" hidden={!desktopVisible} aria-label="SYSTEM diagnostic environment" onPointerDown={() => { if (!systemFocused) focusWindow("system", "click"); }} onFocusCapture={() => { if (!systemFocused) focusWindow("system", "click"); }}>
       <div className="pixel-monitor-header">
         <span>MGZ / STUDIO COMPUTER</span>
         <button ref={hideButton} type="button" onClick={hideDesktop} aria-label="Hide desktop and return to terminal">RETURN TO TERMINAL [×]</button>
       </div>
-      <div className="pixel-monitor-screen" data-window-maximized={maximized || undefined}>
-        <div ref={setWorkspace} className="desktop-windows" aria-label="Desktop window workspace" />
-        <div className="pixel-monitor-dock"><WindowTaskbar /></div>
+      <div className="pixel-monitor-screen">
+        <div ref={setSystemWorkspace} className="desktop-windows" aria-label="SYSTEM monitor workspace" />
+        <div className="pixel-monitor-dock"><WindowTaskbar system /></div>
       </div>
       <div className="pixel-monitor-hardware" aria-hidden="true">
         <span className="pixel-monitor-vents" />

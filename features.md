@@ -1,5 +1,39 @@
 # Features
 
+## Implemented - 2026-09-29 / Targeted reader recovery
+
+- Preserve the existing uncommitted homepage heading and two-target WindowManager.
+- Separate attached Media listing visibility from publication/access/parent authorization; existing PUBLIC images with hidden listings can render.
+- Preserve saved comic positions for missing derivatives or unresolved media, show safe classified/unavailable states in place, and try remaining authorized derivatives when a file fails.
+- Keep original-image denial, protected media rules, saved relationships and migration history intact. No media reprocessing or production writes.
+- Validation: typecheck and production build passed. Runtime/deployment findings are recorded in documentation/recovery-20260929.md.
+
+## Implemented - 2026-09-28 / Announcement dragging and Patreon OAuth v2
+
+- Drag the post-startup announcement by its title bar within desktop viewport bounds. Keep its original dismissal/session lifecycle, visuals and mobile stacking; no WindowManager registration.
+- Add server-side OAuth v2 with CSRF state, an encrypted HttpOnly session, verified campaign/paid membership and optional tier-ID requirements. Missing configuration leaves public content usable and patron records locked.
+- Reuse existing content/Media access checks, safe metadata projections and WindowManager for black patron censor bars, CLASSIFIED image blocks, locked page shells and ACCESS DENIED actions. REDACTED stays green; HIDDEN stays omitted.
+- Register an unapplied additive tier-field migration for live/version tables. No storage change or record rewrite. Setup and exact manual tests: docs/PATREON.md.
+- Validation: `npm.cmd run typecheck` passed. Live OAuth, browser interaction and deployment migration checks remain manual.
+
+## Implemented - 2026-09-28 / Safe REDACTED and PATRON listings
+
+- Distinguish PUBLIC, REDACTED, PATRON and HIDDEN in the CMS. Keep existing records unchanged and register an unapplied additive PostgreSQL enum migration for live/version access fields.
+- Merge access-checked public records with an explicit server-only safe metadata projection. Preserve listing order, omit hidden/draft records, and respect inaccessible parents. Restricted documents and files remain inaccessible through public APIs and direct routes.
+- Reuse inert green censor placeholders across directories, homepage, logs, tracker, galleries and media. No restricted source titles, slugs, text, URLs or captions reach client props; optional explicitly safe labels remain public.
+- Keep protected media out of existing art/comic viewers; chapter routes show classified page placeholders separately. Validation: `npm.cmd run typecheck` passed; manual CMS/access and browser checks remain.
+
+## Implemented - 2026-09-28 / Homepage display text
+
+- Change the hero heading to MIGRAINZ ARCHIVE & PROJECTS, retaining its three-line structure and existing styling.
+
+## Implemented - 2026-09-28 / Public artwork workspace and SYSTEM monitor
+
+- Keep one WindowManager with a public terminal window layer and a separate SYSTEM monitor render target. ART VIEWER, COMIC READER, character/equipment artwork and LATEST open over the terminal without opening the monitor.
+- Size artwork/comic windows to 78% of workspace width and 80% of height; maximize within small viewport margins above the persistent public dock. Mobile windows fill the usable workspace without free dragging.
+- SYSTEM explicitly opens/focuses the monitor; closing, minimizing or hiding SYSTEM hides it without clearing unrelated tabs or reader state. Keep SYSTEM mounted across public routes and retain its internal dock.
+- Validation: `npm.cmd run typecheck` passed; manual window, keyboard, comic navigation and mobile checks remain.
+
 ## Implemented - 2026-09-28 / PostgreSQL Media image-size repair
 
 - Register a new additive forward migration for preview/viewer metadata on Media and its versions table, including Payload filename indexes.
@@ -137,9 +171,9 @@ Recorded 2026-09-08. Owner: Studio Migrainz. Milestones describe future phases, 
   - Target milestone: Archive expansion. Priority: Medium.
 - Feature: Spread/vertical comic modes, chapter continuation and persistent reading position.
   - Target milestone: Reader expansion. Priority: Medium.
-- Feature: Patreon OAuth and membership access using private storage and server-side authorization for each protected request.
-  - Target milestone: Membership phase. Priority: Later.
-  - Notes: Never hide public files as a substitute for access control.
+- Feature: Durable production private media storage for the verified Patreon access system implemented on 2026-09-28.
+  - Target milestone: Storage phase. Priority: Later.
+  - Notes: Current storage architecture is unchanged. Never hide public files as a substitute for access control.
 
 ## 2026-09-08 / Terminal-only homepage
 

@@ -14,6 +14,7 @@ export default async function ComicsPage() {
           project.chapters.map((chapter) => (
             <DirectoryLink
               key={`${project.slug}-${chapter.slug}`}
+              classification={chapter.classification} safeLabel={chapter.safeLabel}
               href={chapterHref(project, chapter)}
               name={`${project.title} / ${chapter.title}`}
               meta={`${chapter.pages.length} PAGES`}

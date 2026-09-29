@@ -1,11 +1,13 @@
 "use client";
 
+import ClassifiedPlaceholder from "@/components/ClassifiedPlaceholder";
 import Link from "next/link";
 import { useState, type CSSProperties } from "react";
 import { projectHref, type Project } from "@/lib/content/types";
 
 export default function ProjectTracker({ project }: { project: Project }) {
   const [open, setOpen] = useState(false);
+  if (project.classification) return <ClassifiedPlaceholder classification={project.classification} label={project.safeLabel} />;
   const logId = `${project.slug}-log`;
   return (
     <article className="project-status featured-status">
@@ -19,7 +21,7 @@ export default function ProjectTracker({ project }: { project: Project }) {
         <div className="status-chip">{project.status}</div>
       </div>
       <div className="progress-list">
-        {project.phases.map((phase) => (
+        {project.phases.map((phase, index) => phase.classification ? <ClassifiedPlaceholder key={index} classification={phase.classification} label={phase.safeLabel} variant="inline" /> : (
           <div className="progress-row" key={phase.label}>
             <span>{phase.label}</span>
             <div
@@ -52,13 +54,13 @@ export default function ProjectTracker({ project }: { project: Project }) {
       </div>
       <div className={`hidden-log${open ? " open" : ""}`} id={logId}>
         <p>PUBLIC PRODUCTION LOG</p>
-        {project.notes.map((note) => (
+        {project.notes.map((note, index) => note.classification ? <ClassifiedPlaceholder key={index} classification={note.classification} label={note.safeLabel} variant="inline" /> : (
           <p key={note.date}>
             <time dateTime={note.date}>{note.date}</time> — {note.text}
           </p>
         ))}
         <h4>MILESTONES</h4>
-        {project.milestones.map((item) => (
+        {project.milestones.map((item, index) => item.classification ? <ClassifiedPlaceholder key={index} classification={item.classification} label={item.safeLabel} variant="inline" /> : (
           <p key={item.title}>
             {item.title} / {item.status}
           </p>

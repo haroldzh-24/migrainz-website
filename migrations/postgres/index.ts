@@ -1,3 +1,5 @@
+import * as migration_20260928_190000_patreon_tier_access from './20260928_190000_patreon_tier_access';
+import * as migration_20260928_180000_classified_access from './20260928_180000_classified_access';
 import * as migration_20260909_045755_foundation from './20260909_045755_foundation';
 import * as migration_20260927_190344_factions_equipment from './20260927_190344_factions_equipment';
 import * as migration_20260928_120000_route_key_repair from './20260928_120000_route_key_repair';
@@ -24,4 +26,6 @@ export const migrations = [
     down: migration_20260928_160000_media_image_sizes.down,
     name: '20260928_160000_media_image_sizes'
   },
+  { up: migration_20260928_180000_classified_access.up, down: migration_20260928_180000_classified_access.down, name: '20260928_180000_classified_access' },
+  { up: migration_20260928_190000_patreon_tier_access.up, down: migration_20260928_190000_patreon_tier_access.down, name: '20260928_190000_patreon_tier_access' },
 ];
