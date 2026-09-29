@@ -14,7 +14,7 @@ import { createPortal } from "react-dom";
 
 type WindowPosition = { x: number; y: number };
 type WindowSize = { width: number; height: number };
-export type ViewerImage = { src: string; viewerSrc?: string; thumbnailSrc?: string; alt: string; caption?: string; width?: number; height?: number };
+export type ViewerImage = { src: string; viewerSrc?: string; thumbnailSrc?: string; sources?: string[]; alt: string; caption?: string; width?: number; height?: number };
 export type ViewerTab = {
   id: string;
   href: string;

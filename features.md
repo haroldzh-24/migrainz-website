@@ -1,5 +1,12 @@
 # Features
 
+## Implemented - 2026-09-29 / Legacy public image selection
+
+- Select nonempty safe URLs once in the shared mapper: viewer, preview, thumbnail, legacy thumbnail, then unavailable. Reject original-image aliases in derivative fields; preserve the separate PDF download behavior.
+- Pass the ordered candidates to the shared art/comic canvas so failed derivative requests can reach legacy thumbnails. Galleries use the same primary selection.
+- Preserve chapter slots, Media records and the existing separation between Media listing visibility and file access. No storage, migration or upload changes.
+- Validation: `npm.cmd run typecheck` only.
+
 ## Implemented - 2026-09-29 / Targeted reader recovery
 
 - Preserve the existing uncommitted homepage heading and two-target WindowManager.

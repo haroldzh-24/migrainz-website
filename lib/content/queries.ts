@@ -15,12 +15,32 @@ function image(media?: number | Media | null, alt?: string | null, caption?: str
   const restricted = media as Media & Classified;
   if (restricted.classification) return { ...classificationOf(restricted), src: '', alt: '' };
   if (!['public', 'patron'].includes(media.accessLevel) || media._status !== 'published') return undefined;
-  const thumbnail = media.sizes?.thumbnail?.url ?? media.thumbnailURL ?? undefined;
   const isPDF = media.mimeType === 'application/pdf';
-  const preview = media.sizes?.preview?.url ?? thumbnail ?? (isPDF ? media.url : undefined);
-  const viewer = media.sizes?.viewer?.url ?? media.sizes?.preview?.url ?? thumbnail ?? (isPDF ? media.url : undefined);
-  if (!preview) return undefined;
-  return { src: preview, viewerSrc: viewer ?? preview, thumbnailSrc: thumbnail ?? preview,
+  const pathname = (url: string) => {
+    try { return decodeURIComponent(new URL(url, 'https://media.invalid').pathname); }
+    catch { return undefined; }
+  };
+  const originalPath = media.url ? pathname(media.url) : undefined;
+  const derivative = (value?: string | null): string | undefined => {
+    const url = value?.trim();
+    if (!url) return undefined;
+    const filePath = pathname(url);
+    // Legacy thumbnailURL can point at the original. Never send that image URL
+    // to public clients, even with a different host, query string or encoding.
+    if (!filePath || filePath === originalPath || (media.filename && filePath.split('/').pop() === media.filename)) return undefined;
+    return url;
+  };
+  const thumbnail = derivative(media.sizes?.thumbnail?.url);
+  const legacyThumbnail = derivative(media.thumbnailURL);
+  const sources = [...new Set([
+    derivative(media.sizes?.viewer?.url), derivative(media.sizes?.preview?.url),
+    thumbnail, legacyThumbnail,
+    // Preserve the separate public PDF download behavior; never use image originals.
+    isPDF ? media.url?.trim() : undefined,
+  ].filter((url): url is string => Boolean(url)))];
+  const src = sources[0];
+  if (!src) return undefined;
+  return { src, viewerSrc: src, thumbnailSrc: thumbnail ?? legacyThumbnail ?? src, sources,
     alt: alt || media.alt, caption: caption || media.caption || undefined,
     width: media.width || undefined, height: media.height || undefined };
 }

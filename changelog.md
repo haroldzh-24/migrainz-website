@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-29 / Legacy thumbnail fallback
+
+- Fix empty derivative URLs suppressing legacy thumbnails and the preview-only availability guard discarding viewer-only records.
+- Centralize viewer -> preview -> thumbnail -> legacy thumbnail selection in the public media mapper; reject original-image URLs and preserve ordered fallback candidates for the shared canvas.
+- Keep inaccessible media protected and missing comic positions intact. Validation limited to `npm.cmd run typecheck`.
+
 ## 2026-09-29 / Targeted website recovery
 
 - Retain existing local heading and SYSTEM-only monitor implementation without restoring the infrastructure commit or stash.

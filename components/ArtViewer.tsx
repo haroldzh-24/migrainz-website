@@ -12,7 +12,7 @@ export function ArtworkCanvas({ image, view, onChange }: { image: ViewerImage; v
   const [natural, setNatural] = useState({ width: 0, height: 0 });
   const [failed, setFailed] = useState(false);
   const [sourceIndex, setSourceIndex] = useState(0);
-  const sources = [...new Set([image.viewerSrc, image.src, image.thumbnailSrc].filter((src): src is string => Boolean(src)))];
+  const sources = image.sources ?? [...new Set([image.viewerSrc, image.src, image.thumbnailSrc].filter((src): src is string => Boolean(src)))];
   const drag = useRef<{ id: number; clientX: number; clientY: number; x: number; y: number } | null>(null);
   const [dragging, setDragging] = useState(false);
 

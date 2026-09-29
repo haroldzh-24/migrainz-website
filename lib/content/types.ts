@@ -4,7 +4,7 @@ import type { RichText } from '@payloadcms/richtext-lexical/react';
 export type Writing = ComponentProps<typeof RichText>['data'];
 export type Classification = 'redacted' | 'patron';
 export type Classified = { classification?: Classification; safeLabel?: string };
-export type ComicPage = Classified & { src: string; viewerSrc?: string; thumbnailSrc?: string; alt: string; caption?: string; width?: number; height?: number };
+export type ComicPage = Classified & { src: string; viewerSrc?: string; thumbnailSrc?: string; sources?: string[]; alt: string; caption?: string; width?: number; height?: number };
 export type Chapter = Classified & { slug: string; title: string; description: string; pages: ComicPage[]; chapterNumber?: number; comicTitle?: string };
 export type Gallery = Classified & { slug: string; title: string; description: string; images: ComicPage[] };
 export type Character = Classified & {
