@@ -1,5 +1,12 @@
 # Features
 
+## Implemented - 2026-09-29 / PUBLIC original compatibility fallback
+
+- Append original image URLs after viewer, preview, thumbnail and legacy thumbnail only for access-checked published PUBLIC Media. The shared art/comic canvas continues past runtime image failures and retains the unavailable state after all candidates fail.
+- Permit those original requests through the existing file handler after Payload media/parent authorization; protected image originals remain denied to nonstaff, including entitled PATRON originals.
+- Preserve Media records, comic positions, listing-visibility independence, storage and migrations. No regeneration, upload or database writes.
+- Validation: `npm.cmd run typecheck` only.
+
 ## Implemented - 2026-09-29 / Legacy public image selection
 
 - Select nonempty safe URLs once in the shared mapper: viewer, preview, thumbnail, legacy thumbnail, then unavailable. Reject original-image aliases in derivative fields; preserve the separate PDF download behavior.

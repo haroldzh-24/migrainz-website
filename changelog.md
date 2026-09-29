@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-29 / PUBLIC image original fallback
+
+- Address missing derivative files in temporary storage by allowing the original as the last source for authorized published PUBLIC images.
+- Preserve shared art/comic runtime retries, page ordering and protected-media checks; file delivery still authorizes each request and denies non-PUBLIC image originals to nonstaff.
+- Update CMS documentation. No storage, migration, record, upload or regeneration changes. Validation: `npm.cmd run typecheck` only.
+
 ## 2026-09-29 / Legacy thumbnail fallback
 
 - Fix empty derivative URLs suppressing legacy thumbnails and the preview-only availability guard discarding viewer-only records.

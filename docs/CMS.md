@@ -83,21 +83,28 @@ For the basic comic workflow:
    Rows are displayed in their saved order. Save a draft or publish the chapter.
 6. Visit `/comics/PROJECT-SLUG/CHAPTER-SLUG`. No deployment or source edit is needed.
 
-New image uploads preserve the original for staff/admin and generate WebP
+New image uploads preserve the original and generate WebP
 derivatives: a 400px thumbnail, 1200px preview and 2400px viewer image at quality
-84. Public galleries use previews; ART VIEWER and COMIC READER use the viewer
-size; thumbnail strips use the thumbnail. Anonymous original-image file requests
-are denied, while derivative URLs remain public only under
-the existing published-content/media access rules. PDFs continue using originals.
+84. The shared public mapper selects viewer, preview, thumbnail, then legacy
+thumbnail; thumbnail strips prefer thumbnails. For published PUBLIC images only,
+the original URL is the final compatibility fallback. Every file request still
+passes the existing media and accessible-parent authorization. PDFs continue
+using their existing authorized download behavior.
 
 Existing Media files are not rewritten when these sizes are added. Public
-rendering falls back to the best existing derivative or legacy `thumbnailURL`;
-when an image has no derivative, comic readers preserve its saved position with
-PAGE UNAVAILABLE rather than requesting the original. Other image listings omit
-it. Viewers try the remaining authorized derivative URLs if a preferred file
-fails. Older thumbnail-only records display at thumbnail resolution until
-reprocessed. Anonymous original-image file requests are
-denied; staff can still access originals in the admin.
+rendering uses the ordered candidates above. ART VIEWER and COMIC READER share
+the same canvas, which tries the next candidate after an image-load error,
+including a 404/500 for derivative metadata whose file is missing on disk. A
+PUBLIC original is tried only after the derivative candidates fail. If all files
+are unavailable, the existing unavailable state remains and comic page positions
+and ordering are preserved. This fallback cannot recover an original that is also
+missing from temporary storage.
+
+Protected image originals are never included in the fallback candidates. Even
+entitled PATRON images remain derivative-only, and nonstaff direct original
+requests require published PUBLIC media plus the existing accessible reference
+checks. REDACTED, HIDDEN, drafts, locked PATRON records and inaccessible parents
+remain denied. Staff retain their admin file access.
 
 Media listing visibility does not authorize attached files: published PUBLIC
 media can have a HIDDEN listing and still render through an accessible parent.

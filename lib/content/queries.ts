@@ -25,8 +25,8 @@ function image(media?: number | Media | null, alt?: string | null, caption?: str
     const url = value?.trim();
     if (!url) return undefined;
     const filePath = pathname(url);
-    // Legacy thumbnailURL can point at the original. Never send that image URL
-    // to public clients, even with a different host, query string or encoding.
+    // Legacy thumbnailURL can alias the original. Keep originals out of the
+    // derivative positions; only authorized PUBLIC images get one at the end.
     if (!filePath || filePath === originalPath || (media.filename && filePath.split('/').pop() === media.filename)) return undefined;
     return url;
   };
@@ -35,8 +35,10 @@ function image(media?: number | Media | null, alt?: string | null, caption?: str
   const sources = [...new Set([
     derivative(media.sizes?.viewer?.url), derivative(media.sizes?.preview?.url),
     thumbnail, legacyThumbnail,
-    // Preserve the separate public PDF download behavior; never use image originals.
-    isPDF ? media.url?.trim() : undefined,
+    // Populated media came through overrideAccess:false (including parent and
+    // entitlement checks). Only published PUBLIC images may use this fallback.
+    // Entitled PATRON images remain derivative-only; PDF downloads are unchanged.
+    isPDF || (media.accessLevel === 'public' && media.mimeType?.startsWith('image/')) ? media.url?.trim() : undefined,
   ].filter((url): url is string => Boolean(url)))];
   const src = sources[0];
   if (!src) return undefined;

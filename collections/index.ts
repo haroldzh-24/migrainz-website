@@ -134,8 +134,13 @@ export function mediaCollection(directory: string): CollectionConfig {
         { name: 'viewer', width: 2400, height: 2400, fit: 'inside', withoutEnlargement: true, formatOptions: { format: 'webp', options: { quality: 84 } } },
       ],
       handlers: [(req, { doc, params }) => {
-        const media = doc as unknown as { filename?: string; mimeType?: string };
-        if (!req.user && media.mimeType?.startsWith('image/') && params.filename === media.filename) {
+        // Payload's checkFileAccess runs mediaRead before this handler, enforcing
+        // publication, entitlement and an accessible parent for every file URL.
+        // Staff reads may have no doc because their access result is simply true.
+        if (staff({ req })) return undefined;
+        const media = doc as unknown as { filename?: string; mimeType?: string; accessLevel?: string; _status?: string } | undefined;
+        if (!media || (media.mimeType?.startsWith('image/') && params.filename === media.filename
+          && (media.accessLevel !== 'public' || media._status !== 'published'))) {
           return new Response(null, { status: 404, headers: { 'Cache-Control': 'private, no-store' } });
         }
         return undefined;
