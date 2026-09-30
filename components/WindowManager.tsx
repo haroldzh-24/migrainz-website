@@ -107,7 +107,7 @@ export function WindowManagerProvider({ children }: { children: ReactNode }) {
   };
   const hideDesktop = () => {
     setDesktopVisible(false);
-    setWindows((current) => current.map((window) => window.id === "system" ? { ...window, focused: false } : window));
+    setWindows((current) => current.map((window) => window.id === "system" ? { ...window, minimized: window.open, focused: false } : window));
     const target = returnFocus.current;
     (target?.isConnected ? target : document.getElementById("top"))?.focus({ preventScroll: true });
   };
@@ -145,7 +145,8 @@ export function WindowManagerProvider({ children }: { children: ReactNode }) {
 
   const registerWindow = (window: Omit<WindowRecord, "focused" | "zIndex">) => {
     setWindows((current) => {
-      if (current.some((entry) => entry.id === window.id)) return current;
+      const existing = current.find(entry => entry.id === window.id);
+      if (existing) return existing.title === window.title ? current : current.map(entry => entry.id === window.id ? { ...entry, title: window.title } : entry);
       nextZIndex.current += 1;
       const target = workspaceFor(window.id);
       return [...current.map((entry) => window.open ? { ...entry, focused: false } : entry), { ...window, position: clampPosition(window.position, windowSize(window.id, window.size, target), target), focused: window.open, zIndex: nextZIndex.current }];
@@ -161,6 +162,7 @@ export function WindowManagerProvider({ children }: { children: ReactNode }) {
     });
   };
   const focusWindow = (id: string, sound: "click" | "open" = "open") => {
+    window.dispatchEvent(new Event('migrainz:window-activated'));
     nextZIndex.current += 1;
     setWindows((current) => current.map((window) => ({
       ...window,
@@ -240,12 +242,13 @@ export function useWindowManager() {
   return context;
 }
 
-export function RetroWindow({ id, title, defaultPosition, defaultSize, defaultOpen = true, className, children, titlebarContent, onToggleMaximize }: {
+export function RetroWindow({ id, title, defaultPosition, defaultSize, defaultOpen = true, defaultMaximized = false, className, children, titlebarContent, onToggleMaximize }: {
   id: string;
   title: string;
   defaultPosition: WindowPosition;
   defaultSize: WindowSize;
   defaultOpen?: boolean;
+  defaultMaximized?: boolean;
   className?: string;
   children: ReactNode;
   titlebarContent?: ReactNode;
@@ -258,8 +261,13 @@ export function RetroWindow({ id, title, defaultPosition, defaultSize, defaultOp
   const drag = useRef<{ pointerId: number; offsetX: number; offsetY: number; workspaceLeft: number; workspaceTop: number } | null>(null);
 
   useEffect(() => {
-    manager.registerWindow({ id, title, open: defaultOpen, minimized: false, position: defaultPosition, size: defaultSize });
-  }, [defaultOpen, defaultPosition, defaultSize, id, manager, title]);
+    manager.registerWindow({ id, title, open: defaultOpen, minimized: false, maximized: defaultMaximized, position: defaultPosition, size: defaultSize });
+  }, [defaultMaximized, defaultOpen, defaultPosition, defaultSize, id, manager, title]);
+
+  useEffect(() => {
+    const element = windowElement.current;
+    if (record?.focused && record.open && !record.minimized && element && !element.contains(document.activeElement)) element.focus({ preventScroll: true });
+  }, [record?.focused, record?.open, record?.minimized]);
 
   useEffect(() => {
     if ((id !== "system" || manager.desktopVisible) && record?.open && !record.minimized && record.focused && window.matchMedia("(max-width: 700px)").matches) {
@@ -295,7 +303,7 @@ export function RetroWindow({ id, title, defaultPosition, defaultSize, defaultOp
   };
   if (!current.open || current.minimized || !targetWorkspace) return null;
   const size = windowSize(id, current.size, targetWorkspace);
-  return createPortal(<section ref={windowElement} className={`retro-window${className ? ` ${className}` : ""}`} data-maximized={current.maximized || undefined} data-focused={current.focused} style={{ left: current.position.x, top: current.position.y, width: size.width, height: size.height, zIndex: current.zIndex }} onFocusCapture={() => { if (!current.focused) manager.focusWindow(id, "click"); }} onPointerDown={() => manager.focusWindow(id)} aria-label={`${title} window`}>
+  return createPortal(<section ref={windowElement} tabIndex={-1} className={`retro-window${className ? ` ${className}` : ""}`} data-maximized={current.maximized || undefined} data-focused={current.focused} style={{ left: current.position.x, top: current.position.y, width: size.width, height: size.height, zIndex: current.zIndex }} onFocusCapture={() => { if (!current.focused) manager.focusWindow(id, "click"); }} onPointerDown={() => manager.focusWindow(id)} aria-label={`${title} window`}>
     <div className="retro-window-titlebar" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={stopDragging} onPointerCancel={stopDragging}>
       <strong>{title}</strong>
       {titlebarContent}
@@ -316,7 +324,7 @@ export function WindowLauncher({ id, children }: { id: string; children: ReactNo
 
 export function WindowTaskbar({ system = false }: { system?: boolean }) {
   const { windows, viewerTabs, restoreWindow, desktopVisible } = useWindowManager();
-  const visibleWindows = windows.filter((window) => (!system || window.id === "system") && (window.id !== viewerWindowId || viewerTabs.length > 0));
+  const visibleWindows = windows.filter((window) => (system ? window.id === "system" : window.open && window.minimized) && (window.id !== viewerWindowId || viewerTabs.length > 0));
   if (!visibleWindows.length) return null;
   return <nav className="window-taskbar" aria-label={system ? "SYSTEM window dock" : "Window dock"}>
     {visibleWindows.map((window) => {

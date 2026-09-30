@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-09-30 / Project application desktop
+
+- Wrap project routes in one maximized gray application with real URL navigation; add compact section navigation and a project equipment directory.
+- Use authorized CMS images for character/equipment cards and faction hover/focus/touch previews, with intentional unavailable states and no schema changes.
+- Add SYSTEM application launchers, public minimized restore tabs with mobile safe-area support, and a centered post-boot announcement.
+- Typecheck, production build, and isolated Chrome component checks passed. Live CMS/BLUSHLAND/admin and full access-response validation remain pending the recorded local schema blocker. No migrations, database changes, commits, or pushes.
+- Architecture, file list, source-selection policy, and validation limits: documentation/desktop-window-pass-20260930.md.
+
 ## 2026-09-30 / Blob OIDC failure diagnosis
 
 - Add `scripts/diagnose-blob-oidc.mjs` for credential-safe read-only HTTPS and Blob API diagnostics.

@@ -21,6 +21,13 @@ export default function StartupSequence({ children }: { children: ReactNode }) {
   const restoreFocus = useRef(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
+  const [foreground, setForeground] = useState(true);
+  useEffect(() => {
+    if (state !== 'announcement') return;
+    const lower = () => setForeground(false);
+    window.addEventListener('migrainz:window-activated', lower);
+    return () => window.removeEventListener('migrainz:window-activated', lower);
+  }, [state]);
   const drag = useRef<{ id: number; x: number; y: number } | null>(null);
   const clamp = (x: number, y: number) => {
     const bounds = windowRef.current?.getBoundingClientRect();
@@ -95,9 +102,9 @@ export default function StartupSequence({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("keydown", dismiss);
   }, [state]);
   return <>
-    {state !== "closed" && <div className="startup-sequence" data-phase={state} style={{ position: "fixed", inset: 0, background: state === "boot" ? "#010301" : "transparent", zIndex: 10000, pointerEvents: state === "boot" ? "auto" : "none" }}>
+    {state !== "closed" && <div className="startup-sequence" data-phase={state} style={{ position: "fixed", inset: 0, background: state === "boot" ? "#010301" : "transparent", zIndex: state === "boot" ? 10000 : foreground ? 42 : 40, pointerEvents: state === "boot" ? "auto" : "none" }}>
       <div ref={windowRef} className="startup-takeover startup-window" role="dialog" aria-modal={state === "boot" ? true : undefined} aria-labelledby="startup-title" tabIndex={-1}
-        style={state === "announcement" && position ? { left: position.x, top: position.y, right: "auto", bottom: "auto" } : undefined}
+        style={state === "announcement" && position ? { left: position.x, top: position.y, right: "auto", bottom: "auto", transform: "none" } : undefined}
         onKeyDown={event => {
           if (event.key === "Escape") { event.preventDefault(); close(); }
           if (event.key === "Tab" && state === "boot") {

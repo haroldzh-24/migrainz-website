@@ -1752,3 +1752,46 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
   .startup-window { height: min(540px, calc(100dvh - 100px)); }
   .startup-sequence[data-phase="announcement"] .startup-window { width: calc(100% - 40px); }
 }
+/* Project applications inherit a neutral palette, outside terminal CRT effects. */
+.project-application { --bg: #efefef; --green: #222; --green-dim: #555; --green2: #444; --dim: #666; --hot: #111; --line: #aaa; --muted: #555; --panel: #e4e4e4; font-family: monospace; text-shadow: none; }
+.project-application .retro-window-body { display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+.project-app-nav { display: flex; flex-shrink: 0; gap: 4px; overflow-x: auto; padding: 5px; background: #c0c0c0; border-bottom: 1px solid #888; }
+.project-app-nav a { flex-shrink: 0; padding: 5px 9px; border: 2px outset #eee; color: #222; font-size: 11px; }
+.project-app-nav a[aria-current] { border-style: inset; background: #ddd; }
+.project-app-content { min-height: 0; overflow: auto; padding: 16px; overscroll-behavior: contain; overflow-wrap: anywhere; }
+.project-app-content .directory-page { padding: 0; }
+.project-app-content .breadcrumbs { display: none; }
+.project-app-content h1 { font-size: clamp(22px, 4vw, 38px); margin: 8px 0 14px; }
+.project-app-content img { filter: none; }
+.project-app-content a:focus-visible, .project-app-nav a:focus-visible { outline: 2px solid #000080; outline-offset: -2px; }
+.application-desktop { min-height: 60vh; padding-top: 40px; display: flex; flex-direction: column; align-items: flex-start; gap: 16px; }
+.directory-thumbnail { display: flex; align-items: center; justify-content: center; background: #ddd; border: 1px solid #999; width: 100%; height: 170px; color: #555; }
+.directory-thumbnail img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.thumbnail-unavailable { text-align: center; font: 10px/1.6 monospace; }
+.artwork-file .desktop-file-open { display: flex; flex-direction: column; align-items: stretch; padding: 8px; }
+.faction-file { position: relative; }
+.faction-file .directory-thumbnail { position: static; flex: 0 0 90px; width: 90px; height: 72px; opacity: 0; pointer-events: none; transition: opacity 100ms; }
+.faction-file:hover .directory-thumbnail, .faction-file:focus-within .directory-thumbnail { opacity: 1; }
+.system-apps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 10px 0; }
+.system-apps a, .system-apps button { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 58px; border: 2px outset #eee; padding: 4px; background: #c0c0c0; color: #222; text-align: center; font: 10px monospace; }
+.system-apps a span { font-size: 22px; }
+.public-window-dock { left: auto; right: 8px; bottom: max(8px, env(safe-area-inset-bottom)); max-width: calc(100% - 16px); z-index: 38; }
+.public-window-dock .window-taskbar { flex-wrap: wrap; justify-content: flex-end; max-width: 650px; background: transparent; border: 0; }
+.public-window-dock .window-taskbar button { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.startup-sequence[data-phase="announcement"] .startup-window { left: 50%; top: 50%; right: auto; bottom: auto; transform: translate(-50%, -50%); margin: 0; max-height: calc(100dvh - 32px); overflow: auto; }
+@media (hover: none), (max-width: 700px) {
+  .faction-file .desktop-file-open { display: flex; flex-direction: column; align-items: stretch; }
+  .faction-file .directory-thumbnail { position: static; flex: auto; width: 100%; height: 130px; opacity: 1; box-shadow: none; }
+}
+@media (max-width: 700px) {
+  .project-app-content { padding: 10px; }
+  .public-window-layer { bottom: calc(60px + env(safe-area-inset-bottom)); }
+  .public-window-dock { left: 4px; right: 4px; max-width: none; }
+  .public-window-dock .window-taskbar { flex-wrap: nowrap; justify-content: flex-start; max-width: 100%; overflow-x: auto; }
+  .public-window-dock .window-taskbar button { min-height: 44px; }
+  .retro-window-titlebar > strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 1; min-width: 0; }
+  .startup-sequence[data-phase="announcement"] .startup-window { width: calc(100% - 24px); }
+}
+@media (prefers-reduced-motion: reduce) { .faction-file .directory-thumbnail { transition: none; } }
+/* Preserve the existing green classification treatment inside neutral applications. */
+.project-application .classified-placeholder { --green: #72ff62; --green2: #42c93a; }

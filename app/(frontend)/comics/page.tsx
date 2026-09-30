@@ -1,3 +1,4 @@
+import RouteApplication from '@/components/RouteApplication';
 import { Directory, DirectoryLink } from "@/components/Directory";
 import { getProjects } from "@/lib/content/queries";
 import { chapterHref } from "@/lib/content/types";
@@ -5,7 +6,7 @@ export const metadata = { title: "Comics" };
 export default async function ComicsPage() {
   const projects = await getProjects();
   return (
-    <Directory path="SYS:/COMICS/" title="COMIC DIRECTORY">
+    <RouteApplication id="comic-archive" title="COMIC ARCHIVE"><Directory path="SYS:/COMICS/" title="COMIC DIRECTORY">
       <p className="lede">
         Select a chapter to open the reader.
       </p>
@@ -22,6 +23,6 @@ export default async function ComicsPage() {
           )),
         )}
       </div>
-    </Directory>
+    </Directory></RouteApplication>
   );
 }

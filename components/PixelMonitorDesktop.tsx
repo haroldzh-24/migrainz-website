@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { PatronLocked } from "./PatreonAccess";
 import { useEffect, useRef } from "react";
 import { RetroWindow, useWindowManager, WindowTaskbar } from "@/components/WindowManager";
 
@@ -29,11 +30,14 @@ export default function PixelMonitorDesktop() {
   }, [desktopVisible, hideDesktop]);
 
   return <>
-    <RetroWindow id="system" title="SYSTEM" defaultOpen={false} defaultPosition={{ x: 24, y: 24 }} defaultSize={{ width: 430, height: 220 }}>
+    <RetroWindow id="system" title="SYSTEM" defaultOpen={false} defaultPosition={{ x: 24, y: 24 }} defaultSize={{ width: 430, height: 360 }}>
       <div className="terminal-panel-head"><h2>SYSTEM</h2><span>NODE STATUS</span></div>
       <p><b>VERSION</b> 0.2.0 / <b>STATUS</b> ONLINE</p>
       <p><b>ACCESS</b> PUBLIC / UNAUTHENTICATED</p>
-      <p><b>CHANNELS</b> PROJECTS / COMICS / ARCHIVE</p>
+      <div className="system-apps">
+        {[['PROJECT DATABASE', '/projects'], ['PERSONNEL', '/projects?directory=characters'], ['FACTION INTEL', '/projects?directory=factions'], ['ARMORY', '/projects?directory=equipment'], ['COMIC ARCHIVE', '/comics'], ['ARCHIVE', '/archive']].map(([label, href]) => <Link key={href} href={href} onClick={() => { hideDesktop(); window.dispatchEvent(new Event("migrainz:restore-route")); }} aria-label={`Launch ${label}`}><span aria-hidden="true">&#9635;</span>{label}</Link>)}
+        <PatronLocked className="system-classified">CLASSIFIED</PatronLocked>
+      </div>
       <Link className="system-link" href="/about">READ SYSTEM INFORMATION →</Link>
     </RetroWindow>
     <section ref={monitor} id="pixel-monitor" className="pixel-monitor" hidden={!desktopVisible} aria-label="SYSTEM diagnostic environment" onPointerDown={() => { if (!systemFocused) focusWindow("system", "click"); }} onFocusCapture={() => { if (!systemFocused) focusWindow("system", "click"); }}>

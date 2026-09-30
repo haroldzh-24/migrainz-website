@@ -1,3 +1,4 @@
+import RouteApplication from '@/components/RouteApplication';
 import ClassifiedPlaceholder from "@/components/ClassifiedPlaceholder";
 import { Directory, DirectoryLink } from "@/components/Directory";
 import { getProjects, getArchiveItems } from "@/lib/content/queries";
@@ -9,7 +10,7 @@ export default async function Page() {
   const projects = await getProjects();
   const items = await getArchiveItems();
   return (
-    <Directory path="SYS:/ARCHIVE/" title="ARCHIVE">
+    <RouteApplication id="archive" title="ARCHIVE"><Directory path="SYS:/ARCHIVE/" title="ARCHIVE">
       <section className="split section-block">
         <div id="archive" className="archive-block">
           <div className="section-head compact">
@@ -65,6 +66,6 @@ export default async function Page() {
           </div>
         </div>
       </section>
-    </Directory>
+    </Directory></RouteApplication>
   );
 }

@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import DirectoryThumbnail from "./DirectoryThumbnail";
+import type { ComicPage } from "@/lib/content/types";
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useWindowManager, type ViewerTab } from "@/components/WindowManager";
@@ -12,6 +14,8 @@ type Props = Classified & {
   type: string;
   href: string;
   subtitle?: string;
+  thumbnail?: ComicPage;
+  imagePreview?: boolean;
   viewerTab?: ViewerTab;
   metadata?: { label: string; value: string }[];
 };
@@ -21,7 +25,7 @@ export default function DesktopFile(props: Props) {
   return <PublicDesktopFile {...props} />;
 }
 
-function PublicDesktopFile({ label, type, href, subtitle, viewerTab, metadata = [] }: Props) {
+function PublicDesktopFile({ label, type, href, subtitle, viewerTab, thumbnail, imagePreview, metadata = [] }: Props) {
   const { openViewerTab } = useWindowManager();
   const id = useId();
   const root = useRef<HTMLDivElement>(null);
@@ -63,7 +67,7 @@ function PublicDesktopFile({ label, type, href, subtitle, viewerTab, metadata = 
     window.addEventListener("scroll", place, true);
     return () => { observer.disconnect(); window.removeEventListener("resize", place); window.removeEventListener("scroll", place, true); };
   }, [open]);
-  return <div ref={root} className="desktop-file"
+  return <div ref={root} className={`desktop-file${viewerTab ? " artwork-file" : ""}${imagePreview ? " faction-file" : ""}`}
     onPointerEnter={event => { if (event.pointerType === "mouse") reveal(); }}
     onPointerLeave={() => { cancel(); if (!pinned && !root.current?.contains(document.activeElement)) setOpen(false); }}
     onFocus={reveal}
@@ -74,7 +78,7 @@ function PublicDesktopFile({ label, type, href, subtitle, viewerTab, metadata = 
         dismiss();
         if (viewerTab) { event.preventDefault(); openViewerTab(viewerTab); }
       }}>
-      <span className="desktop-file-icon" aria-hidden="true">{type}</span>
+      {(viewerTab || imagePreview) ? <DirectoryThumbnail image={thumbnail ?? viewerTab?.images.find(image => image.src && !/\.pdf(?:\?|$)/i.test(image.src))} label={label} /> : <span className="desktop-file-icon" aria-hidden="true">{type}</span>}
       <span className="desktop-file-copy"><strong>{label}</strong>{subtitle && <small>{subtitle}</small>}</span>
     </Link>
     <button className="desktop-file-info" type="button" aria-label={`Properties for ${label}`} aria-expanded={open} aria-describedby={open ? id : undefined} aria-controls={open ? id : undefined}

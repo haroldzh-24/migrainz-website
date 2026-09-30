@@ -117,10 +117,10 @@ export const getProjectIdentity = cache(async (slug: string) => {
 
 export const getFactions = cache(async (project: number) => {
   const cms = await getPayload({ config });
-  const result = await findListing(cms, { collection: 'factions', overrideAccess: false, depth: 0, pagination: false,
+  const result = await findListing(cms, { collection: 'factions', overrideAccess: false, depth: 1, pagination: false,
     where: { and: [publicWhere, { project: { equals: project } }] }, sort: ['order', 'name'],
-    select: { name: true, slug: true, type: true, status: true, description: true, updatedAt: true } });
-  return result.docs;
+    select: { name: true, slug: true, type: true, status: true, description: true, updatedAt: true, emblem: true } });
+  return result.docs.map(({ emblem, ...faction }) => ({ ...faction, emblemImage: image(emblem) }));
 });
 
 export const getFaction = cache(async (project: number, slug: string) => {
@@ -229,4 +229,13 @@ export const getArchiveItems = cache(async () => {
     category: typeof item.category === 'object' && item.category ? item.category.title : '',
     projectSlug: typeof item.project === 'object' && item.project ? item.project.slug : undefined,
     date: item.date?.slice(0, 10), files: images(item.files) }));
+});
+
+export const getEquipmentDirectory = cache(async (project: number) => {
+  const cms = await getPayload({ config });
+  const result = await findListing(cms, { collection: 'equipment', overrideAccess: false, depth: 1, pagination: false,
+    where: { and: [publicWhere, { project: { equals: project } }] }, sort: ['order', 'name'],
+    select: { slug: true, name: true, category: true, description: true, images: true, updatedAt: true } });
+  return result.docs.map(item => ({ ...classificationOf(item), slug: item.slug, name: item.name, category: item.category || '',
+    description: item.description || '', images: images(item.images), updated: item.updatedAt.slice(0, 10) }));
 });

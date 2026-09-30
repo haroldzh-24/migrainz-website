@@ -34,7 +34,7 @@ export default async function ProjectPage({
       </p>
       <p className="lede">{project.description}</p>
       {project.hero && <ContentGallery images={[project.hero]} />}
-      <ContentWriting data={project.writing} />
+      <div id="writing"><ContentWriting data={project.writing} /></div>
       {archiveItems.length > 0 && <div className="directory-list">
         {archiveItems.map(item => <DirectoryLink key={item.slug} classification={item.classification} safeLabel={item.safeLabel} href={`/archive#item-${item.slug}`} name={item.title} meta="ARCHIVE RECORD" />)}
       </div>}

@@ -15,7 +15,7 @@ function tabFor(project: Pick<Project, "slug" | "title">, character: ViewerChara
     project: project.title,
     role: character.role,
     description: character.description,
-    images: character.images.filter(image => !image.classification),
+    images: character.images.filter(image => !image.classification && !/\.pdf(?:\?|$)/i.test(image.src)),
   };
 }
 
@@ -25,6 +25,7 @@ export function CharacterViewerLink({ project, character }: { project: Pick<Proj
   return <DesktopFile
     label={`${character.name.replace(/\s+/g, "_")}.CHR`}
     type="CHR"
+    subtitle={character.role}
     href={tab.href}
     viewerTab={tab}
     metadata={[
