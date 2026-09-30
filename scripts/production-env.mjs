@@ -6,6 +6,7 @@ export const requiredProductionEnv = ['CMS_DATABASE', 'DATABASE_URL', 'CMS_MEDIA
 export function validateProductionEnv(env = process.env) {
   const missing = requiredProductionEnv.filter(name => !env[name]?.trim());
   if (missing.length) throw new Error(`Missing production environment variables: ${missing.join(', ')}. Set them for this Vercel project's Production environment and redeploy.`);
+  if (env.VERCEL === '1' && !env.BLOB_READ_WRITE_TOKEN?.trim()) throw new Error('BLOB_READ_WRITE_TOKEN is required for persistent private Media storage on Vercel.');
   if (env.CMS_DATABASE !== 'postgres') throw new Error('SQLite is DEVELOPMENT ONLY. Production requires managed PostgreSQL.');
   if (!/^postgres(?:ql)?:\/\//.test(env.DATABASE_URL || '')) throw new Error('DATABASE_URL must be a PostgreSQL connection URL.');
   if ((env.PAYLOAD_SECRET || '').length < 32) throw new Error('PAYLOAD_SECRET must contain at least 32 characters.');

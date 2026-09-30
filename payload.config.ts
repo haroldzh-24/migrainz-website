@@ -4,6 +4,7 @@ import { sqliteAdapter } from '@payloadcms/db-sqlite';
 import { postgresAdapter } from '@payloadcms/db-postgres';
 import { lexicalEditor, FixedToolbarFeature } from '@payloadcms/richtext-lexical';
 import sharp from 'sharp';
+import { blobStoragePlugin } from './cms/blob-storage';
 import { validateProductionEnv } from './scripts/production-env.mjs';
 import { ArchiveItems, Characters, Chapters, Comics, Equipment, Factions, Galleries, mediaCollection, Projects, ProjectUpdates, taxonomies, TrackerItems, Users } from './collections';
 
@@ -39,6 +40,7 @@ export default buildConfig({
     FixedToolbarFeature(),
   ] }),
   sharp,
+  plugins: [blobStoragePlugin()],
   collections: [Users, Projects, Comics, Chapters, Factions, Characters, Equipment, ProjectUpdates, TrackerItems, Galleries, ArchiveItems, mediaCollection(mediaDirectory), ...taxonomies],
   typescript: { outputFile: path.resolve('payload-types.ts') },
   graphQL: { disable: true },

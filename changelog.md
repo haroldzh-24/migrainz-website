@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-09-30 / Blob OIDC failure diagnosis
+
+- Add `scripts/diagnose-blob-oidc.mjs` for credential-safe read-only HTTPS and Blob API diagnostics.
+- HTTPS connectivity succeeded; authenticated metadata calls reported Development-environment OIDC access disabled. Document the required store/project connection correction; preserve recovery logic and storage routes.
+- Confirm SDK HTTP 403 through sanitized Undici events; typecheck passed. No apply, storage mutations or credentials printed.
+
+## 2026-09-30 / OIDC recovery authentication
+
+- Replace recovery's read/write-token parsing with explicit VERCEL_OIDC_TOKEN and confirmed store ID passed to the installed Blob SDK. Reject configured-store mismatches and avoid raw authentication error output.
+- Document the apply command loading .env.local, explicit store selection and token refresh. No matching, hash, filename, dry-run, Payload storage or route changes.
+- Validation limited to typecheck. No uploads, database writes, commits or pushes.
+
+## 2026-09-29 / Persistent private Media storage
+
+- Integrate the existing Vercel Blob service through a small private adapter, retaining Payload file authorization, stable API URLs, filenames and Media relationships. No migrations or UI changes.
+- Add the official Blob SDK and explicitly declare Payload's existing cloud-storage hook package. The official Payload Vercel adapter at 3.88 is public-only and cannot meet protected-media requirements.
+- Keep filesystem storage for local development without Blob configuration; require the existing token on Vercel. Add a dry-run-first recovery script and a read-only local file inventory; no recovery or uploads executed.
+- Confirm the existing store is Private. Typecheck and the in-memory storage config check passed; no production writes, migrations, commits or pushes.
+
 ## 2026-09-29 / PUBLIC image original fallback
 
 - Address missing derivative files in temporary storage by allowing the original as the last source for authorized published PUBLIC images.

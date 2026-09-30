@@ -1,5 +1,27 @@
 # Features
 
+## Implemented - 2026-09-30 / Read-only Blob OIDC diagnostic
+
+- Add sanitized Node/Undici HTTPS and SDK list/head diagnostics, including nested transport causes and HTTP status without credentials or object details.
+- Identify the current local blocker as Development not enabled on the Blob project's OIDC connection; recovery's explicit token/store SDK options are correct.
+- Document the manual connection correction and read-only retry. No uploads, deletes, recovery apply, database writes or connection changes performed.
+- Validation: read-only HTTPS/list/head probes completed; authenticated calls returned the same explicit HTTP 403 environment-authorization error. `npm.cmd run typecheck` passed.
+
+## Implemented - 2026-09-30 / OIDC recovery authentication
+
+- Use the installed Blob SDK's explicit OIDC token/store options for local recovery apply mode; no long-lived token is required or used.
+- Retain explicit store confirmation, cross-check BLOB_STORE_ID when present, and let Vercel authorize the linked project. Sanitize SDK error output.
+- Preserve offline dry-run, filename/hash matching, private non-overwriting copies and database independence. Payload storage and public routes are unchanged.
+- Validation: `npm.cmd run typecheck` only; no recovery executed.
+
+## Implemented - 2026-09-29 / Private Vercel Blob storage
+
+- Add a private Blob adapter using Payload 3.88 cloud-storage hooks and the official Vercel SDK; preserve authorized API file URLs and all original/derivative upload outputs without new schema fields.
+- Use the existing Blob token on Vercel; fail closed when missing. Local development without a token stays on filesystem storage. Keep admin/batch multipart flow, existing hosted request-size limits, public fallback and protected-media rules.
+- Add an unexecuted recovery tool that defaults to an offline dry-run from existing Media exports; explicit apply copies exact files without overwriting Blob objects or changing records.
+- Document seven local originals/four legacy thumbnails, verified Private store mode and exact manual steps in docs/BLOB-STORAGE.md and documentation/blob-media-recovery.md.
+- Validation: `npm.cmd run typecheck` and the in-memory storage config check passed, including identical sanitized database field paths. No recovery script, deployment, migration or production upload executed.
+
 ## Implemented - 2026-09-29 / PUBLIC original compatibility fallback
 
 - Append original image URLs after viewer, preview, thumbnail and legacy thumbnail only for access-checked published PUBLIC Media. The shared art/comic canvas continues past runtime image failures and retains the unavailable state after all candidates fail.

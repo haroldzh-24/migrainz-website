@@ -235,17 +235,16 @@ Before public production deployment:
 1. Provision managed PostgreSQL, apply reviewed migrations, and perform a tested
    transfer from development with record-ID/relationship reconciliation and backups.
    The legacy importer is not a general SQLite-to-PostgreSQL transfer tool.
-2. Configure private object storage (S3 or R2 via the S3 adapter; evaluate private
-   delivery carefully for Vercel Blob). Copy originals and derivatives, verify
-   checksums, preserve Media relationships, then switch the adapter. No cloud
-   storage adapter or service has been provisioned in this foundation.
+2. Use the existing Vercel Blob store with Private access through the Media
+   adapter. Review [Blob setup and recovery](BLOB-STORAGE.md), reconcile existing
+   files, and explicitly copy recoverable bytes without changing Media records.
 3. Verify anonymous denial for patron originals/derivatives, draft access, parent
    publication, and cache behavior on the actual host. Public bucket URLs must
    never bypass Payload's authorization.
 4. Configure administrator credentials, secret management, email, backups and
    upload limits for the hosting provider. Review outstanding dependency advisories.
 
-## Vercel class-demo deployment
+## Vercel deployment
 
 Vercel runs Next.js functions directly; `scripts/start.mjs` is not its startup
 hook. Variables supplied only to the build script's child process do not configure
@@ -253,7 +252,7 @@ those functions. Hosted builds now fail on missing production configuration
 instead of substituting offline placeholders. Local offline builds still work.
 
 1. Open the Vercel project whose Settings > Domains contains
-   `migrainz-website.vercel.app`. Confirm Settings > Git uses the intended repository
+   `migrainzxxl.com`. Confirm Settings > Git uses the intended repository
    and production branch `main`, with the repository root as Root Directory.
 2. In Settings > Environment Variables, confirm all four exact names are enabled
    for **Production**: `CMS_DATABASE`, `DATABASE_URL`, `PAYLOAD_SECRET`,
@@ -261,7 +260,10 @@ instead of substituting offline placeholders. Local offline builds still work.
    nonsecret settings. Preserve the existing managed PostgreSQL URL and stable
    secret; do not copy local SQLite values or add `NEXT_PUBLIC_` prefixes.
    Shared variables must be linked to this project. Preview-only settings do not
-   apply to Production.
+   apply to Production. Keep the existing `BLOB_READ_WRITE_TOKEN` linked to both
+   Production and Preview. Confirm the linked Blob store has Private access;
+   `BLOB_STORE_ID` and `BLOB_WEBHOOK_PUBLIC_KEY` may remain but are not required
+   by this server-side adapter. Local development without a token stays on disk.
 3. In Build and Deployment, use the Next.js framework preset and `npm run build`.
    Leave Output Directory at its framework default. Deploy the verified source
    changes to Production. Changing dashboard variables does not update an old
@@ -293,17 +295,20 @@ The checked-in foundation `up` creates tables, enums, indexes and foreign keys;
 its `down` is destructive and must not be run for deployment. Do not use
 `migrate:fresh`, `migrate:reset`, `migrate:refresh` or `push:true`. If an existing
 schema conflicts with migration history, reconcile it before applying migrations.
-No production migration is automatically run by a build or function startup.
+The repository build/startup does not run migrations. The previously inspected
+Vercel build override does; review that override before deploying this storage-only
+change. This Blob integration needs no migration.
 
 After schema initialization, `/admin` should offer Payload's first-user setup on
 an empty database or login on an existing database. Create the real administrator
 interactively; no default user is provisioned. Existing staff access rules remain.
 
-`/tmp/studio-migrainz-media` is only a temporary class-demo filesystem location.
-Payload creates the directory on upload. Files can disappear on restart and are
-not shared across functions/instances; database records can outlive them. Keep
-originals elsewhere. Existing file authorization remains in force. R2 integration
-and durable production media remain deferred.
+`/tmp/studio-migrainz-media` remains a compatibility setting, not hosted Media
+storage. With the Blob token, originals and all generated sizes are persisted in
+private Blob storage and `/api/media/file/...` streams them after existing access
+checks. Missing tokens fail Vercel configuration instead of silently storing new
+uploads in `/tmp`. Local SQLite development retains its existing media directory.
+See [Blob setup and recovery](BLOB-STORAGE.md) for recovery and upload-size limits.
 
 ## Local verification commands
 
