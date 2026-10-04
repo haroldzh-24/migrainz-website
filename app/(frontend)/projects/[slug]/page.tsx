@@ -5,7 +5,8 @@ import ProjectTracker from "@/components/ProjectTracker";
 import ContentWriting from "@/components/ContentWriting";
 import DesktopFile, { DesktopFolder } from "@/components/DesktopFile";
 import ContentGallery from "@/components/ContentGallery";
-import { getProject, getArchiveItems } from "@/lib/content/queries";
+import FactionGrid from "@/components/FactionGrid";
+import { getProject, getProjectIdentity, getFactions, getArchiveItems } from "@/lib/content/queries";
 import { projectHref, chapterHref } from "@/lib/content/types";
 export async function generateMetadata({
   params,
@@ -22,6 +23,8 @@ export default async function ProjectPage({
 }) {
   const project = await getProject((await params).slug);
   if (!project) return lockedPageOrNotFound({ projectSlug: (await params).slug });
+  const identity = await getProjectIdentity(project.slug);
+  const factions = identity ? await getFactions(identity.id) : [];
   const archiveItems = (await getArchiveItems()).filter(item => item.projectSlug === project.slug);
   return (
     <Directory
@@ -33,6 +36,10 @@ export default async function ProjectPage({
         <time dateTime={project.updated}>{project.updated}</time>
       </p>
       <p className="lede">{project.description}</p>
+      <section id="factions" className="section-block">
+        <h2>FACTIONS</h2>
+        <FactionGrid project={project} factions={factions} />
+      </section>
       {project.hero && <ContentGallery images={[project.hero]} />}
       <div id="writing"><ContentWriting data={project.writing} /></div>
       {archiveItems.length > 0 && <div className="directory-list">
@@ -48,11 +55,6 @@ export default async function ProjectPage({
         </section>
       ))}
       <div className="directory-list">
-        <DesktopFolder
-          href={projectHref(project) + "/factions"}
-          label="FACTIONS/"
-          metadata={[{ label: "PROJECT", value: project.title }, { label: "TYPE", value: "FACTIONS / ASSOCIATIONS" }]}
-        />
         {project.chapters.map((chapter) => (
           <DirectoryLink
             key={chapter.slug}

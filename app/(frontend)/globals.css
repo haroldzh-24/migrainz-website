@@ -1770,8 +1770,9 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
 .thumbnail-unavailable { text-align: center; font: 10px/1.6 monospace; }
 .artwork-file .desktop-file-open { display: flex; flex-direction: column; align-items: stretch; padding: 8px; }
 .faction-file { position: relative; }
-.faction-file .directory-thumbnail { position: static; flex: 0 0 90px; width: 90px; height: 72px; opacity: 0; pointer-events: none; transition: opacity 100ms; }
-.faction-file:hover .directory-thumbnail, .faction-file:focus-within .directory-thumbnail { opacity: 1; }
+.faction-file .desktop-file-open { flex-direction: column; align-items: stretch; height: 100%; padding: 10px; }
+.faction-file .directory-thumbnail { flex: none; width: 100%; height: 150px; padding: 8px; }
+.faction-file .desktop-file-copy { padding-right: 20px; }
 .system-apps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 10px 0; }
 .system-apps a, .system-apps button { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 58px; border: 2px outset #eee; padding: 4px; background: #c0c0c0; color: #222; text-align: center; font: 10px monospace; }
 .system-apps a span { font-size: 22px; }
@@ -1779,10 +1780,7 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
 .public-window-dock .window-taskbar { flex-wrap: wrap; justify-content: flex-end; max-width: 650px; background: transparent; border: 0; }
 .public-window-dock .window-taskbar button { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .startup-sequence[data-phase="announcement"] .startup-window { left: 50%; top: 50%; right: auto; bottom: auto; transform: translate(-50%, -50%); margin: 0; max-height: calc(100dvh - 32px); overflow: auto; }
-@media (hover: none), (max-width: 700px) {
-  .faction-file .desktop-file-open { display: flex; flex-direction: column; align-items: stretch; }
-  .faction-file .directory-thumbnail { position: static; flex: auto; width: 100%; height: 130px; opacity: 1; box-shadow: none; }
-}
+
 @media (max-width: 700px) {
   .project-app-content { padding: 10px; }
   .public-window-layer { bottom: calc(60px + env(safe-area-inset-bottom)); }
@@ -1792,6 +1790,5 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
   .retro-window-titlebar > strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 1; min-width: 0; }
   .startup-sequence[data-phase="announcement"] .startup-window { width: calc(100% - 24px); }
 }
-@media (prefers-reduced-motion: reduce) { .faction-file .directory-thumbnail { transition: none; } }
 /* Preserve the existing green classification treatment inside neutral applications. */
 .project-application .classified-placeholder { --green: #72ff62; --green2: #42c93a; }

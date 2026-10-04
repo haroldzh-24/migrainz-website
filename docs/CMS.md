@@ -55,8 +55,10 @@ affiliation, once per character. Equipment supports category, description,
 ordered media rows and display order. Both collections retain drafts, versions,
 listing visibility and content access controls.
 
-Public navigation is Project -> Factions -> Characters / Equipment. The faction
-index also links to all characters, including unassigned records. Existing
+Project pages display their faction cards directly, using the saved order and
+authorized emblem images. Each card links to its existing faction destination,
+then Characters / Equipment. The compatible `/projects/PROJECT/factions` index
+uses the same cards. Both listings link to all characters, including unassigned records. Existing
 character URLs and viewer tab IDs are unchanged. Equipment opens the same ART
 VIEWER and has `/projects/PROJECT/equipment/ITEM` URLs for direct navigation.
 Equipment requires an accessible project and, when assigned, an accessible

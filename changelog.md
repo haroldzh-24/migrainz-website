@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-04 / Direct project factions
+
+- Display the existing CMS faction listing near the top of each project window, preserving project relationships, ordering, classified listings and faction URLs. Section navigation jumps to the inline grid; legacy faction-index URLs reuse it.
+- Show authorized emblems immediately in gray cards on desktop/mobile, fitted without cropping; retain names, properties, image retries and intentional missing-image states.
+- Keep writing, galleries, comics, production notes, character/equipment routes and the ART VIEWER. No CMS migrations, content edits or deployment.
+- Extend isolated regression fixtures/checks for project filtering, ordering, emblems, missing images, direct destinations, focus, mobile width and back/forward.
+- Validation: typecheck and production build passed. Dedicated isolated-CMS browser checks passed for inline factions, ordering/project filtering, emblems/missing images, focus, compatibility URLs, desktop/mobile/touch/reduced motion and back/forward. ART VIEWER and character-card interaction/persistence checks also passed in the broad suite. The broad suite stopped at its 90-second direct-character navigation timeout (server returned 200 after 103 seconds); remaining comic/reader and broader mobile checks were not completed. Existing studio data was untouched.
+
+
 ## 2026-09-30 / Project application desktop
 
 - Wrap project routes in one maximized gray application with real URL navigation; add compact section navigation and a project equipment directory.

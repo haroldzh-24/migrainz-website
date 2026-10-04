@@ -72,6 +72,7 @@ try {
     if (Date.now() >= deadline) throw new Error('Regression server did not become ready within 120 seconds.');
     await new Promise(resolve => setTimeout(resolve, 500));
   }
+  await completed(launch(['scripts/verify-factions.cjs']));
   await completed(launch(['scripts/verify.cjs']));
 } catch (error) {
   console.error(error);

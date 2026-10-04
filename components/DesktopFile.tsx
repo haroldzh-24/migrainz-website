@@ -78,7 +78,7 @@ function PublicDesktopFile({ label, type, href, subtitle, viewerTab, thumbnail, 
         dismiss();
         if (viewerTab) { event.preventDefault(); openViewerTab(viewerTab); }
       }}>
-      {(viewerTab || imagePreview) ? <DirectoryThumbnail image={thumbnail ?? viewerTab?.images.find(image => image.src && !/\.pdf(?:\?|$)/i.test(image.src))} label={label} /> : <span className="desktop-file-icon" aria-hidden="true">{type}</span>}
+      {(viewerTab || imagePreview) ? <DirectoryThumbnail eager={imagePreview} image={thumbnail ?? viewerTab?.images.find(image => image.src && !/\.pdf(?:\?|$)/i.test(image.src))} label={label} /> : <span className="desktop-file-icon" aria-hidden="true">{type}</span>}
       <span className="desktop-file-copy"><strong>{label}</strong>{subtitle && <small>{subtitle}</small>}</span>
     </Link>
     <button className="desktop-file-info" type="button" aria-label={`Properties for ${label}`} aria-expanded={open} aria-describedby={open ? id : undefined} aria-controls={open ? id : undefined}

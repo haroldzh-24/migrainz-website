@@ -213,7 +213,7 @@ const { chromium } = require(
     await page.screenshot({ path: 'test-results/phase5-project-properties.png' });
     await page.getByRole("link", { name: "BLUSHLAND/", exact: true }).click();
     if (process.env.DESKTOP_TEST_FIXTURE) {
-      const art = page.getByRole('link', { name: 'REGRESSION ART.ART', exact: true });
+      const art = page.getByRole('link', { name: /REGRESSION ART\.ART/ });
       assert.equal(await art.getAttribute('href'), '/projects/blushland#gallery-regression-art');
       await art.click();
       await page.getByRole('tab', { name: 'REGRESSION ART', exact: true }).waitFor();
@@ -225,8 +225,8 @@ const { chromium } = require(
       assert.equal(await page.getByRole('tab', { name: 'REGRESSION ART', exact: true }).count(), 1);
       await page.getByRole('button', { name: 'Close REGRESSION ART', exact: true }).click();
     }
-    await page.getByRole("link", { name: /CHARACTERS\/.*1 RECORDS/ }).click();
-    const file = page.getByRole("link", { name: "THE_OBSERVER.CHR", exact: true });
+    await page.getByRole("link", { name: "ALL CHARACTERS / INCLUDING UNASSIGNED RECORDS", exact: true }).click();
+    const file = page.getByRole("link", { name: /THE_OBSERVER\.CHR/ });
     const fallback = await file.getAttribute('href');
     let hoverRequests = [];
     const trackHover = request => { if (/\/api\/|_rsc=/.test(request.url())) hoverRequests.push(request.url()); };
@@ -402,7 +402,7 @@ const { chromium } = require(
     await touch.screenshot({ path: 'test-results/phase5-properties-mobile.png' });
     await touch.getByRole('button', { name: 'Properties for THE_OBSERVER.CHR', exact: true }).tap();
     await touch.getByRole('tooltip').waitFor({ state: 'hidden' });
-    await touch.getByRole('link', { name: 'THE_OBSERVER.CHR', exact: true }).tap();
+    await touch.getByRole('link', { name: /THE_OBSERVER\.CHR/ }).tap();
     await touch.getByRole('tab', { name: 'THE OBSERVER', exact: true }).waitFor();
     assert.equal(await touch.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     await touch.getByRole('button', { name: 'Close THE OBSERVER', exact: true }).tap();

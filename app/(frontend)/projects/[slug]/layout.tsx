@@ -9,7 +9,7 @@ export default async function ProjectLayout({ children, params }: { children: Re
   const [factions, equipment] = await Promise.all([getFactions(identity.id), getEquipmentDirectory(identity.id)]);
   const base = `/projects/${project.slug}`;
   const navigation = [{ label: 'OVERVIEW', href: base },
-    ...(factions.length ? [{ label: 'FACTIONS', href: `${base}/factions` }] : []),
+    ...(factions.length ? [{ label: 'FACTIONS', href: `${base}#factions` }] : []),
     ...(project.characters.length ? [{ label: 'CHARACTERS', href: `${base}/characters` }] : []),
     ...(equipment.length ? [{ label: 'EQUIPMENT', href: `${base}/equipment` }] : []),
     ...(project.writing ? [{ label: 'WRITING', href: `${base}#writing` }] : []),
