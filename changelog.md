@@ -5,8 +5,9 @@
 - Replace the geometric placeholder with the aligned 1200px watcher base/eyes PNGs, preserving the square frame, 86% artwork size and terminal readouts.
 - Increase eye tracking to a 10px horizontal / 5px vertical source-coordinate ellipse. Add whole-artwork drift up to 4px horizontally / 3px vertically at display size, with slightly slower easing. Preserve socket clips, neutral return, reduced motion and the fixed frame/readouts.
 - Add understated 1000px perspective with up to 2deg Y / 1.25deg X rotation around the head/eye line on the shared artwork parent. Combine rotation/drift over 250ms; preserve 140ms local eye movement and edge clearance.
-- Return to neutral on pointer leave/window blur; keep touch and reduced motion static, including preference changes. No blinking or autonomous animation; boot and CMS code unchanged.
-- Validation: TypeScript and production build passed. Full browser/BLUSHLAND regression was not run; the existing local SQLite schema blocker remains recorded in bugs.md.
+- Add a pointer-transparent CRT overlay above artwork/below labels with 9% tinted grain, faint scanlines and a soft interference sweep every 13 seconds. A brief 1–2px tear moves only the interference; CSS variables tune intensity/period. Cache a small SVG noise tile and animate transforms/opacity without timers.
+- Enable primary touch/pen tracking and horizontal dragging using Pointer Events/capture. Preserve mouse hover, eye/head limits and native vertical scrolling/pinch zoom; reset on release, cancellation and capture loss. Reduced motion keeps tracking static, freezes grain and hides interference. No character blinking or autonomous character animation; boot and CMS code unchanged.
+- Validation: TypeScript and production build passed. Isolated real-component Chrome checks passed at 375px/430px for touch tracking/dragging/release/cancel, native scroll, elliptical limits, CRT/reduced motion; 1440px layout and mouse hover/leave passed. No physical-device or Safari testing; full CMS/BLUSHLAND regression not run.
 
 ## 2026-10-04 / Direct project factions
 

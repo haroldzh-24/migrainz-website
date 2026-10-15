@@ -678,6 +678,8 @@ button {
 
 .watcher {
   position: relative;
+  /* Horizontal drags track; native vertical scrolling/pinch zoom can cancel. */
+  touch-action: pan-y pinch-zoom;
   border: 1px solid var(--line);
 
   background:
@@ -714,6 +716,73 @@ button {
   /* SVG user units preserve these limits on the 1200px source canvas. */
   transform: translate(calc(var(--mx, 0) * 10px), calc(var(--my, 0) * 5px));
   transition: transform 140ms ease-out;
+}
+
+.watcher-static {
+  --watcher-grain-opacity: 0.09;
+  --watcher-scanline-opacity: 0.025;
+  --watcher-interference-opacity: 0.07;
+  --watcher-interference-period: 13s;
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  pointer-events: none;
+  contain: paint;
+}
+
+.watcher-static::before,
+.watcher-static::after,
+.watcher-interference {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.watcher-static::before {
+  inset: -64px;
+  background: url("/images/watcher/crt-noise.svg") repeat;
+  opacity: var(--watcher-grain-opacity);
+  /* Move a cached tile rather than recalculating noise each frame. */
+  animation: watcher-grain 8s linear infinite;
+}
+
+.watcher-static::after {
+  inset: 0;
+  background: repeating-linear-gradient(
+    to bottom, transparent 0 2px, #a4c99a 2px 3px
+  );
+  opacity: var(--watcher-scanline-opacity);
+}
+
+.watcher-interference {
+  inset: 0 -2px;
+  background: linear-gradient(
+    to bottom, transparent 43%, #9fbf96 49%, #c0d6b8 50%, transparent 57%
+  );
+  opacity: 0;
+  animation: watcher-interference var(--watcher-interference-period) linear infinite;
+}
+
+@keyframes watcher-grain {
+  from { transform: translate(0, 0); }
+  to { transform: translate(64px, 64px); }
+}
+
+@keyframes watcher-interference {
+  0%, 84% { opacity: 0; transform: translate(0, -100%); }
+  86% { opacity: var(--watcher-interference-opacity); transform: translate(0, -80%); }
+  90% { transform: translate(0, 0); }
+  90.3% { transform: translate(2px, 6%); }
+  90.6% { transform: translate(-1px, 12%); }
+  91% { transform: translate(0, 20%); }
+  94% { opacity: var(--watcher-interference-opacity); transform: translate(0, 80%); }
+  96%, 100% { opacity: 0; transform: translate(0, 100%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .watcher-static::before { animation: none; }
+  .watcher-interference { animation: none; opacity: 0; }
 }
 
 .watcher-label,
