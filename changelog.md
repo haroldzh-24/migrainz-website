@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-14 / Watcher artwork
+
+- Replace the geometric placeholder with the aligned 1200px watcher base/eyes PNGs, preserving the square frame, 86% artwork size and terminal readouts.
+- Move only the eyes within a 6px horizontal / 3px vertical source-coordinate ellipse, with smooth interpolation, fixed socket clips and the face layered above them.
+- Return to neutral on pointer leave/window blur; keep touch and reduced motion static, including preference changes. No blinking or autonomous animation; boot and CMS code unchanged.
+- Validation: TypeScript and production build passed. Full browser/BLUSHLAND regression was not run; the existing local SQLite schema blocker remains recorded in bugs.md.
+
 ## 2026-10-04 / Direct project factions
 
 - Display the existing CMS faction listing near the top of each project window, preserving project relationships, ordering, classified listings and faction URLs. Section navigation jumps to the inline grid; legacy faction-index URLs reuse it.
@@ -204,7 +211,7 @@
 - Add `cms:verify-env`; test each missing hosted variable and production SQLite rejection without local secrets.
 - Document dashboard remediation and non-resetting migration workflow; retain private temporary demo media and defer R2.
 
-## 2026-09-08 — Terminal foundation / 0.2.0
+## 2026-09-08 Ã¢â‚¬â€ Terminal foundation / 0.2.0
 
 ### Added
 

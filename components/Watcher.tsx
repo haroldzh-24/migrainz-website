@@ -1,10 +1,20 @@
 "use client";
 
-import { useState, type CSSProperties, type PointerEvent } from "react";
+import { useEffect, useState, type CSSProperties, type PointerEvent } from "react";
 import WatcherArt from "./WatcherArt";
 
 export default function Watcher() {
   const [pointer, setPointer] = useState({ x: 0, y: 0, rx: "000", ry: "000" });
+  useEffect(() => {
+    const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const reset = () => setPointer({ x: 0, y: 0, rx: "000", ry: "000" });
+    preference.addEventListener("change", reset);
+    window.addEventListener("blur", reset);
+    return () => {
+      preference.removeEventListener("change", reset);
+      window.removeEventListener("blur", reset);
+    };
+  }, []);
   function move(event: PointerEvent<HTMLDivElement>) {
     if (
       event.pointerType !== "mouse" ||
@@ -20,9 +30,13 @@ export default function Watcher() {
       0,
       Math.min(1, (event.clientY - rect.top) / rect.height),
     );
+    // Normalize to a disk so scaling produces a 6 by 3 source-pixel ellipse.
+    const dx = (x - 0.5) * 2;
+    const dy = (y - 0.5) * 2;
+    const radius = Math.max(1, Math.hypot(dx, dy));
     setPointer({
-      x: (x - 0.5) * 2,
-      y: (y - 0.5) * 2,
+      x: dx / radius,
+      y: dy / radius,
       rx: String(Math.round(x * 999)).padStart(3, "0"),
       ry: String(Math.round(y * 999)).padStart(3, "0"),
     });
@@ -31,7 +45,7 @@ export default function Watcher() {
     <div
       className="watcher"
       id="watcher"
-      aria-label="Interactive placeholder artwork"
+      aria-label="Cursor-reactive watcher artwork"
       style={{ "--mx": pointer.x, "--my": pointer.y } as CSSProperties}
       onPointerMove={move}
       onPointerLeave={() => setPointer({ x: 0, y: 0, rx: "000", ry: "000" })}

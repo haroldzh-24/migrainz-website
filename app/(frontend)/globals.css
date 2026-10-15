@@ -699,46 +699,12 @@ button {
   width: 86%;
   height: 86%;
   overflow: visible;
-
-  transform: perspective(900px) rotateY(calc(var(--mx) * 3deg))
-    rotateX(calc(var(--my) * -3deg));
-
-  transition: transform 0.09s linear;
 }
 
-.watcher svg * {
-  vector-effect: non-scaling-stroke;
-}
-
-.head path,
-.eye rect,
-.mouth {
-  fill: none;
-  stroke: var(--green);
-  stroke-width: 2;
-}
-
-.head .detail {
-  stroke: var(--dim);
-}
-
-.eye .pupil {
-  fill: var(--hot);
-  stroke: none;
-
-  transform: translate(calc(var(--mx) * 12px), calc(var(--my) * 12px));
-
-  transition: transform 0.07s linear;
-}
-
-.mouth {
-  stroke: var(--green2);
-}
-
-.watcher text {
-  fill: var(--dim);
-  font-size: 14px;
-  letter-spacing: 4px;
+.watcher-eyes {
+  /* SVG user units preserve these limits on the 1200px source canvas. */
+  transform: translate(calc(var(--mx, 0) * 6px), calc(var(--my, 0) * 3px));
+  transition: transform 140ms ease-out;
 }
 
 .watcher-label,
@@ -1390,7 +1356,7 @@ footer {
   }
 
   .watcher svg,
-  .eye .pupil {
+  .watcher-eyes {
     transition: none !important;
     transform: none !important;
   }

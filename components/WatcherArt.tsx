@@ -1,83 +1,20 @@
-﻿export default function WatcherArt() {
+import { useId } from "react";
+
+export default function WatcherArt() {
+  const socketId = useId();
   return (
-    <svg viewBox="0 0 600 600" role="img" aria-label="Abstract terminal face">
+    <svg viewBox="0 0 1200 1200" role="img" aria-label="Studio Migrainz watcher wearing night-vision goggles">
       <defs>
-        <filter id="roughGlow">
-          <feGaussianBlur stdDeviation="2.2" result="blur" />
-
-          <feMerge>
-            <feMergeNode in="blur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
+        {/* Fixed socket apertures in original image coordinates. */}
+        <clipPath id={socketId}>
+          <path d="M437 621 C446 600 464 587 486 590 C502 591 516 601 524 614 C500 616 476 633 454 630 Z" />
+          <path d="M601 615 C607 596 621 588 642 589 C663 590 678 604 682 622 L674 630 C648 623 624 617 601 618 Z" />
+        </clipPath>
       </defs>
-
-      <g className="head" filter="url(#roughGlow)">
-        <path
-          d="
-                M165 120
-                L430 120
-                L505 205
-                L470 462
-                L387 520
-                L210 500
-                L123 418
-                L102 210
-                Z
-              "
-        />
-
-        <path
-          d="
-                M210 185
-                L390 175
-                L440 235
-                L418 405
-                L355 452
-                L235 445
-                L173 390
-                L155 245
-                Z
-              "
-        />
-
-        <path
-          className="detail"
-          d="
-                M110 320 L160 330
-                M432 318 L493 300
-                M297 120 L300 177
-                M205 446 L178 480
-                M389 452 L415 487
-              "
-        />
+      <g clipPath={`url(#${socketId})`}>
+        <image className="watcher-eyes" href="/images/watcher/watcher-eyes.png" width="1200" height="1200" />
       </g>
-
-      <g className="eye eye-left" transform="translate(225 290)">
-        <rect x="-66" y="-38" width="132" height="76" rx="4" />
-
-        <circle className="pupil" cx="0" cy="0" r="17" />
-      </g>
-
-      <g className="eye eye-right" transform="translate(375 285)">
-        <rect x="-66" y="-38" width="132" height="76" rx="4" />
-
-        <circle className="pupil" cx="0" cy="0" r="17" />
-      </g>
-
-      <path
-        className="mouth"
-        d="
-              M232 390
-              C270 410
-              330 410
-              370 388
-            "
-      />
-
-      <text x="300" y="563" textAnchor="middle">
-        POINTER INPUT DETECTED
-      </text>
+      <image href="/images/watcher/watcher-base.png" width="1200" height="1200" />
     </svg>
   );
 }

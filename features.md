@@ -1,5 +1,12 @@
 # Features
 
+## Implemented - 2026-10-14 / Watcher artwork
+
+- Replace the geometric placeholder with the aligned 1200px watcher base/eyes PNGs, preserving the square frame, 86% artwork size and terminal readouts.
+- Move only the eyes within a 6px horizontal / 3px vertical source-coordinate ellipse, with smooth interpolation, fixed socket clips and the face layered above them.
+- Return to neutral on pointer leave/window blur; keep touch and reduced motion static, including preference changes. No blinking or autonomous animation; boot and CMS code unchanged.
+- Validation: TypeScript and production build passed. Full browser/BLUSHLAND regression was not run; the existing local SQLite schema blocker remains recorded in bugs.md.
+
 ## Implemented - 2026-10-04 / Direct project factions
 
 - Display the existing CMS faction listing near the top of each project window, preserving project relationships, ordering, classified listings and faction URLs. Section navigation jumps to the inline grid; legacy faction-index URLs reuse it.
@@ -203,12 +210,12 @@
 - Documented production variable scopes, redeployment, existing PostgreSQL migration commands and temporary private `/tmp` demo media.
 - Live deployment and production database validation remain pending authenticated Vercel access.
 
-## Implemented — 2026-09-08
+## Implemented Ã¢â‚¬â€ 2026-09-08
 
 - Next.js + React + TypeScript foundation, reusable components and pinned dependencies.
 - Original terminal styling, responsive layout, CRT overlay, live clock and cursor-reactive placeholder.
 - Data-driven project index, directories, characters, chapters and public production tracker.
-- Complete BLUSHLAND sample path: project → characters → The Observer → chapter 01 → three-page reader → project.
+- Complete BLUSHLAND sample path: project Ã¢â€ â€™ characters Ã¢â€ â€™ The Observer Ã¢â€ â€™ chapter 01 Ã¢â€ â€™ three-page reader Ã¢â€ â€™ project.
 - Reader page controls, boundary handling, page selection, arrow keys and described sample artwork.
 - SHOP/Patreon promotional windows with mouse hover, touch/keyboard activation and close/Escape/outside dismissal.
 - External placeholder store and explicitly future Patreon account connection.
