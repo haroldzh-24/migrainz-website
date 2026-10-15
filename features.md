@@ -1,5 +1,12 @@
 # Features
 
+## Implemented - 2026-10-15 / Watcher performance
+
+- Replace pointer-driven React renders and restarting CSS transitions with one on-demand, elapsed-time animation-frame loop. Keep the existing elliptical tracking, faster eyes, head drift/perspective, touch scrolling and reduced motion.
+- Separate the static face from the eye SVG under one shared transformed parent, and pre-rasterize the noise tile without disabling CRT effects or changing artwork.
+- Add a repeatable isolated browser profiler; source inspection confirms the deployed site uses the pre-optimization watcher behavior. No deployment performed.
+- Validation: TypeScript/build and isolated Chrome/Edge touch/responsive checks passed; simulated 60/120Hz interpolation matches. Profiling confirms zero pointer-driven React renders and lower style costs; device-specific stutter and total rendering improvement remain unproven. Details/measurements: documentation/watcher-performance-20261015.md.
+
 ## Implemented - 2026-10-14 / Watcher artwork
 
 - Replace the geometric placeholder with the aligned 1200px watcher base/eyes PNGs, preserving the square frame, 86% artwork size and terminal readouts.

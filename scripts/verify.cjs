@@ -174,7 +174,7 @@ const { chromium } = require(
     }
     const watcher = page.locator("#watcher");
     await watcher.hover({ position: { x: 100, y: 100 } });
-    assert.notEqual(await page.locator("#readout-x").innerText(), "000");
+    await page.waitForFunction(() => document.querySelector("#readout-x")?.textContent !== "000");
     const patronTrigger = page.getByRole('button', { name: '06 PATREON ACCESS' });
     await patronTrigger.hover();
     const patronPopup = page.getByRole('region', { name: 'PATREON promotional window' });
@@ -358,7 +358,7 @@ const { chromium } = require(
     );
     assert.equal(
       await touch
-        .locator(".watcher svg")
+        .locator(".watcher-art")
         .evaluate((el) => getComputedStyle(el).transform),
       "none",
     );

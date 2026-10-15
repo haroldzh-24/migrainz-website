@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-15 / Watcher performance investigation
+
+- Coalesce pointer input into an on-demand animation-frame loop with elapsed-time interpolation, direct transform writes and no pointer-driven React state/CSS transitions.
+- Keep the face separate from the clipped SVG eyes under one shared perspective parent. Replace runtime SVG grain with an equivalent pre-rasterized PNG tile; preserve all CRT effects and motion/accessibility behavior.
+- Compare public deployed watcher assets and add an isolated effect-by-effect profiler. Chrome/Edge touch, scroll, reduced motion and responsive checks passed; simulated 60/120Hz behavior matches. TypeScript/build passed. No affected-hardware/Safari validation or deployment; see documentation/watcher-performance-20261015.md for measured improvements and limits.
+
 ## 2026-10-14 / Watcher artwork
 
 - Replace the geometric placeholder with the aligned 1200px watcher base/eyes PNGs, preserving the square frame, 86% artwork size and terminal readouts.

@@ -2,6 +2,12 @@
 
 ## Open Bugs
 
+### 2026-10-15 - Watcher stutter on other devices
+
+- User reports smooth deployed animation on one Windows laptop but stutter on Macs and a Raider HX 14V-class machine. Exact affected-browser/GPU/refresh-rate configuration is unknown.
+- Public deployment matches the pre-optimization watcher behavior. Isolated throttled Chrome profiling confirms near-per-event React rerenders and repeated style/layout work; these are removed/reduced locally using an elapsed-time frame loop. Preserve effects, clipping, touch and scrolling; no deployment performed.
+- Status: Local optimization verified by typecheck/build, Chrome/Edge interaction tests and simulated 60/120Hz timing. The original hardware-specific stutter is not reproduced or confirmed fixed. Safari/GPU/full-page interactions remain hypotheses. Measurements and next device checks: documentation/watcher-performance-20261015.md.
+
 ### 2026-09-29 - Local runtime blocked by SQLite schema synchronization
 
 - Focused recovery browser check timed out loading `/` on the already-running port 3000 server.

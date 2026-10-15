@@ -695,13 +695,13 @@ button {
   padding-top: 100%;
 }
 
-.watcher svg {
+.watcher-art {
   position: absolute;
   inset: 7%;
   width: 86%;
   height: 86%;
   overflow: visible;
-  /* The shared SVG keeps both layers and socket clips in one local space.
+  /* The shared parent keeps both layers and socket clips in one local space.
      The 7% inset leaves room for drift/rotation inside the fixed frame. */
   transform-box: border-box;
   transform-origin: 48% 51%; /* Head/eye line, around source (576, 612). */
@@ -709,13 +709,21 @@ button {
     translate(calc(var(--mx, 0) * 4px), calc(var(--my, 0) * 3px))
     rotateY(calc(var(--mx, 0) * 2deg))
     rotateX(calc(var(--my, 0) * -1.25deg));
-  transition: transform 250ms ease-out;
+  will-change: transform;
+}
+
+.watcher-art > svg,
+.watcher-art > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
 }
 
 .watcher-eyes {
   /* SVG user units preserve these limits on the 1200px source canvas. */
   transform: translate(calc(var(--mx, 0) * 10px), calc(var(--my, 0) * 5px));
-  transition: transform 140ms ease-out;
 }
 
 .watcher-static {
@@ -741,9 +749,9 @@ button {
 
 .watcher-static::before {
   inset: -64px;
-  background: url("/images/watcher/crt-noise.svg") repeat;
+  background: url("/images/watcher/crt-noise.png") repeat;
   opacity: var(--watcher-grain-opacity);
-  /* Move a cached tile rather than recalculating noise each frame. */
+  /* Pre-rasterized tile: no runtime SVG noise filter on any browser. */
   animation: watcher-grain 8s linear infinite;
 }
 
@@ -1433,8 +1441,9 @@ footer {
     scroll-behavior: auto;
   }
 
-  .watcher svg,
+  .watcher-art,
   .watcher-eyes {
+    will-change: auto;
     transition: none !important;
     transform: none !important;
   }
