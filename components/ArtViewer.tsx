@@ -13,7 +13,10 @@ export function ArtworkCanvas({ image, view, onChange }: { image: ViewerImage; v
   const [failed, setFailed] = useState(false);
   const [sourceIndex, setSourceIndex] = useState(0);
   const sources = image.sources ?? [...new Set([image.viewerSrc, image.src, image.thumbnailSrc].filter((src): src is string => Boolean(src)))];
-  const drag = useRef<{ id: number; clientX: number; clientY: number; x: number; y: number } | null>(null);
+  const pointers = useRef(new Map<number, { x: number; y: number }>());
+  const frame = useRef<number | null>(null);
+  const change = useRef(onChange);
+  change.current = onChange;
   const [dragging, setDragging] = useState(false);
 
   useEffect(() => {
@@ -34,21 +37,85 @@ export function ArtworkCanvas({ image, view, onChange }: { image: ViewerImage; v
   const x = Math.max(-limitX, Math.min(limitX, view.x));
   const y = Math.max(-limitY, Math.min(limitY, view.y));
   const pannable = ready && (limitX > 0 || limitY > 0);
-  const zoom = (next: number) => {
-    const bounded = Math.max(minimum, Math.min(maximum, next));
-    onChange({ scale: bounded, x: x * bounded / scale, y: y * bounded / scale });
+  const live = useRef({ scale, x, y });
+  if (frame.current === null) live.current = { scale, x, y };
+  const transform = (factor: number, from: { x: number; y: number }, to = from) => {
+    if (!ready) return;
+    const current = live.current;
+    const bounded = Math.max(minimum, Math.min(maximum, current.scale * factor));
+    const ratio = bounded / current.scale;
+    const lx = Math.max(0, (natural.width * bounded - space.width) / 2);
+    const ly = Math.max(0, (natural.height * bounded - space.height) / 2);
+    live.current = { scale: bounded, x: Math.max(-lx, Math.min(lx, to.x - (from.x - current.x) * ratio)), y: Math.max(-ly, Math.min(ly, to.y - (from.y - current.y) * ratio)) };
+    if (frame.current === null) frame.current = requestAnimationFrame(() => {
+      frame.current = null;
+      change.current(live.current);
+    });
+  };
+  const zoom = (next: number) => transform(next / live.current.scale, { x: 0, y: 0 });
+  const reset = (next: View) => {
+    if (frame.current !== null) cancelAnimationFrame(frame.current);
+    frame.current = null;
+    live.current = { scale: next.scale ?? fit, x: next.x, y: next.y };
+    onChange(next);
   };
   const stopPan = (event: PointerEvent<HTMLDivElement>) => {
-    if (drag.current?.id !== event.pointerId) return;
-    drag.current = null;
-    setDragging(false);
+    pointers.current.delete(event.pointerId);
+    setDragging(pointers.current.size > 0);
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
   };
 
+  const input = useRef({ transform, ready });
+  input.current = { transform, ready };
+  useEffect(() => {
+    const element = canvas.current;
+    if (!element) return;
+    let safariScale: number | null = null;
+    const point = (clientX: number, clientY: number) => {
+      const rect = element.getBoundingClientRect();
+      return { x: clientX - rect.left - rect.width / 2, y: clientY - rect.top - rect.height / 2 };
+    };
+    const wheel = (event: WheelEvent) => {
+      if (!event.ctrlKey || !event.cancelable || !input.current.ready) return;
+      event.preventDefault();
+      if (safariScale !== null) return;
+      const delta = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? element.clientHeight : 1);
+      input.current.transform(Math.exp(-Math.max(-100, Math.min(100, delta)) * 0.01), point(event.clientX, event.clientY));
+    };
+    type Gesture = Event & { scale: number; clientX: number; clientY: number };
+    const start = (raw: Event) => {
+      if (!raw.cancelable || !input.current.ready) return;
+      raw.preventDefault();
+      safariScale = (raw as Gesture).scale;
+    };
+    const gesture = (raw: Event) => {
+      if (safariScale === null || !raw.cancelable) return;
+      raw.preventDefault();
+      const event = raw as Gesture;
+      if (event.scale > 0 && safariScale > 0) input.current.transform(event.scale / safariScale, point(event.clientX, event.clientY));
+      safariScale = event.scale;
+    };
+    const end = (event: Event) => {
+      if (safariScale !== null && event.cancelable) event.preventDefault();
+      safariScale = null;
+    };
+    element.addEventListener("wheel", wheel, { passive: false });
+    element.addEventListener("gesturestart", start, { passive: false });
+    element.addEventListener("gesturechange", gesture, { passive: false });
+    element.addEventListener("gestureend", end, { passive: false });
+    return () => {
+      element.removeEventListener("wheel", wheel);
+      element.removeEventListener("gesturestart", start);
+      element.removeEventListener("gesturechange", gesture);
+      element.removeEventListener("gestureend", end);
+      if (frame.current !== null) cancelAnimationFrame(frame.current);
+    };
+  }, []);
+
   return <>
     <div className="art-viewer-toolbar" role="group" aria-label="Artwork zoom">
-      <button type="button" disabled={!ready} aria-pressed={view.scale === null} onClick={() => onChange(fitView)}>FIT</button>
-      <button type="button" disabled={!ready} aria-pressed={view.scale === 1} onClick={() => onChange({ scale: 1, x: 0, y: 0 })}>100%</button>
+      <button type="button" disabled={!ready} aria-pressed={view.scale === null} onClick={() => reset(fitView)}>FIT</button>
+      <button type="button" disabled={!ready} aria-pressed={view.scale === 1} onClick={() => reset({ scale: 1, x: 0, y: 0 })}>100%</button>
       <button type="button" aria-label="Zoom out" disabled={!ready || scale <= minimum} onClick={() => zoom(scale / 1.25)}>−</button>
       <button type="button" aria-label="Zoom in" disabled={!ready || scale >= maximum} onClick={() => zoom(scale * 1.25)}>+</button>
       <output aria-label="Artwork scale">{failed ? "UNAVAILABLE" : ready ? `${Math.round(scale * 100)}%` : "LOADING"}</output>
@@ -60,18 +127,26 @@ export function ArtworkCanvas({ image, view, onChange }: { image: ViewerImage; v
         event.preventDefault();
         onChange({ scale, x: Math.max(-limitX, Math.min(limitX, x + (event.key === "ArrowLeft" ? 40 : event.key === "ArrowRight" ? -40 : 0))), y: Math.max(-limitY, Math.min(limitY, y + (event.key === "ArrowUp" ? 40 : event.key === "ArrowDown" ? -40 : 0))) });
       }}
+      onContextMenu={(event) => event.preventDefault()}
       onPointerDown={(event) => {
-        if (!pannable || event.button !== 0 || !event.isPrimary) return;
+        if (!ready || event.button !== 0 || (event.pointerType !== "touch" && !pannable) || pointers.current.size >= 2) return;
         event.preventDefault();
-        event.currentTarget.focus();
-        drag.current = { id: event.pointerId, clientX: event.clientX, clientY: event.clientY, x, y };
+        event.stopPropagation();
+        event.currentTarget.focus({ preventScroll: true });
+        pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
         event.currentTarget.setPointerCapture(event.pointerId);
         setDragging(true);
       }}
       onPointerMove={(event) => {
-        const start = drag.current;
-        if (!start || start.id !== event.pointerId) return;
-        onChange({ scale, x: Math.max(-limitX, Math.min(limitX, start.x + event.clientX - start.clientX)), y: Math.max(-limitY, Math.min(limitY, start.y + event.clientY - start.clientY)) });
+        if (!pointers.current.has(event.pointerId)) return;
+        const before = [...pointers.current.values()];
+        pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+        const after = [...pointers.current.values()];
+        const rect = event.currentTarget.getBoundingClientRect();
+        const midpoint = (points: typeof before) => ({ x: points.reduce((sum, p) => sum + p.x, 0) / points.length - rect.left - rect.width / 2, y: points.reduce((sum, p) => sum + p.y, 0) / points.length - rect.top - rect.height / 2 });
+        const distance = (points: typeof before) => points.length === 2 ? Math.hypot(points[1].x - points[0].x, points[1].y - points[0].y) : 1;
+        const previousDistance = distance(before);
+        transform(previousDistance > 0 ? distance(after) / previousDistance : 1, midpoint(before), midpoint(after));
       }}
       onPointerUp={stopPan} onPointerCancel={stopPan} onLostPointerCapture={stopPan}>
       <img src={sources[sourceIndex]} alt={image.alt} draggable={false}

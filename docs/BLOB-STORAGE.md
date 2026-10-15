@@ -1,8 +1,10 @@
 # Private Vercel Blob media
 
-This repair uses the existing `migrainz-media` Vercel Blob store. It does not
+The storage adapter uses the existing `migrainz-media` Vercel Blob store. It does not
 provision a provider/store, change Media records, add database fields, or run
-migrations. Existing media fallback and access classification remain unchanged.
+migrations. The Equipment schema expansion has a separate unapplied additive
+migration described in [CMS documentation](CMS.md). Existing media fallback and
+access classification remain unchanged.
 
 ## Implementation
 
@@ -29,8 +31,21 @@ original-image guard runs next, then the Blob handler streams private bytes.
 There are no public Blob redirects, signed download links, or client tokens.
 Responses use `private, no-store`, `Vary: Cookie`, and `nosniff`; SVG responses
 retain the script restriction. Missing objects return 404; provider failures
-return 502 so the existing viewer can try the next candidate. Byte-range requests
-currently receive the complete authorized response (HTTP 200).
+return 502 so the existing viewer can try the next candidate. Authorized single
+byte-range requests now receive HTTP 206, with `Accept-Ranges`, `Content-Range`,
+correct length/type and the same private cache policy. Open-ended and suffix ranges
+are supported; unsatisfiable ranges receive 416 and `Content-Range: bytes */SIZE`.
+HEAD responses have no body. Unsupported multipart ranges and If-Range requests
+receive a safe full response rather than a partial response with stale validators.
+
+The installed Blob SDK returns full-file streams. The adapter slices that stream
+without buffering the complete object, discards bytes before the requested offset,
+and cancels the upstream reader after the requested end or client cancellation.
+This preserves the existing private storage configuration but may consume upstream
+bytes before a seek offset. The optional Equipment feature therefore caps MP4
+uploads at 3 MiB. It introduces no public URLs, redirects, client Blob credentials,
+direct-upload endpoint, new provider, or caching bypass. Verify real mobile Safari
+seeks and provider transfer cost in staging before raising this limit.
 
 The existing fallback remains viewer -> preview -> thumbnail -> legacy thumbnail
 -> authorized PUBLIC original -> unavailable. Protected originals never join the
@@ -57,7 +72,10 @@ files. No UI or batch uploader redesign is included.
 
 Server uploads preserve the existing admin and batch multipart workflow. Vercel
 functions still have a 4.5 MB request-body limit (including multipart overhead),
-even though the CMS accepts 40 MB locally. Uploading larger files through hosted
+even though the CMS accepts 40 MB locally for existing image/PDF workflows. MP4
+files have a separate 3 MiB maximum to leave request overhead headroom. Export
+H.264 MP4; videos bypass Sharp resizing and use original authorized video bytes.
+Uploading larger files through hosted
 admin/batch requires a separately scoped client-upload workflow; this repair
 does not silently add a token endpoint or bypass authentication to achieve it.
 Generated outputs are sent from the server to Blob and do not count toward the

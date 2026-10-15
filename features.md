@@ -1,5 +1,30 @@
 # Features
 
+## Implemented - 2026-10-15 / Equipment specifications, assignments and schematics
+
+- Extend existing Equipment with optional specifications, ordered label/value rows, and disabled-by-default MP4/poster controls; preserve name, project/faction relationships, concept images, URLs and ART VIEWER.
+- Store optional equipment assignments only on Characters, with designation, quantity, notes and order. Enforce same-project selections and moves, derive reverse listings, hide unauthorized assignment details, and protect live/current draft references from deletion.
+- Add responsive equipment cards/specifications and optional native muted inline looping video above concept art. Lazy load in view, pause offscreen/hidden, honor reduced motion/data, expose native controls, and use authorized poster/error fallback. No videos on character cards.
+- Keep the private Blob adapter and guarded file URLs. Add streaming single-byte ranges (206/416), HEAD/full responses, cancellation, a 3 MiB MP4 cap, MIME checks and video exclusion from artwork fields. Images/PDFs retain their upload paths; videos bypass Sharp.
+- Regenerate Payload types and register reviewed additive PostgreSQL migration 20261015_080148_equipment_schematics_assignments plus schema snapshot. Remove duplicate generated SQL for earlier hand-authored migrations; automatic destructive down is refused. No existing SQLite writes, production migration, storage mutation, commit or deployment.
+- Validation: TypeScript/build; fresh private SQLite CMS tests including mocked Patreon tiers and real Media endpoint authorization with mocked Blob reads; in-memory PostgreSQL full migration chain/preservation; Chrome component checks at 390px/1440px with real locally generated H.264 MP4. Details and commands: docs/CMS.md and docs/BLOB-STORAGE.md. Live Vercel/Safari/physical-device and authenticated admin verification remain manual.
+
+
+## Implemented - 2026-10-15 / Shared artwork pinch zoom
+
+- Add two-touch Pointer Event pinch/pan and canvas-local non-passive Ctrl+wheel/Safari gesture handling to ArtworkCanvas for ART VIEWER and COMIC READER. Retain zoom bounds, containment, FIT/100%/buttons, mouse drag, keyboard pan and reader page resets. Coalesce input updates with requestAnimationFrame and cancel queued work on reset/unmount.
+- Scope touch-action and touch callout suppression to the canvas; ordinary wheel scrolling and outside browser gestures remain native.
+- Validation: typecheck and production build passed. Isolated Chrome checks at 1440px and 390px passed for both viewers: synthetic two-pointer pinch, release-to-one-pointer, cancellation, Ctrl+wheel prevention, ordinary-wheel passthrough, synthetic Safari events, FIT and comic page reset. Run scripts/verify-viewer-pinch.mjs with PLAYWRIGHT_MODULE as needed. Pointer capture is stubbed for synthetic input; this does not validate native capture or physical gestures.
+- Physical verification remains: macOS trackpads in Safari/Chrome/Firefox, Windows Precision touchpads in Edge/Chrome/Firefox, iOS Safari and Android Chrome touch gestures, and physical 60/120Hz responsiveness.
+
+
+## Implemented - 2026-10-15 / Crunchier watcher CRT signal
+
+- Increase grain to 12% with a 96px repeating tile (1.5x coarser), and scanlines to 2px within a 5px pitch at 4.5% opacity.
+- Add irregular 0.5-1.25px signal-only micro-jitter with brief 2-3px bursts, plus faster interference sweeps every 6.8 seconds. Overscan keeps edges covered; artwork motion, labels and tracking stay unchanged.
+- Keep cached PNG noise and transform/opacity-only animation. Reduced motion stops signal jitter/grain and hides interference. Intensities, grain scale and animation periods remain CSS variables.
+- Validation: TypeScript/build and isolated Chrome checks at 375px/430px/1440px passed (touch, native scroll, mouse tracking and reduced motion). No affected-device performance claim.
+
 ## Implemented - 2026-10-15 / Watcher performance
 
 - Replace pointer-driven React renders and restarting CSS transitions with one on-demand, elapsed-time animation-frame loop. Keep the existing elliptical tracking, faster eyes, head drift/perspective, touch scrolling and reduced motion.

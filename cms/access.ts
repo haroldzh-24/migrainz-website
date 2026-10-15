@@ -64,6 +64,7 @@ async function buildMediaRule(req: PayloadRequest): Promise<Where> {
     for (const doc of result.docs) {
       const record = doc as unknown as Record<string, unknown>;
       add(record.heroImage); add(record.cover); add(record.emblem);
+      if (record.schematicEnabled) { add(record.schematicVideo); add(record.schematicPoster); }
       for (const field of ['pages', 'images', 'files']) {
         const rows = record[field];
         if (Array.isArray(rows)) for (const row of rows) add(row.media);
@@ -79,7 +80,8 @@ export async function preventReferencedDelete(req: PayloadRequest, collection: C
     factions: [['characters', 'primaryFaction'], ['characters', 'affiliations'], ['equipment', 'faction']],
     comics: [['chapters', 'comic']],
     chapters: [['characters', 'relatedChapters']],
-    media: [['factions', 'emblem'], ['equipment', 'images.media'], ['projects', 'heroImage'], ['characters', 'images.media'], ['comics', 'cover'], ['chapters', 'pages.media'], ['galleries', 'images.media'], ['archive-items', 'files.media'], ['project-updates', 'images.media']],
+    equipment: [['characters', 'equipmentAssignments.equipment']],
+    media: [['equipment', 'schematicVideo'], ['equipment', 'schematicPoster'], ['factions', 'emblem'], ['equipment', 'images.media'], ['projects', 'heroImage'], ['characters', 'images.media'], ['comics', 'cover'], ['chapters', 'pages.media'], ['galleries', 'images.media'], ['archive-items', 'files.media'], ['project-updates', 'images.media']],
     galleries: [['projects', 'galleries']],
     tags: [['projects', 'tags'], ['characters', 'tags'], ['galleries', 'tags'], ['archive-items', 'tags']],
     categories: [['projects', 'categories'], ['archive-items', 'category']],

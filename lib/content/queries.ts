@@ -2,7 +2,7 @@ import 'server-only';
 import { cache } from 'react';
 import { getPayload } from 'payload';
 import config from '@payload-config';
-import type { Media } from '@/payload-types';
+import type { Media, Equipment } from '@/payload-types';
 import { contentRequest } from '@/lib/patreon/viewer';
 import { findListing } from './listings';
 import type { Classified, ComicPage, Project } from './types';
@@ -16,6 +16,7 @@ function image(media?: number | Media | null, alt?: string | null, caption?: str
   if (restricted.classification) return { ...classificationOf(restricted), src: '', alt: '' };
   if (!['public', 'patron'].includes(media.accessLevel) || media._status !== 'published') return undefined;
   const isPDF = media.mimeType === 'application/pdf';
+  if (!isPDF && !media.mimeType?.startsWith('image/')) return undefined;
   const pathname = (url: string) => {
     try { return decodeURIComponent(new URL(url, 'https://media.invalid').pathname); }
     catch { return undefined; }
@@ -151,13 +152,51 @@ export const getFactionContents = cache(async (project: number, faction: number)
   };
 });
 
+export function equipmentSpecifications(item: Equipment) {
+  const fields = [['manufacturer', 'MANUFACTURER'], ['model', 'MODEL / DESIGNATION'], ['equipmentType', 'TYPE'], ['caliber', 'CALIBER / CARTRIDGE'], ['capacity', 'CAPACITY'], ['period', 'YEAR / PERIOD']] as const;
+  return [...fields.flatMap(([key, label]) => item[key]?.trim() ? [{ label, value: item[key]!.trim() }] : []),
+    ...(item.technicalSpecifications ?? []).filter(row => row.label?.trim() && row.value?.trim()).map(row => ({ label: row.label, value: row.value }))];
+}
+function equipmentSummary(item: Equipment) {
+  return { slug: item.slug, name: item.name, category: item.category || item.equipmentType || '', description: item.description || '',
+    specifications: equipmentSpecifications(item), images: images(item.images).filter(file => !file.classification), updated: item.updatedAt.slice(0, 10) };
+}
+
+export const getCharacterEquipment = cache(async (projectSlug: string, characterSlug: string) => {
+  const project = await getProjectIdentity(projectSlug);
+  if (!project) return [];
+  const cms = await getPayload({ config });
+  const req = await contentRequest();
+  const characters = await cms.find({ collection: 'characters', req, overrideAccess: false, depth: 0, limit: 1,
+    where: { and: [{ project: { equals: project.id } }, { slug: { equals: characterSlug } }] } });
+  const rows = characters.docs[0]?.equipmentAssignments ?? [];
+  if (!rows.length) return [];
+  const equipment = await cms.find({ collection: 'equipment', req, overrideAccess: false, depth: 1, pagination: false,
+    where: { and: [{ project: { equals: project.id } }, { id: { in: rows.map(row => idOf(row.equipment)) } }] } });
+  const byID = new Map(equipment.docs.map(item => [item.id, item]));
+  return rows.map((row, index) => ({ row, index })).sort((a, b) => (a.row.order ?? a.index) - (b.row.order ?? b.index) || a.index - b.index).flatMap(({ row }) => {
+    const item = byID.get(idOf(row.equipment));
+    return item ? [{ ...equipmentSummary(item), designation: row.designation || undefined, quantity: row.quantity ?? undefined, notes: row.notes || undefined }] : [];
+  });
+});
+
 export const getEquipment = cache(async (project: number, slug: string) => {
   const cms = await getPayload({ config });
-  const result = await findListing(cms, { collection: 'equipment', overrideAccess: false, depth: 1, limit: 1,
+  const req = await contentRequest();
+  const result = await cms.find({ req, collection: 'equipment', overrideAccess: false, depth: 1, limit: 1,
     where: { and: [publicWhere, { project: { equals: project } }, { slug: { equals: slug } }] } });
-  const item = result.docs.find(doc => !doc.classification);
-  return item ? { ...classificationOf(item), slug: item.slug, name: item.name, category: item.category || '', description: item.description || '',
-    images: images(item.images), updated: item.updatedAt.slice(0, 10) } : undefined;
+  const item = result.docs[0];
+  if (!item) return undefined;
+  const characters = await cms.find({ collection: 'characters', req, overrideAccess: false, depth: 0, pagination: false, sort: 'name',
+    where: { and: [{ project: { equals: project } }, { 'equipmentAssignments.equipment': { equals: item.id } }] },
+    select: { name: true, slug: true, role: true } });
+  const video = item.schematicVideo;
+  const authorizedVideo = item.schematicEnabled && video && typeof video === 'object' && video.mimeType === 'video/mp4' && video._status === 'published' && ['public', 'patron'].includes(video.accessLevel);
+  const poster = item.schematicEnabled ? image(item.schematicPoster) : undefined;
+  return { ...equipmentSummary(item),
+    schematic: item.schematicEnabled ? { src: authorizedVideo && video.filename ? '/api/media/file/' + encodeURIComponent(video.filename) : undefined,
+      poster: poster && !poster.classification ? poster.src : undefined } : undefined,
+    characters: characters.docs.map(character => ({ name: character.name, slug: character.slug, role: character.role || '' })) };
 });
 
 export const getHomepageData = cache(async () => {

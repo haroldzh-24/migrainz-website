@@ -4,6 +4,7 @@ import type { Adapter } from '@payloadcms/plugin-cloud-storage/types';
 import { del, get, put } from '@vercel/blob';
 import type { Plugin } from 'payload';
 import { blobPathname } from './blob-files';
+import { privateFileResponse } from './range-response';
 
 const sdk = { del, get, put };
 
@@ -33,10 +34,7 @@ export function privateBlobAdapter(token: string, client = sdk): Adapter {
       try {
         const result = await client.get(pathname, { token, access: 'private', useCache: false });
         if (!result || result.statusCode !== 200) return new Response(null, { status: 404, headers });
-        headers.set('Content-Type', result.blob.contentType);
-        headers.set('Content-Length', String(result.blob.size));
-        if (result.blob.contentType.includes('svg')) headers.set('Content-Security-Policy', "script-src 'none'");
-        return new Response(result.stream, { headers });
+        return await privateFileResponse(result.stream, result.blob.size, result.blob.contentType, req, headers);
       } catch {
         // Keep credential/provider details out of responses and logs. Image onError
         // can advance to the next candidate on this non-success response.

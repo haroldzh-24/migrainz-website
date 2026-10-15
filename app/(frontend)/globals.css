@@ -506,7 +506,8 @@ button {
   overflow: hidden;
   user-select: none;
 }
-.art-viewer-canvas[data-pannable="true"] { cursor: grab; touch-action: none; }
+.art-viewer-canvas { touch-action: none; -webkit-touch-callout: none; }
+.art-viewer-canvas[data-pannable="true"] { cursor: grab; }
 .art-viewer-canvas[data-dragging="true"] { cursor: grabbing; }
 .art-viewer-canvas img {
   position: absolute;
@@ -727,16 +728,20 @@ button {
 }
 
 .watcher-static {
-  --watcher-grain-opacity: 0.09;
-  --watcher-scanline-opacity: 0.025;
-  --watcher-interference-opacity: 0.07;
-  --watcher-interference-period: 13s;
+  --watcher-grain-opacity: 0.12;
+  --watcher-grain-size: 96px;
+  --watcher-scanline-opacity: 0.045;
+  --watcher-interference-opacity: 0.09;
+  --watcher-interference-period: 6.8s;
+  --watcher-jitter-period: 3.7s;
   position: absolute;
-  inset: 0;
+  /* Overscan keeps tiny signal shifts from exposing clean display edges. */
+  inset: -3px;
   z-index: 1;
   overflow: hidden;
   pointer-events: none;
   contain: paint;
+  animation: watcher-signal-jitter var(--watcher-jitter-period) steps(1, end) infinite;
 }
 
 .watcher-static::before,
@@ -748,8 +753,9 @@ button {
 }
 
 .watcher-static::before {
-  inset: -64px;
+  inset: calc(-1 * var(--watcher-grain-size));
   background: url("/images/watcher/crt-noise.png") repeat;
+  background-size: var(--watcher-grain-size) var(--watcher-grain-size);
   opacity: var(--watcher-grain-opacity);
   /* Pre-rasterized tile: no runtime SVG noise filter on any browser. */
   animation: watcher-grain 8s linear infinite;
@@ -758,7 +764,7 @@ button {
 .watcher-static::after {
   inset: 0;
   background: repeating-linear-gradient(
-    to bottom, transparent 0 2px, #a4c99a 2px 3px
+    to bottom, transparent 0 3px, #a4c99a 3px 5px
   );
   opacity: var(--watcher-scanline-opacity);
 }
@@ -774,21 +780,39 @@ button {
 
 @keyframes watcher-grain {
   from { transform: translate(0, 0); }
-  to { transform: translate(64px, 64px); }
+  to { transform: translate(var(--watcher-grain-size), var(--watcher-grain-size)); }
+}
+
+/* Signal-only instability: no changes to artwork or tracking transforms.
+   Irregular holds avoid a regular vibration; bursts last about 40–75ms. */
+@keyframes watcher-signal-jitter {
+  0%, 100% { transform: translateX(0.5px); }
+  7% { transform: translateX(-0.75px); }
+  19% { transform: translateX(1px); }
+  27% { transform: translateX(-0.5px); }
+  38% { transform: translateX(0.75px); }
+  46% { transform: translateX(-1.25px); }
+  58% { transform: translateX(0.5px); }
+  71% { transform: translateX(3px); }
+  72.2% { transform: translateX(-2px); }
+  74% { transform: translateX(0.75px); }
+  83% { transform: translateX(-0.5px); }
+  94% { transform: translateX(1.25px); }
 }
 
 @keyframes watcher-interference {
   0%, 84% { opacity: 0; transform: translate(0, -100%); }
   86% { opacity: var(--watcher-interference-opacity); transform: translate(0, -80%); }
   90% { transform: translate(0, 0); }
-  90.3% { transform: translate(2px, 6%); }
-  90.6% { transform: translate(-1px, 12%); }
+  90.3% { transform: translate(3px, 6%); }
+  90.6% { transform: translate(-2px, 12%); }
   91% { transform: translate(0, 20%); }
   94% { opacity: var(--watcher-interference-opacity); transform: translate(0, 80%); }
   96%, 100% { opacity: 0; transform: translate(0, 100%); }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .watcher-static { animation: none; transform: none; }
   .watcher-static::before { animation: none; }
   .watcher-interference { animation: none; opacity: 0; }
 }
@@ -1845,3 +1869,19 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
 }
 /* Preserve the existing green classification treatment inside neutral applications. */
 .project-application .classified-placeholder { --green: #72ff62; --green2: #42c93a; }
+
+/* Optional Equipment records: specifications, assignments and native schematics. */
+.equipment-specifications { margin: 1rem 0; font-size: .8rem; }
+.equipment-specifications > div { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 1rem; border-bottom: 1px solid var(--line, #234b2f); padding: .4rem 0; overflow-wrap: anywhere; }
+.equipment-specifications dt { opacity: .7; }
+.equipment-specifications dd { margin: 0; white-space: pre-wrap; }
+.equipment-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 1rem; }
+.equipment-card { display: flex; align-items: flex-start; gap: 1rem; border: 1px solid var(--line, #234b2f); padding: 1rem; min-width: 0; overflow-wrap: anywhere; }
+.equipment-card > img { width: 80px; height: 100px; object-fit: contain; background: #111; flex-shrink: 0; }
+.equipment-card > div { min-width: 0; flex: 1; }
+.equipment-card h3 { margin: 0; }
+.equipment-schematic { margin: 1.5rem 0; }
+.equipment-schematic-display { background: #000; border: 1px solid var(--line, #234b2f); padding: .5rem; text-align: center; }
+.equipment-schematic-display video, .equipment-schematic-display img { width: 100%; max-height: 65vh; aspect-ratio: 16 / 9; object-fit: contain; }
+.equipment-schematic-display button { margin: .5rem; }
+@media (max-width: 480px) { .equipment-card { flex-direction: column; } .equipment-card > img { width: 100%; height: 140px; } }

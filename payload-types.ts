@@ -236,7 +236,7 @@ export interface Project {
   _status?: ('draft' | 'published') | null;
 }
 /**
- * For one file, choose Create, upload JPG, PNG, WebP, GIF, SVG, or PDF, add required alt text, optionally select its Project, then save as draft or publish. Comic pages must be images; use Add multiple pages on a Chapter for a naturally filename-sorted batch. Files are public only when published, PUBLIC, and attached to published public content.
+ * For one file, choose Create, upload JPG, PNG, WebP, GIF, SVG, PDF, or H.264 MP4 (maximum 3 MiB), add required alt text, optionally select its Project, then save as draft or publish. Comic pages must be images; use Add multiple pages on a Chapter for a naturally filename-sorted batch. Files are public only when published, PUBLIC, and attached to published public content.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "media".
@@ -580,6 +580,19 @@ export interface Character {
         id?: string | null;
       }[]
     | null;
+  /**
+   * Optional shared equipment. Select the project first. Drag rows to order; explicit display order takes precedence.
+   */
+  equipmentAssignments?:
+    | {
+        equipment: number | Equipment;
+        designation?: string | null;
+        quantity?: number | null;
+        notes?: string | null;
+        order?: number | null;
+        id?: string | null;
+      }[]
+    | null;
   relatedChapters?: (number | Chapter)[] | null;
   tags?: (number | Tag)[] | null;
   /**
@@ -627,6 +640,31 @@ export interface Equipment {
   faction?: (number | null) | Faction;
   category?: string | null;
   description?: string | null;
+  manufacturer?: string | null;
+  model?: string | null;
+  equipmentType?: string | null;
+  caliber?: string | null;
+  capacity?: string | null;
+  period?: string | null;
+  /**
+   * Optional additional specifications, in saved row order.
+   */
+  technicalSpecifications?:
+    | {
+        label: string;
+        value: string;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Show the optional rotating schematic. Disabling retains both uploads.
+   */
+  schematicEnabled?: boolean | null;
+  /**
+   * Optional H.264 MP4, maximum 3 MiB; recommended 1280 x 720, 24 fps, about six seconds.
+   */
+  schematicVideo?: (number | null) | Media;
+  schematicPoster?: (number | null) | Media;
   /**
    * Add existing uploads or upload a file in each row. Row order is display order.
    */
@@ -1097,6 +1135,16 @@ export interface CharactersSelect<T extends boolean = true> {
         alt?: T;
         id?: T;
       };
+  equipmentAssignments?:
+    | T
+    | {
+        equipment?: T;
+        designation?: T;
+        quantity?: T;
+        notes?: T;
+        order?: T;
+        id?: T;
+      };
   relatedChapters?: T;
   tags?: T;
   listingVisibility?: T;
@@ -1120,6 +1168,22 @@ export interface EquipmentSelect<T extends boolean = true> {
   faction?: T;
   category?: T;
   description?: T;
+  manufacturer?: T;
+  model?: T;
+  equipmentType?: T;
+  caliber?: T;
+  capacity?: T;
+  period?: T;
+  technicalSpecifications?:
+    | T
+    | {
+        label?: T;
+        value?: T;
+        id?: T;
+      };
+  schematicEnabled?: T;
+  schematicVideo?: T;
+  schematicPoster?: T;
   images?:
     | T
     | {

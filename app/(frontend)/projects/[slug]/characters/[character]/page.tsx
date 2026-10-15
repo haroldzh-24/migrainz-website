@@ -3,7 +3,8 @@ import Link from "next/link";
 import { Directory, DirectoryLink } from "@/components/Directory";
 import ContentWriting from "@/components/ContentWriting";
 import ContentGallery from "@/components/ContentGallery";
-import { getProject } from "@/lib/content/queries";
+import { getProject, getCharacterEquipment } from "@/lib/content/queries";
+import EquipmentCards from "@/components/EquipmentCards";
 import { projectHref, chapterHref } from "@/lib/content/types";
 import { CharacterViewerButton } from "@/components/CharacterViewerLink";
 export async function generateMetadata({
@@ -28,6 +29,7 @@ export default async function CharacterPage({
   if (!project) return lockedPageOrNotFound({ projectSlug: ids.slug, kind: "characters", slug: ids.character });
   const character = project.characters.find((c) => c.slug === ids.character && !c.classification);
   if (!character) return lockedPageOrNotFound({ projectSlug: ids.slug, kind: "characters", slug: ids.character });
+  const equipment = await getCharacterEquipment(ids.slug, ids.character);
   return (
     <Directory
       path={`SYS:/PROJECTS/${project.slug.toUpperCase()}/CHARACTERS/${character.slug.toUpperCase()}`}
@@ -55,6 +57,7 @@ export default async function CharacterPage({
           <p>RECORD STATUS: PUBLIC</p>
         </div>
       </div>
+      <EquipmentCards projectSlug={project.slug} equipment={equipment} />
       <h2>RELATED COMIC CHAPTERS</h2>
       <div className="directory-list">
         {project.chapters

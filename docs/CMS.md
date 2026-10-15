@@ -40,6 +40,93 @@ production status (for example, a published project can still be in development)
 
 ## Factions and equipment
 
+### Equipment specifications, assignments and schematics
+
+Equipment keeps its existing required name, category, description, project,
+optional faction, URLs and ordered `images`. Optional text fields are manufacturer,
+model/designation, equipment type, caliber/cartridge, capacity and year/period.
+Capacity accepts formats such as `20 rounds`, `5+1` or `2 cells`. Ordered
+`technicalSpecifications` rows provide additional label/value pairs. No firearm
+fields are mandatory, and empty specifications are omitted from pages.
+
+In Characters, choose the project, then add **Equipment assignments** rows. Each
+row selects an existing Equipment record and optionally supplies a custom display
+designation, positive whole quantity, notes and display order. Drag rows to reorder;
+an explicit display order takes precedence, with saved row order breaking ties.
+Assignments are optional and shared equipment/media are never copied. The selector
+filters by project; server validation also rejects cross-project selections and
+project changes that would invalidate live or current draft assignments. Factions
+may differ. Remove assignments before moving assigned equipment to another project.
+
+`Characters.equipmentAssignments` is the only authoritative source. Equipment pages
+query their assigned characters rather than storing a second relationship list.
+Character pages omit the EQUIPMENT section if there are no authorized assignments;
+otherwise they display compact linked artwork/specification cards without video.
+Reverse listings omit inaccessible characters. Nonstaff Character API responses
+also omit inaccessible assignment rows, including their IDs, designation and notes.
+Privileged staff/internal reads retain the complete saved array. Neither direction
+grants access to a record, faction, project or file.
+
+For a rotating schematic, upload an **H.264 MP4 of at most 3 MiB** through Media,
+publish it, select it as `schematicVideo`, optionally choose a WebP/PNG/JPEG
+`schematicPoster`, and enable `schematicEnabled`. All three fields are optional.
+Disabling the checkbox retains uploads and relationships. Recommended exports are
+1280 x 720, 24 fps, about six seconds, with web/fast-start optimization. The CMS
+validates the MP4 container/MIME and size, not the encoded codec; unsupported or
+corrupt playback falls back to an independently authorized poster or hides the
+display. No transcoding service or runtime 3D renderer is introduced.
+
+Enabled, published, authorized schematics appear above the existing concept
+gallery. Concept images retain saved order and ART VIEWER behavior, including
+equipment without a video. The native player is muted, loops inline, contains the
+whole model, exposes controls, and pauses offscreen or when the tab is hidden.
+Reduced-motion and browser-exposed reduced-data/save-data preferences require an
+explicit play action before loading video bytes. A poster may still load. No video
+is loaded on character cards. Browser autoplay restrictions can require pressing
+the native play control. Videos do not receive Sharp derivatives; image processing
+and PDF uploads retain their existing behavior. Video cannot be put into artwork
+image rows, covers, hero images, emblems or comic pages when publishing.
+
+Media files remain at authorized `/api/media/file/...` URLs. Publication, listing,
+project/faction, Patreon tier and accessible-reference checks run for every file
+request. Disabled schematics do not independently authorize their video or poster;
+another accessible reference may still authorize shared media. Both schematic
+relationships and live/current draft assignments participate in deletion protection.
+
+The additive migration `20261015_080148_equipment_schematics_assignments` is
+generated and registered, **not applied**. It depends on the preceding registered
+migrations, adds live/versioned Equipment columns and ordered specification and
+Character assignment tables, and does not rewrite content. Its snapshot incorporates
+the earlier hand-authored access/tier/image migrations, while duplicate SQL for those
+changes has been removed from this migration. Automatic down is deliberately
+refused to avoid deleting new editorial content; rollback requires a reviewed backup.
+
+Do not start the updated schema against the existing development SQLite database
+without an approved backup/reconciliation step: development schema synchronization
+can write on startup, and `bugs.md` records an existing synchronization problem.
+The Equipment checks use a fresh private database under `test-results` and never
+load `.env.local`. No production migrations are run by these checks.
+
+```powershell
+node --import tsx scripts/verify-equipment.ts
+node --import tsx scripts/check-blob-storage.mjs
+# Requires PGlite in the temporary path in the script, or PGLITE_MODULE:
+node --import tsx scripts/verify-equipment-migration.mjs
+# Requires Playwright, optionally located through PLAYWRIGHT_MODULE:
+node scripts/verify-equipment-browser.mjs
+npm.cmd run typecheck
+npm.cmd run build
+```
+
+Integration checks exercise real Payload operations and Media endpoint authorization
+with mocked private Blob reads, plus offline mocked Patreon membership/tier responses.
+The migration chain is tested in an in-memory PostgreSQL fixture. Browser checks use
+actual components and a locally generated H.264 MP4 at desktop/mobile widths, with a
+minimal link shim. Live Vercel storage, physical iOS Safari/Android playback and the
+full authenticated admin workflow still need staging/manual verification.
+
+### Existing faction workflow
+
 Create Factions under a Project, select the organization type, and add a short
 description, optional full writing, status, emblem and display order. Emblems use
 the existing Media library and must be images. Publish the project, media and

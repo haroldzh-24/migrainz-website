@@ -1,6 +1,7 @@
 import type { CollectionConfig, CollectionSlug, Field } from 'payload';
 import { editorialAccess, mediaRead, preventReferencedDelete, publicContent, staff } from '@/cms/access';
 import { factionRelation, mediaRows, projectRelation, publishingFields, slugField, tags, writing } from '@/cms/fields';
+import { hideInaccessibleAssignments, validateEquipmentRelations, validateSchematicMedia, validateVideoUpload } from '@/cms/equipment';
 import { validatePublishedMedia } from '@/cms/validate-content';
 
 function content(slug: CollectionSlug, fields: Field[], parent?: CollectionSlug, relation = 'project', optional = false): CollectionConfig {
@@ -57,8 +58,19 @@ export const Characters = content('characters', [
   { name: 'name', type: 'text', required: true }, slugField, projectRelation,
   factionRelation('primaryFaction'), factionRelation('affiliations', true),
   { name: 'role', type: 'text' }, description, writing, mediaRows('images'),
+  { name: 'equipmentAssignments', type: 'array', label: 'Equipment assignments',
+    admin: { description: 'Optional shared equipment. Select the project first. Drag rows to order; explicit display order takes precedence.' },
+    fields: [
+      { name: 'equipment', type: 'relationship', relationTo: 'equipment', required: true, index: true,
+        filterOptions: ({ data }) => data?.project ? { project: { equals: typeof data.project === 'object' ? data.project.id : data.project } } : false },
+      { name: 'designation', type: 'text', label: 'Custom display name / designation' },
+      { name: 'quantity', type: 'number', min: 1, validate: (value: unknown) => value == null || (typeof value === 'number' && Number.isSafeInteger(value) && value >= 1) || 'Enter a positive whole quantity.' },
+      { name: 'notes', type: 'textarea' }, { name: 'order', type: 'number', label: 'Display order' },
+    ] },
   { name: 'relatedChapters', type: 'relationship', relationTo: 'chapters', hasMany: true }, tags,
 ], 'projects');
+Characters.hooks!.beforeChange!.push(validateEquipmentRelations);
+Characters.hooks!.afterRead = [hideInaccessibleAssignments];
 Characters.indexes = [{ fields: ['project', 'slug'], unique: true }];
 export const Factions = content('factions', [
   { name: 'name', type: 'text', required: true }, slugField, projectRelation,
@@ -80,9 +92,19 @@ Factions.hooks!.beforeValidate = [({ data, originalDoc }) => {
 export const Equipment = content('equipment', [
   { name: 'name', type: 'text', required: true }, slugField, projectRelation,
   { name: 'routeKey', type: 'text', unique: true, admin: { hidden: true } },
-  factionRelation('faction'), { name: 'category', type: 'text' }, description, mediaRows('images'),
+  factionRelation('faction'), { name: 'category', type: 'text' }, description,
+  ...['manufacturer', 'model', 'equipmentType', 'caliber', 'capacity', 'period'].map(name => ({ name, type: 'text' as const,
+    label: ({ manufacturer: 'Manufacturer', model: 'Model / designation', equipmentType: 'Equipment type', caliber: 'Caliber / cartridge', capacity: 'Capacity', period: 'Year / period' } as Record<string, string>)[name] })),
+  { name: 'technicalSpecifications', type: 'array', admin: { description: 'Optional additional specifications, in saved row order.' },
+    fields: [{ name: 'label', type: 'text', required: true }, { name: 'value', type: 'text', required: true }] },
+  { name: 'schematicEnabled', type: 'checkbox', defaultValue: false, admin: { description: 'Show the optional rotating schematic. Disabling retains both uploads.' } },
+  { name: 'schematicVideo', type: 'upload', relationTo: 'media', filterOptions: { mimeType: { equals: 'video/mp4' } },
+    admin: { description: 'Optional H.264 MP4, maximum 3 MiB; recommended 1280 x 720, 24 fps, about six seconds.' } },
+  { name: 'schematicPoster', type: 'upload', relationTo: 'media', filterOptions: { mimeType: { in: ['image/webp', 'image/png', 'image/jpeg'] } } },
+  mediaRows('images'),
   { name: 'order', type: 'number', defaultValue: 0 },
 ], 'projects');
+Equipment.hooks!.beforeChange!.push(validateEquipmentRelations, validateSchematicMedia);
 Equipment.hooks!.beforeValidate = [({ data, originalDoc }) => {
   if (!data) return data;
   const project = data.project ?? originalDoc?.project;
@@ -125,9 +147,10 @@ export function mediaCollection(directory: string): CollectionConfig {
       { name: 'uploadKey', type: 'text', unique: true, admin: { hidden: true } },
       { ...projectRelation, required: false },
     ]),
-    admin: { useAsTitle: 'filename', group: 'Media library', description: 'For one file, choose Create, upload JPG, PNG, WebP, GIF, SVG, or PDF, add required alt text, optionally select its Project, then save as draft or publish. Comic pages must be images; use Add multiple pages on a Chapter for a naturally filename-sorted batch. Files are public only when published, PUBLIC, and attached to published public content.' },
+    admin: { useAsTitle: 'filename', group: 'Media library', description: 'For one file, choose Create, upload JPG, PNG, WebP, GIF, SVG, PDF, or H.264 MP4 (maximum 3 MiB), add required alt text, optionally select its Project, then save as draft or publish. Comic pages must be images; use Add multiple pages on a Chapter for a naturally filename-sorted batch. Files are public only when published, PUBLIC, and attached to published public content.' },
     access: editorialAccess(mediaRead),
-    upload: { staticDir: directory, mimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml', 'application/pdf'],
+    hooks: { beforeChange: [validatePublishedMedia, validateVideoUpload], beforeDelete: [({ req, id }) => preventReferencedDelete(req, 'media', id)] },
+    upload: { staticDir: directory, mimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml', 'application/pdf', 'video/mp4'],
       imageSizes: [
         { name: 'thumbnail', width: 400, height: 400, fit: 'inside', withoutEnlargement: true, formatOptions: { format: 'webp', options: { quality: 84 } } },
         { name: 'preview', width: 1200, height: 1200, fit: 'inside', withoutEnlargement: true, formatOptions: { format: 'webp', options: { quality: 84 } } },

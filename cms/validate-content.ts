@@ -4,7 +4,7 @@ export const validatePublishedMedia: CollectionBeforeChangeHook = async ({ data,
   const record = { ...originalDoc, ...data };
   if (record._status !== 'published') return data;
   const references: { id: number; path: string }[] = [];
-  for (const field of ['heroImage', 'cover', 'emblem']) {
+  for (const field of ['heroImage', 'cover', 'emblem', ...(record.schematicEnabled ? ['schematicVideo', 'schematicPoster'] : [])]) {
     const value = record[field];
     if (value) references.push({ id: typeof value === 'object' ? value.id : value, path: field });
   }
@@ -19,8 +19,9 @@ export const validatePublishedMedia: CollectionBeforeChangeHook = async ({ data,
       throw new ValidationError({ collection: collection.slug, errors: [{ path: reference.path,
         message: 'Publish this media first. Restricted media renders only as a safe placeholder in PUBLIC content.' }] });
     }
-    if (collection.slug === 'chapters' && !file.mimeType?.startsWith('image/')) {
-      throw new ValidationError({ collection: collection.slug, errors: [{ path: reference.path, message: 'Comic pages must be images.' }] });
+    if (((collection.slug === 'chapters' || reference.path === 'heroImage' || reference.path === 'cover' || reference.path === 'emblem') && !file.mimeType?.startsWith('image/'))
+      || (reference.path.startsWith('images.') && file.mimeType === 'video/mp4')) {
+      throw new ValidationError({ collection: collection.slug, errors: [{ path: reference.path, message: 'This artwork field requires an image.' }] });
     }
   }
   return data;
