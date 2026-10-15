@@ -30,7 +30,7 @@ export default function Watcher() {
       0,
       Math.min(1, (event.clientY - rect.top) / rect.height),
     );
-    // Normalize to a disk so scaling produces a 6 by 3 source-pixel ellipse.
+    // Normalize to a disk so scaling produces a 10 by 5 source-pixel ellipse.
     const dx = (x - 0.5) * 2;
     const dy = (y - 0.5) * 2;
     const radius = Math.max(1, Math.hypot(dx, dy));

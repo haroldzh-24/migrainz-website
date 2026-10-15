@@ -3,7 +3,8 @@
 ## 2026-10-14 / Watcher artwork
 
 - Replace the geometric placeholder with the aligned 1200px watcher base/eyes PNGs, preserving the square frame, 86% artwork size and terminal readouts.
-- Move only the eyes within a 6px horizontal / 3px vertical source-coordinate ellipse, with smooth interpolation, fixed socket clips and the face layered above them.
+- Increase eye tracking to a 10px horizontal / 5px vertical source-coordinate ellipse. Add whole-artwork drift up to 4px horizontally / 3px vertically at display size, with slightly slower easing. Preserve socket clips, neutral return, reduced motion and the fixed frame/readouts.
+- Add understated 1000px perspective with up to 2deg Y / 1.25deg X rotation around the head/eye line on the shared artwork parent. Combine rotation/drift over 250ms; preserve 140ms local eye movement and edge clearance.
 - Return to neutral on pointer leave/window blur; keep touch and reduced motion static, including preference changes. No blinking or autonomous animation; boot and CMS code unchanged.
 - Validation: TypeScript and production build passed. Full browser/BLUSHLAND regression was not run; the existing local SQLite schema blocker remains recorded in bugs.md.
 
