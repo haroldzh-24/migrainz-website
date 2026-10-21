@@ -53,12 +53,14 @@ What's visible when you open the file is what renders. Objects hidden with the e
 | `flat_normals` | force flat shading |
 | `start_angle` | turntable start angle in degrees |
 | `line_scale` | multiplier on all line thicknesses (default 1.5 in the config so lines survive scanlines and compression) |
+| `target_fill` | widest point of the full turn as a fraction of the frame edge (default 0.95; the camera is fitted automatically) |
+| `aspect` | `"16:9"` (default) or a wider, shorter ratio such as `"2:1"` for long guns; also `--aspect`. Width stays 1280 |
 
 Top-level `slugs` maps a model filename (without `.blend`) to its output slug when plain lowercasing is not enough, e.g. `"ValmetM88": "valmet-m88"`.
 
 ## Output
 
-1280x720 (16:9, matching `EquipmentSchematic`), 30 fps, 8 s, 240 frames. The rotation is linear,
+1280x720 (16:9; `--aspect 2:1` gives 1280x640, and the site sizes the player from the media), 30 fps, 8 s, 240 frames. The rotation is linear,
 360 degrees over the 240 frames, and the 360-degree frame is not rendered so the loop has no repeated frame.
 H.264, `yuv420p`, `+faststart`, no audio. The encoder raises CRF until the file is under `--max-mb`
 (default 2.9; the site's upload cap is 3 MiB). The poster is the first frame. Colors come from `:root` in

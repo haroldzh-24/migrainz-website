@@ -6,12 +6,10 @@
     "style": "blueprint",
     "tilt": 18,
     "camera_distance": 1.0,
-    "line_scale": 1.5
+    "line_scale": 1.5,
+    "target_fill": 0.95
   },
   "weapons": {
-    "686": { "camera_distance": 1.08 },
-    "colt9mm": { "camera_distance": 0.8 },
-    "ibh": { "camera_distance": 0.8 },
     "valmet-m88": { "start_angle": 55 }
   }
 }

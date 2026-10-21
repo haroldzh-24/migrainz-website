@@ -36,8 +36,9 @@ FALLBACK_PALETTE = {
     "green2": "#42c93a", "dim": "#247d21", "hot": "#baffaa",
 }
 
-# EquipmentSchematic.tsx displays the video at 16:9.
-ASPECT = (16, 9)
+# EquipmentSchematic.tsx sizes the video from the media itself, so any ratio works. 16:9 is the default;
+# "aspect": "2:1" (config or --aspect) gives a wider, shorter frame for long guns.
+DEFAULT_ASPECT = "16:9"
 
 # --------------------------------------------------------------------------
 # Colour helpers
@@ -105,6 +106,8 @@ BUILTIN_DEFAULTS = {
     "flat_normals": False,      # force flat shading on the mesh
     "start_angle": 0,           # turntable start, degrees
     "line_scale": 1.0,          # multiplier on all line thicknesses
+    "target_fill": 0.95,        # widest point of the full turn, as a fraction of the frame half-width/height
+    "aspect": None,             # "16:9" (default) or "2:1" etc.; the width stays at --width
 }
 
 
@@ -269,7 +272,15 @@ def normalize(scene, weapon, meshes, cfg):
     return turntable, r_xy, half_z, z_min
 
 
-def setup_camera(scene, r_xy, half_z, cfg):
+def frame_size(args, cfg):
+    spec = args.aspect or cfg.get("aspect") or ""
+    if not spec:
+        return args.width, args.height
+    num, den = (float(part) for part in spec.split(":"))
+    return args.width, int(round(args.width * den / num / 2) * 2)
+
+
+def setup_camera(scene, r_xy, half_z, cfg, aspect):
     tilt = math.radians(cfg["tilt"])
     margin = cfg["margin"]
     half_w = r_xy * margin
@@ -278,7 +289,6 @@ def setup_camera(scene, r_xy, half_z, cfg):
     data.clip_start, data.clip_end = 0.05, 500
     cam = bpy.data.objects.new("cam", data)
     scene.collection.objects.link(cam)
-    aspect = ASPECT[0] / ASPECT[1]
     if cfg["ortho"]:
         data.type = "ORTHO"
         data.ortho_scale = 2 * max(half_w, half_h * aspect) * cfg["camera_distance"]
@@ -377,7 +387,7 @@ def write_backdrop(path, palette, style, width, height):
     img = np.empty((height, width, 3))
     img[:] = bg
     if style["grid"] == "screen":
-        step = max(8, round(height / 18))
+        step = max(8, width // 32)  # 32 columns, square cells; the site continues this grid in the specs panel
         minor, major = style["grid_alpha"]
         for index, x in enumerate(range(0, width, step)):
             img[:, x] = bg + (grid - bg) * (major if index % 4 == 0 else minor)
@@ -401,19 +411,21 @@ def write_backdrop(path, palette, style, width, height):
 
 def encode(ffmpeg, backdrop, frames_dir, out_mp4, poster, fps, max_mb):
     base = [ffmpeg, "-y", "-hide_banner", "-loglevel", "error"]
-    composite = "[0:v][1:v]overlay=shortest=1:format=auto,format=yuv420p"
+    # Tag BT.709 limited range so browsers decode the near-black background to a predictable colour.
+    composite = "[0:v][1:v]overlay=shortest=1:format=auto,scale=out_color_matrix=bt709:out_range=tv,format=yuv420p"
     inputs = ["-loop", "1", "-framerate", str(fps), "-i", backdrop, "-framerate", str(fps), "-i", os.path.join(frames_dir, "f_%04d.png")]
     for crf in (23, 26, 29, 32):
         subprocess.run(base + inputs + [
             "-filter_complex", composite, "-an", "-c:v", "libx264", "-preset", "slow", "-tune", "animation",
-            "-crf", str(crf), "-pix_fmt", "yuv420p", "-r", str(fps), "-movflags", "+faststart", out_mp4], check=True)
+            "-crf", str(crf), "-pix_fmt", "yuv420p",
+            "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709", "-color_range", "tv", "-r", str(fps), "-movflags", "+faststart", out_mp4], check=True)
         size = os.path.getsize(out_mp4) / 1e6
         print(f"[encode] crf {crf}: {size:.2f} MB")
         if size <= max_mb:
             break
     else:
         print(f"[encode] WARNING: still above {max_mb} MB at crf 32")
-    subprocess.run(base + inputs + ["-filter_complex", composite.replace("format=yuv420p", "format=rgb24"), "-frames:v", "1", poster], check=True)
+    subprocess.run(base + inputs + ["-filter_complex", "[0:v][1:v]overlay=shortest=1:format=auto,format=rgb24", "-frames:v", "1", poster], check=True)
 
 
 def composite_still(ffmpeg, backdrop, frame, out_png):
@@ -421,7 +433,7 @@ def composite_still(ffmpeg, backdrop, frame, out_png):
                     "-filter_complex", "[0:v][1:v]overlay=format=auto,format=rgb24", "-frames:v", "1", out_png], check=True)
 
 
-def framing_report(scene, meshes, cam, slug, width, height):
+def framing_report(scene, meshes, cam, slug, width, height, quiet=False):
     """Project every vertex at every 3 degrees of turntable and report the tightest frame fit."""
     pts = world_points(meshes)
     inv = np.array(cam.matrix_world.inverted())
@@ -445,6 +457,8 @@ def framing_report(scene, meshes, cam, slug, width, height):
         if worst is None or peak > worst[0]:
             worst = (peak, deg, ext)
     peak, deg, ext = worst
+    if quiet:
+        return peak
     print(f"[{slug}] framing: tightest at {deg} deg, extent x {ext[0]:.2f}..{ext[1]:.2f} y {ext[2]:.2f}..{ext[3]:.2f} "
           f"(1.00 = frame edge; largest {peak:.2f}) -> {'OK' if peak < 0.98 else 'CUT OFF'}")
     return peak
@@ -457,8 +471,19 @@ def build_scene(model, slug, cfg, style_name, styles, palette, width, height):
     scene = reset_scene()
     weapon, meshes = import_model(model, scene, visible)
     turntable, r_xy, half_z, z_min = normalize(scene, weapon, meshes, cfg)
-    cam = setup_camera(scene, r_xy, half_z, cfg)
+    cam = setup_camera(scene, r_xy, half_z, cfg, width / height)
     bpy.context.view_layer.update()
+    # Fit the camera so the widest point of the whole turn fills target_fill of the frame.
+    for _ in range(8):
+        peak = framing_report(scene, meshes, cam, slug, width, height, quiet=True)
+        if abs(peak - cfg["target_fill"]) < 0.004:
+            break
+        factor = peak / cfg["target_fill"]
+        if cam.data.type == "ORTHO":
+            cam.data.ortho_scale *= factor
+        else:
+            cam.location = cam.location * factor
+        bpy.context.view_layer.update()
     framing_report(scene, meshes, cam, slug, width, height)
     style = styles[style_name]
     if style["floor"]:
@@ -473,13 +498,14 @@ def render_stills(args, model, slug, cfg, styles, palette, ffmpeg, work):
     out_dir = os.path.join(work, "renders", slug, "stills")
     os.makedirs(out_dir, exist_ok=True)
     for name in names:
-        scene, turntable, style = build_scene(model, slug, cfg, name, styles, palette, args.width, args.height)
+        width, height = frame_size(args, cfg)
+        scene, turntable, style = build_scene(model, slug, cfg, name, styles, palette, width, height)
         turntable.rotation_euler.z = math.radians(cfg["start_angle"] + args.still_angle)
         raw = os.path.join(out_dir, f"_{name}_raw.png")
         backdrop = os.path.join(out_dir, f"_{name}_bg.png")
         scene.render.filepath = raw
         bpy.ops.render.render(write_still=True)
-        write_backdrop(backdrop, palette, style, args.width, args.height)
+        write_backdrop(backdrop, palette, style, width, height)
         composite_still(ffmpeg, backdrop, raw, os.path.join(out_dir, f"{slug}-{name}.png"))
         os.remove(raw)
         os.remove(backdrop)
@@ -489,7 +515,8 @@ def render_stills(args, model, slug, cfg, styles, palette, ffmpeg, work):
 def render_video(args, model, slug, cfg, styles, palette, ffmpeg, work):
     style_name = args.style or cfg["style"]
     frames = round(args.seconds * args.fps)
-    scene, turntable, style = build_scene(model, slug, cfg, style_name, styles, palette, args.width, args.height)
+    width, height = frame_size(args, cfg)
+    scene, turntable, style = build_scene(model, slug, cfg, style_name, styles, palette, width, height)
     job = os.path.join(work, "renders", slug)
     frames_dir = os.path.join(job, "frames")
     shutil.rmtree(frames_dir, ignore_errors=True)
@@ -511,7 +538,7 @@ def render_video(args, model, slug, cfg, styles, palette, ffmpeg, work):
     out_dir = os.path.join(work, "output")
     os.makedirs(out_dir, exist_ok=True)
     backdrop = os.path.join(job, "backdrop.png")
-    write_backdrop(backdrop, palette, style, args.width, args.height)
+    write_backdrop(backdrop, palette, style, width, height)
     mp4 = os.path.join(out_dir, f"{slug}.mp4")
     poster = os.path.join(out_dir, f"{slug}-poster.png")
     encode(ffmpeg, backdrop, frames_dir, mp4, poster, args.fps, args.max_mb)
@@ -537,6 +564,7 @@ def parse_args():
     ap.add_argument("--still-angle", type=float, default=35, help="turntable angle for stills, degrees")
     ap.add_argument("--seconds", type=float, default=8)
     ap.add_argument("--fps", type=int, default=30)
+    ap.add_argument("--aspect", help="frame ratio such as 2:1 (default 16:9 or the config value); width stays at --width")
     ap.add_argument("--width", type=int, default=1280)
     ap.add_argument("--height", type=int, default=720)
     ap.add_argument("--max-mb", type=float, default=2.9, help="site cap is 3 MiB")
@@ -547,8 +575,6 @@ def parse_args():
     args = ap.parse_args(argv)
     if not args.model and not args.models_dir:
         ap.error("pass --model or --models-dir")
-    if abs(args.width / args.height - ASPECT[0] / ASPECT[1]) > 0.01:
-        ap.error("width/height must be 16:9 to match the schematic viewer")
     return args
 
 
