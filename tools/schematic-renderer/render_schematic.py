@@ -23,7 +23,7 @@ import sys
 
 import bpy
 import numpy as np
-from mathutils import Euler, Vector
+from mathutils import Euler, Matrix, Vector
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, "..", ".."))
@@ -104,6 +104,7 @@ BUILTIN_DEFAULTS = {
     "crease_angle": 125,        # degrees; lower = fewer interior lines
     "flat_normals": False,      # force flat shading on the mesh
     "start_angle": 0,           # turntable start, degrees
+    "line_scale": 1.0,          # multiplier on all line thicknesses
 }
 
 
@@ -144,21 +145,72 @@ def reset_scene():
     return bpy.context.scene
 
 
-def import_model(path, scene):
-    """Append renderable geometry from a .blend into a 'weapon' collection."""
+def inspect_visibility(path):
+    """Open the file and decide what is visible as the author left it.
+
+    Returns (visible, hidden): visible maps object name -> world matrix as a list of rows;
+    hidden maps object name -> list of reasons it is left out. Cameras and lights are ignored.
+    """
     if not path.lower().endswith(".blend"):
         raise SystemExit(f"Unsupported model format: {path} (only .blend is supported)")
+    bpy.ops.wm.open_mainfile(filepath=path)
+    scene = bpy.context.scene
+    view_layer = bpy.context.view_layer
+    in_layer = set(view_layer.objects.keys())
+    layer_cols = {}
+
+    def walk(lc):
+        layer_cols[lc.collection.name] = lc
+        for child in lc.children:
+            walk(child)
+    walk(view_layer.layer_collection)
+
+    visible, hidden = {}, {}
+    for obj in bpy.data.objects:
+        if obj.type in {"CAMERA", "LIGHT"}:
+            continue
+        why = []
+        if obj.name not in in_layer:
+            why.append("not in the active scene/view layer")
+        else:
+            if obj.hide_get():
+                why.append("hidden (eye icon)")
+            if obj.hide_viewport:
+                why.append("disabled in viewport")
+            for col in obj.users_collection:
+                lc = layer_cols.get(col.name)
+                if lc and lc.exclude:
+                    why.append(f"collection '{col.name}' excluded")
+                elif lc and lc.hide_viewport:
+                    why.append(f"collection '{col.name}' hidden (eye icon)")
+                if col.hide_viewport:
+                    why.append(f"collection '{col.name}' disabled in viewport")
+        if obj.hide_render:
+            why.append("disabled in renders")
+        for col in obj.users_collection:
+            if col.hide_render:
+                why.append(f"collection '{col.name}' disabled in renders")
+        if why:
+            hidden[obj.name] = list(dict.fromkeys(why))
+        else:
+            visible[obj.name] = [list(row) for row in obj.matrix_world]
+    return visible, hidden
+
+
+def import_model(path, scene, visible):
+    """Append the visible geometry of a .blend into a 'weapon' collection."""
     with bpy.data.libraries.load(path, link=False) as (src, dst):
-        dst.objects = list(src.objects)
+        dst.objects = [name for name in src.objects if name in visible]
     weapon = bpy.data.collections.new("weapon")
     scene.collection.children.link(weapon)
+    loaded = {obj.name for obj in dst.objects if obj is not None}
     meshes = []
     for obj in dst.objects:
         if obj is None:
             continue
-        if obj.type in {"CAMERA", "LIGHT"} or obj.hide_render:
-            bpy.data.objects.remove(obj)
-            continue
+        if obj.parent is not None and obj.parent.name not in loaded:
+            obj.parent = None  # parent is hidden: keep this object where it was
+            obj.matrix_world = Matrix(visible[obj.name])
         weapon.objects.link(obj)
         if obj.type in {"MESH", "CURVE", "SURFACE", "FONT"}:
             meshes.append(obj)
@@ -310,8 +362,8 @@ def configure_render(scene, weapon, meshes, style, cfg, width, height):
     for existing in list(fs.linesets):
         fs.linesets.remove(existing)
     fs.crease_angle = math.radians(cfg["crease_angle"])
-    make_lineset(fs, "crease", weapon, style["crease"], style["crease_px"], False, True)
-    make_lineset(fs, "contour", weapon, style["contour"], style["contour_px"], True, False)
+    make_lineset(fs, "crease", weapon, style["crease"], style["crease_px"] * cfg["line_scale"], False, True)
+    make_lineset(fs, "contour", weapon, style["contour"], style["contour_px"] * cfg["line_scale"], True, False)
 
 
 # --------------------------------------------------------------------------
@@ -369,11 +421,45 @@ def composite_still(ffmpeg, backdrop, frame, out_png):
                     "-filter_complex", "[0:v][1:v]overlay=format=auto,format=rgb24", "-frames:v", "1", out_png], check=True)
 
 
+def framing_report(scene, meshes, cam, slug, width, height):
+    """Project every vertex at every 3 degrees of turntable and report the tightest frame fit."""
+    pts = world_points(meshes)
+    inv = np.array(cam.matrix_world.inverted())
+    data = cam.data
+    aspect = width / height
+    worst = None
+    for deg in range(0, 360, 3):
+        a = math.radians(deg)
+        c, s = math.cos(a), math.sin(a)
+        p = np.stack([pts[:, 0] * c - pts[:, 1] * s, pts[:, 0] * s + pts[:, 1] * c, pts[:, 2]], axis=1)
+        cp = p @ inv[:3, :3].T + inv[:3, 3]
+        if data.type == "ORTHO":
+            nx, ny = cp[:, 0] / (data.ortho_scale / 2), cp[:, 1] / (data.ortho_scale / 2 / aspect)
+        else:
+            depth = -cp[:, 2]
+            nx = cp[:, 0] / depth / ((data.sensor_width / 2) / data.lens)
+            ny = cp[:, 1] / depth / ((data.sensor_width / 2) / data.lens / aspect)
+        ext = (float(nx.min()), float(nx.max()), float(ny.min()), float(ny.max()))
+        span = (ext[1] - ext[0]) / 2, (ext[3] - ext[2]) / 2
+        peak = max(abs(e) for e in ext)
+        if worst is None or peak > worst[0]:
+            worst = (peak, deg, ext)
+    peak, deg, ext = worst
+    print(f"[{slug}] framing: tightest at {deg} deg, extent x {ext[0]:.2f}..{ext[1]:.2f} y {ext[2]:.2f}..{ext[3]:.2f} "
+          f"(1.00 = frame edge; largest {peak:.2f}) -> {'OK' if peak < 0.98 else 'CUT OFF'}")
+    return peak
+
+
 def build_scene(model, slug, cfg, style_name, styles, palette, width, height):
+    visible, hidden = inspect_visibility(model)
+    for name, why in sorted(hidden.items()):
+        print(f"[{slug}] left out: {name} ({'; '.join(why)})")
     scene = reset_scene()
-    weapon, meshes = import_model(model, scene)
+    weapon, meshes = import_model(model, scene, visible)
     turntable, r_xy, half_z, z_min = normalize(scene, weapon, meshes, cfg)
-    setup_camera(scene, r_xy, half_z, cfg)
+    cam = setup_camera(scene, r_xy, half_z, cfg)
+    bpy.context.view_layer.update()
+    framing_report(scene, meshes, cam, slug, width, height)
     style = styles[style_name]
     if style["floor"]:
         make_floor(scene, r_xy, z_min, style["floor"])
@@ -456,6 +542,7 @@ def parse_args():
     ap.add_argument("--max-mb", type=float, default=2.9, help="site cap is 3 MiB")
     ap.add_argument("--ffmpeg")
     ap.add_argument("--keep-frames", action="store_true")
+    ap.add_argument("--report-hidden", action="store_true", help="list what is hidden in each model and exit")
     ap.add_argument("--force", action="store_true", help="batch: re-render even if the mp4 exists")
     args = ap.parse_args(argv)
     if not args.model and not args.models_dir:
@@ -487,6 +574,15 @@ def main():
         models = [args.model]
     if not models:
         raise SystemExit("No .blend models found.")
+
+    if args.report_hidden:
+        for model in models:
+            visible, hidden = inspect_visibility(model)
+            print(f"REPORT {os.path.basename(model)}: {len(visible)} visible, {len(hidden)} hidden")
+            for name, why in sorted(hidden.items()):
+                print(f"REPORT   hidden: {name} -- {'; '.join(why)}")
+            print("REPORT   visible: " + ", ".join(sorted(visible)))
+        return
 
     for model in models:
         stem = os.path.splitext(os.path.basename(model))[0]

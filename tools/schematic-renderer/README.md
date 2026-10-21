@@ -32,7 +32,11 @@ The slug is the model's filename, lowercased with dashes. These files stay outsi
     ... -- --model x.blend --stills all        # style test stills
     ... -- --models-dir <folder>               # batch (add --force to re-render)
 
-Other options: `--style`, `--seconds`, `--fps`, `--max-mb`, `--keep-frames`, `--work-dir`, `--ffmpeg`.
+Other options: `--report-hidden` (list hidden and visible objects per model, no render), `--style`, `--seconds`, `--fps`, `--max-mb`, `--keep-frames`, `--work-dir`, `--ffmpeg`.
+
+## What gets rendered
+
+What's visible when you open the file is what renders. Objects hidden with the eye icon, disabled in the viewport or in renders, in excluded or hidden collections, or outside the active view layer are left out, and each render prints a "left out" line for them. Run `--report-hidden` to check every model first. Every render also prints a framing check that projects the model at every 3 degrees of the turn and flags anything that would be cut off.
 
 ## Per-weapon overrides: `schematic-config.json`
 
@@ -48,10 +52,9 @@ Other options: `--style`, `--seconds`, `--fps`, `--max-mb`, `--keep-frames`, `--
 | `crease_angle` | lower values draw fewer interior lines |
 | `flat_normals` | force flat shading |
 | `start_angle` | turntable start angle in degrees |
+| `line_scale` | multiplier on all line thicknesses (default 1.5 in the config so lines survive scanlines and compression) |
 
 Top-level `slugs` maps a model filename (without `.blend`) to its output slug when plain lowercasing is not enough, e.g. `"ValmetM88": "valmet-m88"`.
-
-Top-level `slugs` maps a model filename (without .blend) to its output slug when plain lowercasing is not enough, e.g. `"ValmetM88": "valmet-m88"`.
 
 ## Output
 

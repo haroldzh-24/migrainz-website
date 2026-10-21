@@ -5,7 +5,8 @@
   "defaults": {
     "style": "blueprint",
     "tilt": 18,
-    "camera_distance": 1.0
+    "camera_distance": 1.0,
+    "line_scale": 1.5
   },
   "weapons": {}
 }
