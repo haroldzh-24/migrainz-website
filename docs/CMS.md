@@ -114,6 +114,8 @@ node --import tsx scripts/check-blob-storage.mjs
 node --import tsx scripts/verify-equipment-migration.mjs
 # Requires Playwright, optionally located through PLAYWRIGHT_MODULE:
 node scripts/verify-equipment-browser.mjs
+# Equipment card navigation and Art Viewer fallbacks (same Playwright requirement):
+node scripts/verify-equipment-navigation.mjs
 npm.cmd run typecheck
 npm.cmd run build
 ```

@@ -589,6 +589,9 @@ button {
 .comic-reader-navigation label { display: flex; align-items: center; gap: 4px; white-space: nowrap; font-size: 10px; }
 .comic-reader-navigation select { min-height: 25px; padding: 1px 4px; border: 1px inset #eee; background: #fff; color: #111; }
 .art-viewer-placeholder { color: #c0c0c0; font: bold 12px Arial, sans-serif; }
+.art-viewer-placeholder { text-align: center; line-height: 1.8; }
+.art-viewer-page-link { color: #000080; text-decoration: underline; cursor: pointer; }
+.art-viewer-placeholder .art-viewer-page-link { color: #fff; }
 .art-viewer-thumbs {
   display: flex;
   flex-shrink: 0;

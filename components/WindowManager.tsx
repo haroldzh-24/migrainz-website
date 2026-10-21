@@ -23,6 +23,8 @@ export type ViewerTab = {
   role?: string;
   description?: string;
   images: ViewerImage[];
+  /** Shown when there is no artwork so the viewer never dead-ends (e.g. an equipment schematic poster). */
+  poster?: ViewerImage;
 };
 type WindowRecord = {
   id: string;

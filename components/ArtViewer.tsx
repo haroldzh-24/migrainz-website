@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { RetroWindow, useWindowManager, type ViewerImage } from "@/components/WindowManager";
 
@@ -162,16 +163,26 @@ export function ArtworkCanvas({ image, view, onChange }: { image: ViewerImage; v
 }
 
 export default function ArtViewer() {
-  const { viewerTabs, activeViewerTab, switchViewerTab, closeViewerTab, windows, toggleMaximizeWindow } = useWindowManager();
+  const { viewerTabs, activeViewerTab, switchViewerTab, closeViewerTab, closeWindow, windows, toggleMaximizeWindow } = useWindowManager();
   const [imageIndex, setImageIndex] = useState(0);
   const [views, setViews] = useState<Record<string, View>>({});
   const normalViews = useRef<Record<string, View>>({});
-  const maximized = windows.find((window) => window.id === "art-viewer")?.maximized;
+  const record = windows.find((window) => window.id === "art-viewer");
+  const maximized = record?.maximized;
   const active = viewerTabs.find((tab) => tab.id === activeViewerTab) ?? viewerTabs[0];
 
   useEffect(() => setImageIndex(0), [active?.id]);
+  const closeable = Boolean(active && record?.open && !record.minimized && record.focused);
+  useEffect(() => {
+    if (!closeable) return;
+    const key = (event: KeyboardEvent) => { if (event.key === "Escape" && !event.defaultPrevented) closeWindow("art-viewer"); };
+    document.addEventListener("keydown", key);
+    return () => document.removeEventListener("keydown", key);
+  }, [closeable, closeWindow]);
   if (!active) return null;
-  const image = active.images[imageIndex] ?? active.images[0];
+  const artwork = active.images[imageIndex] ?? active.images[0];
+  // With no artwork, fall back to the poster; with neither, offer the item page instead of a dead end.
+  const image = artwork ?? active.poster;
   const viewKey = JSON.stringify([active.id, image?.src, imageIndex]);
   const tabs = <div className="art-viewer-tabs" role="tablist" aria-label="Open artwork">
     {viewerTabs.map((tab) => <div className={`art-viewer-tab${tab.id === active.id ? " is-active" : ""}`} key={tab.id}>
@@ -193,7 +204,7 @@ export default function ArtViewer() {
       toggleMaximizeWindow("art-viewer");
     }}
   >
-    {image ? <ArtworkCanvas key={viewKey} image={image} view={views[viewKey] ?? fitView} onChange={(view) => setViews((current) => ({ ...current, [viewKey]: view }))} /> : <div className="art-viewer-canvas"><div className="art-viewer-placeholder">NO PUBLIC ARTWORK FILED</div></div>}
+    {image ? <ArtworkCanvas key={viewKey} image={image} view={views[viewKey] ?? fitView} onChange={(view) => setViews((current) => ({ ...current, [viewKey]: view }))} /> : <div className="art-viewer-canvas"><div className="art-viewer-placeholder">NO PUBLIC ARTWORK FILED<br /><Link className="art-viewer-page-link" href={active.href} prefetch={false} onClick={() => closeWindow("art-viewer")}>OPEN {active.title.toUpperCase()} PAGE</Link></div></div>}
     {active.images.length > 1 && <div className="art-viewer-thumbs" aria-label={`${active.title} artwork pages`}>
       {active.images.map((item, index) => <button type="button" key={`${item.src}-${index}`} className={index === imageIndex ? "is-active" : ""} aria-label={`Show image ${index + 1}`} onClick={() => setImageIndex(index)}>
         <img src={item.thumbnailSrc ?? item.src} alt="" loading="lazy" />
@@ -203,6 +214,7 @@ export default function ArtViewer() {
       <div><strong>{active.title}</strong><span>{active.project}{active.role ? ` / ${active.role}` : ""}</span></div>
       {active.description && <p>{active.description}</p>}
       {image?.caption && <small>{image.caption}</small>}
+      {!artwork && <small>{image ? "NO CONCEPT ART FILED. SHOWING SCHEMATIC POSTER. " : ""}{image && <Link className="art-viewer-page-link" href={active.href} prefetch={false} onClick={() => closeWindow("art-viewer")}>OPEN ITEM PAGE</Link>}</small>}
     </div>
   </RetroWindow>;
 }

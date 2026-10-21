@@ -7,17 +7,18 @@ import ClassifiedPlaceholder from '@/components/ClassifiedPlaceholder';
 
 type Props = {
   project: { slug: string; title: string };
-  equipment: Classified & { slug: string; name: string; category: string; description: string; images: ComicPage[]; updated: string };
+  equipment: Classified & { slug: string; name: string; category: string; description: string; images: ComicPage[]; poster?: ComicPage; updated: string };
 };
 function tabFor({ project, equipment }: Props): ViewerTab {
   return { id: `equipment:${project.slug}:${equipment.slug}`, href: `/projects/${project.slug}/equipment/${equipment.slug}`,
     title: equipment.name, project: project.title, role: equipment.category, description: equipment.description,
-    images: equipment.images.filter(image => !image.classification && !/\.pdf(?:\?|$)/i.test(image.src)) };
+    images: equipment.images.filter(image => !image.classification && !/\.pdf(?:\?|$)/i.test(image.src)),
+    poster: equipment.poster && !equipment.poster.classification && equipment.poster.src ? equipment.poster : undefined };
 }
 export function EquipmentViewerLink(props: Props) {
   if (props.equipment.classification) return <ClassifiedPlaceholder classification={props.equipment.classification} label={props.equipment.safeLabel} />;
   const tab = tabFor(props);
-  return <DesktopFile label={`${props.equipment.name.replace(/\s+/g, "_")}.EQP`} type="EQP" subtitle={props.equipment.category} href={tab.href} viewerTab={tab}
+  return <DesktopFile label={`${props.equipment.name.replace(/\s+/g, "_")}.EQP`} type="EQP" subtitle={props.equipment.category} href={tab.href} viewerTab={tab} opensPage thumbnail={tab.images[0] ?? tab.poster}
     metadata={[{ label: "NAME", value: tab.title }, { label: "PROJECT", value: tab.project },
       { label: "CATEGORY", value: props.equipment.category }, { label: "TYPE", value: "EQUIPMENT" },
       { label: "IMAGE COUNT", value: String(tab.images.length) }, { label: "UPDATED", value: props.equipment.updated }]} />;

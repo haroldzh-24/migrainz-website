@@ -1,5 +1,12 @@
 # Features
 
+## Implemented - 2026-10-21 / Equipment card navigation and Art Viewer dead ends
+
+- Equipment cards in the project Equipment directory now open the item page (schematic and specifications); the item page keeps OPEN IN ART VIEWER. Equipment without concept art falls back to the schematic poster for the card thumbnail and the Art Viewer, and the character equipment cards use the same poster fallback.
+- The Art Viewer no longer dead-ends: with no artwork it shows the poster, or a link to the item page (also for character tabs). Escape closes the viewer. Code only; no migration.
+- Character cards still open the Art Viewer; faction cards navigate directly and have no viewer dead end.
+- Verified with scripts/verify-equipment-navigation.mjs (real components, window manager and CSS at 1440, 670 and 390px, plus a resize sweep). The reported off-screen close button at about 670px could not be reproduced in that fixture or on the live site at 390-1200px; the sweep guards it.
+
 ## Implemented - 2026-10-15 / Equipment specifications, assignments and schematics
 
 - Extend existing Equipment with optional specifications, ordered label/value rows, and disabled-by-default MP4/poster controls; preserve name, project/faction relationships, concept images, URLs and ART VIEWER.
