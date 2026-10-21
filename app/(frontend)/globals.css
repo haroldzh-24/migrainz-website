@@ -1902,7 +1902,8 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
 .equipment-panel > :first-child { margin-top: 0; }
 .equipment-panel > :last-child, .equipment-panel .equipment-specifications { margin-bottom: 0; }
 .equipment-panel .eyebrow { color: var(--green2); opacity: .75; }
-.equipment-panel .lede { max-width: none; margin: .5rem 0; color: var(--green); font-size: .85rem; }
+/* Description: a softer green than the spec values and a comfortable measure so long text stays readable. */
+.equipment-panel .lede { max-width: 74ch; margin: .6rem 0; color: color-mix(in srgb, var(--green2) 88%, var(--hot)); font-size: .85rem; line-height: 1.7; letter-spacing: .01em; }
 .equipment-panel .equipment-specifications { margin-top: .75rem; }
 .equipment-panel .equipment-specifications > div { border-bottom: 1px dotted rgba(114, 255, 98, .22); }
 .equipment-panel .equipment-specifications dt { color: var(--green2); opacity: .72; }

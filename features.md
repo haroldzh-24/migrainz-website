@@ -1,5 +1,10 @@
 # Features
 
+## Implemented - 2026-10-21 / Equipment panel copy and back link
+
+- The weapon description and category/updated line sit inside the terminal panel above the specs, in a softer green with a 1.7 line height and a readable measure. The page title and navigation stay outside.
+- The equipment item page back link now reads RETURN TO EQUIPMENT and goes to the project Equipment tab (it said RETURN TO FACTIONS). Code only.
+
 ## Implemented - 2026-10-21 / Equipment schematic module and renderer framing
 
 - The equipment page shows the schematic video and the item info/specifications as one attached terminal module. The video has no controls or pointer input and falls back to the poster still (never a play button) when autoplay is blocked, on reduced motion or reduced data, or if the video fails. The player follows the media's aspect ratio.

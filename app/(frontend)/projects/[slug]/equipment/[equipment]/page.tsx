@@ -21,7 +21,7 @@ export default async function EquipmentPage({ params }: Props) {
   const equipment = await getEquipment(project.id, ids.equipment);
   if (!equipment) return lockedPageOrNotFound({ projectSlug: ids.slug, kind: "equipment", slug: ids.equipment });
   return <Directory path={`SYS:/PROJECTS/${project.slug.toUpperCase()}/EQUIPMENT/${equipment.slug.toUpperCase()}`} title={equipment.name}>
-    <Link className="section-link" href={`/projects/${project.slug}/factions`}>RETURN TO FACTIONS</Link>
+    <Link className="section-link" href={`/projects/${project.slug}/equipment`}>RETURN TO EQUIPMENT</Link>
     <EquipmentSchematic key={equipment.slug + equipment.schematic?.src + equipment.schematic?.poster} {...equipment.schematic} name={equipment.name}>
       <p className="eyebrow">{equipment.category && `${equipment.category} / `}UPDATED <time dateTime={equipment.updated}>{equipment.updated}</time></p>
       {equipment.description && <p className="lede">{equipment.description}</p>}
