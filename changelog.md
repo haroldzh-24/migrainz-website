@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-16 / Schematic video renderer (local tooling)
+
+- Add tools/schematic-renderer: a headless Blender 5.2 script (.blend input, single or batch) that normalizes a grey model, draws Freestyle line art over subtle flat shading on a near-black grid backdrop using :root colors from globals.css, and renders a seamless 8s linear 360-degree turntable at 1280x720 (16:9, matching EquipmentSchematic).
+- ffmpeg encodes H.264 yuv420p +faststart without audio, stepping CRF to stay under 2.9 MB (site cap 3 MiB), and exports the first frame as a poster. Per-weapon overrides live in schematic-config.json.
+- Models, frames and renders live in a work folder outside the repo (default C:\Users\brrrr\schematic-work). No CMS, Blob, Neon or Vercel interaction. Verified on a synthetic test model only; real-model style selection and live upload test pending.
+
 ## 2026-10-15 / Equipment specifications, assignments and schematics
 
 - Extend existing Equipment with optional specifications, ordered label/value rows, and disabled-by-default MP4/poster controls; preserve name, project/faction relationships, concept images, URLs and ART VIEWER.
