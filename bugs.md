@@ -2,12 +2,18 @@
 
 ## Open Bugs
 
-### 2026-10-21 - Art Viewer close button off-screen and page shifted left at about 669px
+### 2026-10-21 - Art Viewer close button off-screen and page shifted left at about 669px (not reproducible)
 
-- Reported repro: Claude desktop app built-in browser (Chromium) on Windows, viewport 669x1025. On the mp510mmcc page, scroll down, click the Equipment tab, then click the equipment card. The Art Viewer opens, but its close button is not visible. After closing it, the whole page is shifted left with its left edge cut off, which suggests horizontal overflow causing a sideways scroll.
-- Not reproduced: scripts/verify-equipment-navigation.mjs (real components, window manager and CSS at 1440, 670 and 390px, plus a 1440-to-360px resize sweep with eight tabs and a large artwork) and a read-only Chrome check of the live Equipment page at 390-1200px by 500/800px tall all kept the close button inside the viewport. Neither used a scrolled page or the desktop app browser.
-- Not yet fixed. Next step: reproduce with the page scrolled before opening the viewer, check for page-level horizontal overflow (document scrollWidth vs viewport) and the scroll position the fixed window layer ends up in.
-- Status: Open; no code change made for this entry. The equipment card click now opens the item page instead of the viewer (fix/equipment-card-navigation), but the viewer can still be opened from the item page button and from character cards.
+- Reported in the Claude desktop app built-in browser (Chromium) on Windows, viewport 669x1025: scroll down on the mp510mmcc page, open the Equipment tab, click the card; the viewer's close button was not visible and, after closing, the page looked shifted left with its left edge cut off.
+- A JavaScript check in that browser showed no horizontal overflow, so this was most likely a screenshot artifact rather than a layout bug. Also not reproduced by scripts/verify-equipment-navigation.mjs (real components and CSS at 1440, 670 and 390px, a 1440-to-360px resize sweep with eight tabs and a large artwork) or a read-only Chrome check of the live Equipment page at 390-1200px.
+- Status: Not reproducible; no code change. Reopen with a screenshot plus document.documentElement.scrollWidth, window.scrollX and the close button's bounding rect if it recurs.
+
+### 2026-10-21 - Art Viewer shows no poster for mp510mmcc (minor)
+
+- Reported on the live site: the Art Viewer opened from the mp510mmcc item page shows no schematic poster. It was opened fresh after the card-navigation fix deployed, with browser storage empty, so it is not a stale persisted tab (an earlier version of this entry guessed that; it was wrong).
+- Not reproduced: in Chrome (headless, 1200x800) on the live site the same click opens the viewer with the poster (/api/media/file/mp5-ten-bayonet-poster-1280x720.webp, HTTP 200), the tab data includes the poster, and the caption reads "NO CONCEPT ART FILED. SHOWING SCHEMATIC POSTER." So the poster is passed and fetched correctly; the cause is not yet known and may be specific to the reporter's browser (the Claude desktop app built-in browser, where the viewer canvas image is also hidden until its size is measured).
+- Impact is low: on feat/schematic-module, items with no concept art no longer show OPEN IN ART VIEWER, so this path is not reachable from their pages. The same viewer image path still serves concept art, so recheck there if a concept-art image fails to appear.
+- Status: Open, minor; needs the reporter's browser console and a screenshot of the viewer when it recurs.
 
 ### 2026-10-15 - Watcher stutter on other devices
 
