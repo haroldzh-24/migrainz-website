@@ -37,7 +37,7 @@ const items = [
   ...[1, 2, 3, 4, 5].map(n => ({ ...base, slug: 'extra-' + n, name: 'Extra Item With A Very Long Display Name ' + n, images: [] })),
 ];
 const real = { ...base, name: 'MP5 10MM Company Custom', images: [], category: 'Small Arms',
-  description: 'Company custom MP5 chambered in 10mm with a collapsing stock and bayonet.',
+  description: 'Company custom MP5 chambered in 10mm with a collapsing stock and bayonet. Issued to forward patrols that need a compact, quiet-handling carbine with more stopping power than the standard 9mm pattern. The bayonet lug is a field modification and is not part of the original company pattern.',
   specifications: [{ label: 'MANUFACTURER', value: 'H&K' }, { label: 'MODEL / DESIGNATION', value: 'MP-5' }, { label: 'TYPE', value: 'Small Arms' }, { label: 'CALIBER / CARTRIDGE', value: '10 mm' }, { label: 'CAPACITY', value: '30' }] };
 items.push({ ...real, slug: 'real-169', poster: { src: '/real-169.png', alt: 'poster' } }, { ...real, slug: 'real-21', poster: { src: '/real-21.png', alt: 'poster' } });
 const character = { slug: 'nobody', name: 'Character Without Art', role: 'Scout', description: '', images: [], updated: '2026-10-21' };
@@ -45,7 +45,7 @@ const faction = { slug: 'crew', name: 'Crew', description: 'No emblem', type: 'G
 const path = location.pathname;
 const page = path.startsWith('/projects/fixture/equipment/') ? items.find(item => path.endsWith('/' + item.slug)) : null;
 createRoot(document.getElementById('root')).render(<SoundProvider><WindowManagerProvider><main className="shell">
-  {page ? <section className="directory-page"><h1 id="item-page">{page.name}</h1>
+  {page ? <section className="directory-page"><a className="section-link" href="/projects/fixture/equipment">RETURN TO EQUIPMENT</a><h1 id="item-page">{page.name}</h1>
     <EquipmentSchematic name={page.name} src={page.slug.startsWith('real-') ? '/' + page.slug + '.mp4' : page.slug === 'poster-only' ? '/poster-only.mp4' : undefined} poster={page.poster?.src}>
       <p className="eyebrow">{page.category} / UPDATED {page.updated}</p>{page.description && <p className="lede">{page.description}</p>}
       <EquipmentSpecifications rows={page.specifications} />
@@ -194,11 +194,24 @@ try {
       await shotPage.goto(base + '/projects/fixture/equipment/' + key);
       await shotPage.waitForFunction(() => { const v = document.querySelector('video'); return v && v.readyState >= 2 && !v.paused && v.currentTime > 0.2; }, null, { timeout: 15000 });
       assert.equal(await shotPage.getByRole('button', { name: 'OPEN IN ART VIEWER' }).count(), 0);
+      // Description and category line live inside the panel, softer than the bright spec values, with generous line height.
+      const copy = await shotPage.evaluate(() => {
+        const lede = document.querySelector('.equipment-panel .lede'), value = document.querySelector('.equipment-panel dd'), eyebrow = document.querySelector('.equipment-panel .eyebrow');
+        const style = el => getComputedStyle(el);
+        return { inPanel: Boolean(lede && eyebrow), color: style(lede).color, valueColor: style(value).color, font: style(lede).fontFamily, ratio: parseFloat(style(lede).lineHeight) / parseFloat(style(lede).fontSize), outside: document.querySelectorAll('main .lede').length - document.querySelectorAll('.equipment-panel .lede').length,
+          order: [...document.querySelector('.equipment-panel').children].map(el => el.className || el.tagName) };
+      });
+      assert(copy.inPanel && copy.outside === 0, 'description and category line must be inside the panel');
+      assert.notEqual(copy.color, copy.valueColor); assert.match(copy.font, /monospace|Courier/i); assert(copy.ratio >= 1.6, 'line height ' + copy.ratio);
+      assert.deepEqual(copy.order.slice(0, 3), ['eyebrow', 'lede', 'equipment-specifications']);
+      const back = shotPage.getByRole('link', { name: 'RETURN TO EQUIPMENT' });
+      assert.equal(await back.getAttribute('href'), '/projects/fixture/equipment');
+      assert.equal(await shotPage.getByText('RETURN TO FACTIONS').count(), 0);
       assert(await shotPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
       const display = await shotPage.locator('.equipment-schematic-display').boundingBox();
       const panel = await shotPage.locator('.equipment-panel').boundingBox();
       assert(Math.abs(panel.y - (display.y + display.height)) < 1.01);
-      await shotPage.screenshot({ path: path.join(output, `module-${key}-${shot}.png`) });
+      await shotPage.screenshot({ path: path.join(output, `module-${key}-${shot}.png`), fullPage: true });
       await context.close();
     }
     console.log('PASS module screenshots', key);
