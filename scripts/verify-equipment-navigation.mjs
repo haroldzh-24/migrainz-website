@@ -45,12 +45,14 @@ const faction = { slug: 'crew', name: 'Crew', description: 'No emblem', type: 'G
 const path = location.pathname;
 const page = path.startsWith('/projects/fixture/equipment/') ? items.find(item => path.endsWith('/' + item.slug)) : null;
 createRoot(document.getElementById('root')).render(<SoundProvider><WindowManagerProvider><main className="shell">
-  {page ? <section className="directory-page"><a className="section-link" href="/projects/fixture/equipment">RETURN TO EQUIPMENT</a><h1 id="item-page">{page.name}</h1>
+  {page ? <section className="retro-window project-application" style={{ position: 'relative', width: 'min(1100px, 100% - 16px)', height: 'auto', margin: '12px auto' }}>
+    <div className="retro-window-titlebar"><strong>PROJECT: Fixture Project</strong></div>
+    <div className="retro-window-body"><div className="project-app-content"><section className="directory-page"><a className="section-link" href="/projects/fixture/equipment">RETURN TO EQUIPMENT</a><h1 id="item-page">{page.name}</h1>
     <EquipmentSchematic name={page.name} src={page.slug.startsWith('real-') ? '/' + page.slug + '.mp4' : page.slug === 'poster-only' ? '/poster-only.mp4' : undefined} poster={page.poster?.src}>
       <p className="eyebrow">{page.category} / UPDATED {page.updated}</p>{page.description && <p className="lede">{page.description}</p>}
       <EquipmentSpecifications rows={page.specifications} />
     </EquipmentSchematic>
-    <EquipmentViewerButton project={project} equipment={page} /></section>
+    <EquipmentViewerButton project={project} equipment={page} /></section></div></div></section>
     : <section className="directory-page"><h1>Fixture directory</h1>
       <div className="directory-list desktop-file-list">{items.map(item => <EquipmentViewerLink key={item.slug} project={project} equipment={item} />)}</div>
       <div className="directory-list desktop-file-list"><CharacterViewerLink project={project} character={character} /></div>
@@ -202,6 +204,22 @@ try {
           order: [...document.querySelector('.equipment-panel').children].map(el => el.className || el.tagName) };
       });
       assert(copy.inPanel && copy.outside === 0, 'description and category line must be inside the panel');
+      // Real contrast and hue, even inside the light .project-application theme that redefines --green, --green2 and --hot.
+      const readable = await shotPage.evaluate(() => {
+        const rgb = value => { const n = (value.match(/[\d.]+/g) || []).map(Number); return value.startsWith('color(') ? [n[0] * 255, n[1] * 255, n[2] * 255, n[3] ?? 1] : n; };
+        const lum = ([r, g, b]) => { const c = [r, g, b].map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
+        const panel = document.querySelector('.equipment-panel'), bg = rgb(getComputedStyle(panel).backgroundColor);
+        const probe = (name, el) => { const style = getComputedStyle(el), [r, g, b, a = 1] = rgb(style.color); const alpha = a * parseFloat(style.opacity); const mixed = [r, g, b].map((v, i) => v * alpha + bg[i] * (1 - alpha));
+          const [hi, lo] = [Math.max(lum(mixed), lum(bg)), Math.min(lum(mixed), lum(bg))]; return { name, color: style.color, contrast: (hi + 0.05) / (lo + 0.05), green: mixed[1] > mixed[0] * 1.3 && mixed[1] > mixed[2] * 1.3 && mixed[1] >= 120 }; };
+        const all = [...panel.querySelectorAll('dt')].map((el, i) => probe('label ' + i, el)).concat([...panel.querySelectorAll('dd')].map((el, i) => probe('value ' + i, el)), [probe('description', panel.querySelector('.lede')), probe('category line', panel.querySelector('.eyebrow'))]);
+        const module = getComputedStyle(document.querySelector('.equipment-module'));
+        return { all, bg: getComputedStyle(panel).backgroundColor, inProjectWindow: Boolean(document.querySelector('.project-application .equipment-module')), border: module.borderTopColor };
+      });
+      assert(readable.inProjectWindow, 'fixture must render the module inside .project-application');
+      assert.equal(readable.bg, 'rgb(1, 3, 0)');
+      for (const item of readable.all) { assert(item.contrast >= 4.5, item.name + ' contrast ' + item.contrast.toFixed(2) + ' (' + item.color + ')'); assert(item.green, item.name + ' is not green: ' + item.color); }
+      assert.match(readable.border, /rgba?\(114, 255, 98/);
+      console.log(`  ${key} ${shot} panel contrast: ` + ['label 0', 'value 0', 'description', 'category line'].map(n => n + ' ' + readable.all.find(item => item.name === n).contrast.toFixed(1)).join(', '));
       assert.notEqual(copy.color, copy.valueColor); assert.match(copy.font, /monospace|Courier/i); assert(copy.ratio >= 1.6, 'line height ' + copy.ratio);
       assert.deepEqual(copy.order.slice(0, 3), ['eyebrow', 'lede', 'equipment-specifications']);
       const back = shotPage.getByRole('link', { name: 'RETURN TO EQUIPMENT' });

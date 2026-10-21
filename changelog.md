@@ -1,5 +1,9 @@
 # Changelog
 
+## Fixed - 2026-10-21 / Schematic panel readable inside project windows
+
+- The equipment module now uses dedicated terminal colour tokens instead of --green/--green2/--hot, which the light .project-application theme redefines to grey and near-black (labels were rgb(68,68,68) and values rgb(17,17,17) on the panel). The fixture now renders the page inside .project-application and asserts at least 4.5:1 contrast and green hue for labels, values, description and category line. Code only.
+
 ## Changed - 2026-10-21 / Equipment panel copy and back link
 
 - The weapon description and category/updated line sit inside the terminal panel above the specs, in a softer green with a 1.7 line height and a readable measure. The page title and navigation stay outside.
