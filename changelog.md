@@ -12,6 +12,7 @@
 - The Art Viewer no longer dead-ends: with no artwork it shows the poster, or a link to the item page (also for character tabs). Escape closes the viewer. Code only; no migration.
 - Character cards still open the Art Viewer; faction cards navigate directly and have no viewer dead end.
 - Verified with scripts/verify-equipment-navigation.mjs (real components, window manager and CSS at 1440, 670 and 390px, plus a resize sweep). The reported off-screen close button at about 670px could not be reproduced in that fixture or on the live site at 390-1200px; the sweep guards it.
+
 ## 2026-10-16 / Schematic video renderer (local tooling)
 
 - Add tools/schematic-renderer: a headless Blender 5.2 script (.blend input, single or batch) that normalizes a grey model, draws Freestyle line art over subtle flat shading on a near-black grid backdrop using :root colors from globals.css, and renders a seamless 8s linear 360-degree turntable at 1280x720 (16:9, matching EquipmentSchematic).
