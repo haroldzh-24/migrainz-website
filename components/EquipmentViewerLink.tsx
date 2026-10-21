@@ -26,5 +26,7 @@ export function EquipmentViewerLink(props: Props) {
 export function EquipmentViewerButton(props: Props) {
   const { openViewerTab } = useWindowManager();
   if (props.equipment.classification) return <ClassifiedPlaceholder classification={props.equipment.classification} label={props.equipment.safeLabel} />;
+  // Only concept art opens the viewer; a schematic video and poster alone are shown on the page itself.
+  if (!tabFor(props).images.length) return null;
   return <button type="button" className="terminal-button character-viewer-button" onClick={() => openViewerTab(tabFor(props))}>OPEN IN ART VIEWER</button>;
 }

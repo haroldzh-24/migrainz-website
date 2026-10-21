@@ -1,5 +1,11 @@
 # Changelog
 
+## Changed - 2026-10-21 / Equipment schematic module and renderer framing
+
+- The equipment page shows the schematic video and the item info/specifications as one attached terminal module. The video has no controls or pointer input and falls back to the poster still (never a play button) when autoplay is blocked, on reduced motion or reduced data, or if the video fails. The player follows the media's aspect ratio.
+- OPEN IN ART VIEWER now appears only for items with concept art.
+- Renderer (local tooling): camera fits automatically so the widest point of the turn is 0.95 of the frame (target_fill), a per-weapon or --aspect option (for example 2:1) gives wider, shorter frames, the backdrop grid is 32 columns across so the site can continue it, and the video is tagged BT.709. Code and renderer only; no migration.
+
 ## Fixed - 2026-10-21 / Equipment card navigation and Art Viewer dead ends
 
 - Equipment cards in the project Equipment directory now open the item page (schematic and specifications); the item page keeps OPEN IN ART VIEWER. Equipment without concept art falls back to the schematic poster for the card thumbnail and the Art Viewer, and the character equipment cards use the same poster fallback.

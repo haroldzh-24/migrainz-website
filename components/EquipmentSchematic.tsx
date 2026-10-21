@@ -1,28 +1,36 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 
-export default function EquipmentSchematic({ src, poster, name }: { src?: string; poster?: string; name: string }) {
+/**
+ * Looping schematic that behaves like an animated image: no controls, no pause, no menu.
+ * If the video cannot autoplay, fails, or motion/data preferences ask for less, the poster stays
+ * as a still. There is never a play button. `children` fill the specs panel attached underneath.
+ */
+export default function EquipmentSchematic({ src, poster, ratio, name, children }: { src?: string; poster?: string; ratio?: number; name: string; children?: ReactNode }) {
   const container = useRef<HTMLElement>(null);
   const video = useRef<HTMLVideoElement>(null);
   const visible = useRef(false);
-  const wanted = useRef(true);
+  const animating = useRef(false);
   const [load, setLoad] = useState(false);
+  const [reduced, setReduced] = useState(false);
+  const [blocked, setBlocked] = useState(false);
   const [failed, setFailed] = useState(false);
   const [posterFailed, setPosterFailed] = useState(false);
-  const [ready, setReady] = useState(false);
-  const [manual, setManual] = useState(true);
-  const [requested, setRequested] = useState(false);
+  const [playing, setPlaying] = useState(false);
+  const [measured, setMeasured] = useState<number>();
+
+  const hasPoster = Boolean(poster) && !posterFailed;
+  const animate = Boolean(src) && !failed && !blocked && !reduced;
+  // Reduced motion with no poster: show the first frame of the video, paused.
+  const firstFrame = Boolean(src) && !failed && reduced && !hasPoster;
+  animating.current = animate;
 
   useEffect(() => {
     const motion = matchMedia('(prefers-reduced-motion: reduce)');
     const data = matchMedia('(prefers-reduced-data: reduce)');
     const connection = (navigator as Navigator & { connection?: EventTarget & { saveData?: boolean } }).connection;
-    const preference = () => {
-      const reduced = motion.matches || data.matches || Boolean(connection?.saveData);
-      setManual(reduced);
-      if (reduced) { wanted.current = false; video.current?.pause(); }
-    };
+    const preference = () => setReduced(motion.matches || data.matches || Boolean(connection?.saveData));
     preference();
     motion.addEventListener('change', preference);
     data.addEventListener('change', preference);
@@ -34,37 +42,45 @@ export default function EquipmentSchematic({ src, poster, name }: { src?: string
     };
   }, []);
 
+  const play = () => {
+    const player = video.current;
+    if (player && animating.current && visible.current && !document.hidden && player.readyState >= 2) player.play().catch(() => setBlocked(true));
+  };
+
   useEffect(() => {
     const element = container.current;
-    if (!element || !src || failed) return;
+    if (!element || !animate) { video.current?.pause(); return; }
     const sync = () => {
-      const player = video.current;
-      if (!visible.current || document.hidden) { player?.pause(); return; }
-      if (manual && !requested) return;
-      setLoad(true);
-      if (wanted.current && player && player.readyState >= 2) void player.play().catch(() => { /* Native controls remain available when autoplay is denied. */ });
+      if (visible.current && !document.hidden) { setLoad(true); play(); } else video.current?.pause();
     };
     const observer = new IntersectionObserver(([entry]) => { visible.current = entry.isIntersecting; sync(); }, { threshold: 0.01 });
     observer.observe(element);
     document.addEventListener('visibilitychange', sync);
-    sync();
     return () => { observer.disconnect(); document.removeEventListener('visibilitychange', sync); };
-  }, [src, failed, manual, requested, load, ready]);
+  }, [animate]);
 
-  if ((!src || failed) && (!poster || posterFailed)) return null;
-  return <section ref={container} className="equipment-schematic" aria-label={`${name} rotating schematic`}>
-    <p className="eyebrow">ROTATING SCHEMATIC</p>
-    <div className="equipment-schematic-display">
-      {poster && !posterFailed && (!ready || failed || !load) && <img src={poster} alt={`${name} schematic preview`} onError={() => setPosterFailed(true)} />}
-      {src && !failed && <video ref={video} src={load ? src : undefined} poster={posterFailed ? undefined : poster} muted loop playsInline controls preload={load ? 'auto' : 'none'}
-        aria-label={`${name} rotating schematic video`} style={{ display: ready ? 'block' : 'none' }}
-        onLoadedData={() => { setReady(true); if (visible.current && !document.hidden && (!manual || requested) && wanted.current) void video.current?.play().catch(() => {}); }} onError={() => setFailed(true)}
-        onPlay={() => { wanted.current = true; if (!visible.current || document.hidden) video.current?.pause(); }}
-        onPause={() => { if (visible.current && !document.hidden) wanted.current = false; }} />}
-      {src && !failed && !ready && <button className="terminal-button" type="button" onClick={() => {
-        wanted.current = true; setRequested(true); setLoad(true);
-        if (video.current && video.current.readyState >= 2) void video.current.play().catch(() => {});
-      }}>{load ? 'LOAD / PLAY SCHEMATIC' : 'PLAY SCHEMATIC'}</button>}
-    </div>
+  useEffect(() => { if (!animate) setPlaying(false); }, [animate]);
+
+  const showVideo = Boolean(src) && !failed && (animate || firstFrame);
+  const hasMedia = showVideo || hasPoster;
+  if (!hasMedia && !children) return null;
+  return <section ref={container} className="equipment-module" aria-label={`${name} specifications`}>
+    {hasMedia && <div className="equipment-schematic-display" role="img" aria-label={`${name} rotating schematic`}
+      style={{ aspectRatio: measured ?? ratio ?? 16 / 9 }} data-playing={playing || undefined}>
+      {hasPoster && <img src={poster} alt="" draggable={false} onError={() => setPosterFailed(true)}
+        onLoad={event => { if (!ratio && event.currentTarget.naturalHeight) setMeasured(event.currentTarget.naturalWidth / event.currentTarget.naturalHeight); }} />}
+      {showVideo && <video ref={video} src={load || firstFrame ? src : undefined} muted loop playsInline tabIndex={-1} aria-hidden="true"
+        disablePictureInPicture disableRemotePlayback controlsList="nodownload nofullscreen noremoteplayback"
+        preload={firstFrame ? 'metadata' : load ? 'auto' : 'none'}
+        onLoadedMetadata={event => { if (!ratio && event.currentTarget.videoHeight) setMeasured(event.currentTarget.videoWidth / event.currentTarget.videoHeight); }}
+        onLoadedData={play} onError={() => setFailed(true)}
+        onPlaying={() => setPlaying(true)}
+        onPause={() => {
+          // Paused while it should be playing (e.g. iOS Low Power Mode): try once more, else keep the still.
+          setPlaying(false);
+          if (animating.current && visible.current && !document.hidden) video.current?.play().catch(() => setBlocked(true));
+        }} />}
+    </div>}
+    {children && <div className="equipment-panel">{children}</div>}
   </section>;
 }

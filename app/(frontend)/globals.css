@@ -1883,8 +1883,29 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
 .equipment-card > img { width: 80px; height: 100px; object-fit: contain; background: #111; flex-shrink: 0; }
 .equipment-card > div { min-width: 0; flex: 1; }
 .equipment-card h3 { margin: 0; }
-.equipment-schematic { margin: 1.5rem 0; }
-.equipment-schematic-display { background: #000; border: 1px solid var(--line, #234b2f); padding: .5rem; text-align: center; }
-.equipment-schematic-display video, .equipment-schematic-display img { width: 100%; max-height: 65vh; aspect-ratio: 16 / 9; object-fit: contain; }
-.equipment-schematic-display button { margin: .5rem; }
+/* Schematic video and specs read as one terminal module. --schematic-bg is the background the encoded
+   video actually decodes to (sampled from rendered pixels); the faint grid continues into the panel. */
+.equipment-module { --schematic-bg: #010300; --schematic-grid: #72ff62; container-type: inline-size; margin: 1.5rem 0; border: 1px solid var(--line, #234b2f); background: var(--schematic-bg); }
+.equipment-schematic-display { position: relative; overflow: hidden; background: var(--schematic-bg); line-height: 0; user-select: none; -webkit-user-select: none; }
+.equipment-schematic-display > img, .equipment-schematic-display > video { position: absolute; inset: 0; width: 100%; height: 100%; display: block; object-fit: contain; -webkit-touch-callout: none; }
+/* The video takes no pointer input, so hover/tap/right-click never reach a media UI. */
+.equipment-schematic-display > video { pointer-events: none; opacity: 0; }
+.equipment-schematic-display[data-playing] > video { opacity: 1; }
+.equipment-panel { padding: .9rem 1rem 1rem; font-family: "Courier New", Courier, monospace; color: var(--green);
+  background-color: var(--schematic-bg);
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--schematic-bg), var(--schematic-grid) 8.5%) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--schematic-bg), var(--schematic-grid) 8.5%) 1px, transparent 1px),
+    linear-gradient(to right, color-mix(in srgb, var(--schematic-bg), var(--schematic-grid) 4.5%) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--schematic-bg), var(--schematic-grid) 4.5%) 1px, transparent 1px);
+  background-size: 12.5cqw 12.5cqw, 12.5cqw 12.5cqw, 3.125cqw 3.125cqw, 3.125cqw 3.125cqw; }
+.equipment-panel > :first-child { margin-top: 0; }
+.equipment-panel > :last-child, .equipment-panel .equipment-specifications { margin-bottom: 0; }
+.equipment-panel .eyebrow { color: var(--green2); opacity: .75; }
+.equipment-panel .lede { max-width: none; margin: .5rem 0; color: var(--green); font-size: .85rem; }
+.equipment-panel .equipment-specifications { margin-top: .75rem; }
+.equipment-panel .equipment-specifications > div { border-bottom: 1px dotted rgba(114, 255, 98, .22); }
+.equipment-panel .equipment-specifications dt { color: var(--green2); opacity: .72; }
+.equipment-panel .equipment-specifications dd { color: var(--hot); }
+@media (max-width: 480px) { .equipment-panel { padding: .7rem .75rem .8rem; } .equipment-panel .equipment-specifications > div { grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); gap: .6rem; } }
 @media (max-width: 480px) { .equipment-card { flex-direction: column; } .equipment-card > img { width: 100%; height: 140px; } }

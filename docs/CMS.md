@@ -76,14 +76,19 @@ validates the MP4 container/MIME and size, not the encoded codec; unsupported or
 corrupt playback falls back to an independently authorized poster or hides the
 display. No transcoding service or runtime 3D renderer is introduced.
 
-Enabled, published, authorized schematics appear above the existing concept
-gallery. Concept images retain saved order and ART VIEWER behavior, including
-equipment without a video. The native player is muted, loops inline, contains the
-whole model, exposes controls, and pauses offscreen or when the tab is hidden.
-Reduced-motion and browser-exposed reduced-data/save-data preferences require an
-explicit play action before loading video bytes. A poster may still load. No video
-is loaded on character cards. Browser autoplay restrictions can require pressing
-the native play control. Videos do not receive Sharp derivatives; image processing
+Enabled, published, authorized schematics appear at the top of the equipment page
+as one terminal module: the video with the item info and specifications in a panel
+attached directly beneath it (same near-black background, grid continued into the
+panel). The video behaves like a looping image: muted, inline, no controls, no
+pause, fullscreen, picture-in-picture, download or context menu, and it takes no
+pointer input. It pauses offscreen or when the tab is hidden. The player takes its
+shape from the poster/video, so wide frames (for example 2:1 for long guns) work
+without a CMS field. If autoplay is blocked (for example iPhone Low Power Mode), the
+video fails, or reduced-motion or reduced-data/save-data preferences are set, the
+poster is shown as a still and no video bytes load; there is never a play button.
+Concept images retain saved order and ART VIEWER behavior; OPEN IN ART VIEWER appears
+only when an item has at least one concept image. No video is loaded on character
+cards. Videos do not receive Sharp derivatives; image processing
 and PDF uploads retain their existing behavior. Video cannot be put into artwork
 image rows, covers, hero images, emblems or comic pages when publishing.
 

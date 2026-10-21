@@ -201,7 +201,8 @@ export const getEquipment = cache(async (project: number, slug: string) => {
   const poster = item.schematicEnabled ? image(item.schematicPoster) : undefined;
   return { ...equipmentSummary(item),
     schematic: item.schematicEnabled ? { src: authorizedVideo && video.filename ? '/api/media/file/' + encodeURIComponent(video.filename) : undefined,
-      poster: poster && !poster.classification ? poster.src : undefined } : undefined,
+      poster: poster && !poster.classification ? poster.src : undefined,
+      ratio: poster && !poster.classification && poster.width && poster.height ? poster.width / poster.height : undefined } : undefined,
     characters: characters.docs.map(character => ({ name: character.name, slug: character.slug, role: character.role || '' })) };
 });
 
