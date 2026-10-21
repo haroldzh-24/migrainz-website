@@ -36,10 +36,6 @@ FALLBACK_PALETTE = {
     "green2": "#42c93a", "dim": "#247d21", "hot": "#baffaa",
 }
 
-# EquipmentSchematic.tsx sizes the video from the media itself, so any ratio works. 16:9 is the default;
-# "aspect": "2:1" (config or --aspect) gives a wider, shorter frame for long guns.
-DEFAULT_ASPECT = "16:9"
-
 # --------------------------------------------------------------------------
 # Colour helpers
 # --------------------------------------------------------------------------
@@ -107,7 +103,7 @@ BUILTIN_DEFAULTS = {
     "start_angle": 0,           # turntable start, degrees
     "line_scale": 1.0,          # multiplier on all line thicknesses
     "target_fill": 0.95,        # widest point of the full turn, as a fraction of the frame half-width/height
-    "aspect": None,             # "16:9" (default) or "2:1" etc.; the width stays at --width
+    "aspect": "2:1",            # wider, shorter frame for long guns; use "16:9" to override; width stays at --width
 }
 
 

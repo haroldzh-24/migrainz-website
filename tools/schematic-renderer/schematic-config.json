@@ -7,7 +7,8 @@
     "tilt": 18,
     "camera_distance": 1.0,
     "line_scale": 1.5,
-    "target_fill": 0.95
+    "target_fill": 0.95,
+    "aspect": "2:1"
   },
   "weapons": {
     "valmet-m88": { "start_angle": 55 }
