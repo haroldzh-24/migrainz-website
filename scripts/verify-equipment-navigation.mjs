@@ -61,6 +61,8 @@ const { chromium } = await import(process.env.PLAYWRIGHT_MODULE ? pathToFileURL(
 const browser = await chromium.launch({ channel: 'chrome', headless: true });
 const base = `http://127.0.0.1:${server.address().port}`;
 const viewer = page => page.locator('.art-viewer-window');
+// Keyboard focus must already be inside the viewer when it opens, so Escape works without clicking in it.
+const focusInViewer = async (page, label) => { await page.waitForFunction(() => document.querySelector('.art-viewer-window')?.contains(document.activeElement), null, { timeout: 3000 }).catch(() => { throw new Error('focus is not inside the Art Viewer after opening: ' + label); }); };
 const onScreen = async (page, locator, label) => {
   const box = await locator.boundingBox();
   assert(box, `${label} has no box`);
@@ -97,6 +99,7 @@ try {
     // Item page keeps the viewer reachable. Poster-only items show the poster, not a dead end.
     await page.getByRole('button', { name: 'OPEN IN ART VIEWER' }).click();
     await viewer(page).waitFor();
+    await focusInViewer(page, 'opened from the item page button');
     assert.equal(await viewer(page).locator('.art-viewer-canvas img').getAttribute('src'), '/poster.svg');
     assert.match(await viewer(page).textContent(), /SHOWING SCHEMATIC POSTER/);
     await onScreen(page, page.getByRole('button', { name: 'Close ART VIEWER' }), 'close button');
@@ -107,6 +110,7 @@ try {
     await fresh('/projects/fixture/equipment/bare');
     await page.getByRole('button', { name: 'OPEN IN ART VIEWER' }).click();
     await viewer(page).waitFor();
+    await focusInViewer(page, 'opened from the item page button');
     assert.match(await viewer(page).textContent(), /NO PUBLIC ARTWORK FILED/);
     assert.equal(await viewer(page).getByRole('link', { name: /PAGE$/ }).first().getAttribute('href'), '/projects/fixture/equipment/bare');
     await page.screenshot({ path: path.join(output, `${name}-3-viewer-empty.png`) });
@@ -119,6 +123,7 @@ try {
     await fresh('/projects/fixture/equipment/with-art');
     await page.getByRole('button', { name: 'OPEN IN ART VIEWER' }).click();
     await viewer(page).waitFor();
+    await focusInViewer(page, 'opened from the item page button');
     assert.equal(await viewer(page).locator('.art-viewer-canvas img').getAttribute('src'), '/concept.svg');
     await page.waitForFunction(() => document.querySelector('.art-viewer-canvas img')?.naturalWidth > 0 && document.querySelector('.art-viewer-canvas img').style.visibility !== 'hidden');
     for (const label of ['Close ART VIEWER', 'Minimize ART VIEWER']) await onScreen(page, page.getByRole('button', { name: label }), `${label} with large artwork`);
@@ -135,9 +140,17 @@ try {
     await page.waitForFunction(() => !document.querySelector('.art-viewer-window'));
 
     // Character card with no art: same dead end, now with a way out. Faction cards navigate directly.
+    // Opening from a character card (still a viewer card) also moves focus in, so Escape works at once.
+    await fresh('/projects/fixture/equipment');
+    await page.locator('.desktop-file-open', { hasText: 'Character_Without_Art' }).click();
+    await viewer(page).waitFor();
+    await focusInViewer(page, 'opened from a character card');
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !document.querySelector('.art-viewer-window'));
     await fresh('/projects/fixture/equipment');
     await page.getByRole('button', { name: 'OPEN IN ART VIEWER' }).click();
     await viewer(page).waitFor();
+    await focusInViewer(page, 'opened from the item page button');
     assert.match(await viewer(page).textContent(), /NO PUBLIC ARTWORK FILED/);
     assert.equal(await viewer(page).getByRole('link', { name: /PAGE$/ }).first().getAttribute('href'), '/projects/fixture/characters/nobody');
     await page.keyboard.press('Escape');

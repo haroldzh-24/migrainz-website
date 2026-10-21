@@ -2,6 +2,13 @@
 
 ## Open Bugs
 
+### 2026-10-21 - Art Viewer close button off-screen and page shifted left at about 669px
+
+- Reported repro: Claude desktop app built-in browser (Chromium) on Windows, viewport 669x1025. On the mp510mmcc page, scroll down, click the Equipment tab, then click the equipment card. The Art Viewer opens, but its close button is not visible. After closing it, the whole page is shifted left with its left edge cut off, which suggests horizontal overflow causing a sideways scroll.
+- Not reproduced: scripts/verify-equipment-navigation.mjs (real components, window manager and CSS at 1440, 670 and 390px, plus a 1440-to-360px resize sweep with eight tabs and a large artwork) and a read-only Chrome check of the live Equipment page at 390-1200px by 500/800px tall all kept the close button inside the viewport. Neither used a scrolled page or the desktop app browser.
+- Not yet fixed. Next step: reproduce with the page scrolled before opening the viewer, check for page-level horizontal overflow (document scrollWidth vs viewport) and the scroll position the fixed window layer ends up in.
+- Status: Open; no code change made for this entry. The equipment card click now opens the item page instead of the viewer (fix/equipment-card-navigation), but the viewer can still be opened from the item page button and from character cards.
+
 ### 2026-10-15 - Watcher stutter on other devices
 
 - User reports smooth deployed animation on one Windows laptop but stutter on Macs and a Raider HX 14V-class machine. Exact affected-browser/GPU/refresh-rate configuration is unknown.
