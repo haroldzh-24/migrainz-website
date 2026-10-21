@@ -10,9 +10,10 @@
 
 ### 2026-10-21 - Art Viewer shows no poster for mp510mmcc (minor)
 
-- Observed on the live site: the Art Viewer opened for mp510mmcc shows no schematic poster. The live item page does pass the poster to the viewer, so the likely cause is a viewer tab persisted in sessionStorage before the poster fallback was deployed (older tabs have no poster field). Unverified.
-- Impact is low: equipment with no concept art no longer shows OPEN IN ART VIEWER on its page (feat/schematic-module), so this path is only reachable through an old persisted tab.
-- Status: Open, minor; not investigated further.
+- Reported on the live site: the Art Viewer opened from the mp510mmcc item page shows no schematic poster. It was opened fresh after the card-navigation fix deployed, with browser storage empty, so it is not a stale persisted tab (an earlier version of this entry guessed that; it was wrong).
+- Not reproduced: in Chrome (headless, 1200x800) on the live site the same click opens the viewer with the poster (/api/media/file/mp5-ten-bayonet-poster-1280x720.webp, HTTP 200), the tab data includes the poster, and the caption reads "NO CONCEPT ART FILED. SHOWING SCHEMATIC POSTER." So the poster is passed and fetched correctly; the cause is not yet known and may be specific to the reporter's browser (the Claude desktop app built-in browser, where the viewer canvas image is also hidden until its size is measured).
+- Impact is low: on feat/schematic-module, items with no concept art no longer show OPEN IN ART VIEWER, so this path is not reachable from their pages. The same viewer image path still serves concept art, so recheck there if a concept-art image fails to appear.
+- Status: Open, minor; needs the reporter's browser console and a screenshot of the viewer when it recurs.
 
 ### 2026-10-15 - Watcher stutter on other devices
 
