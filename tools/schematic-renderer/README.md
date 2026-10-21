@@ -49,6 +49,8 @@ Other options: `--style`, `--seconds`, `--fps`, `--max-mb`, `--keep-frames`, `--
 | `flat_normals` | force flat shading |
 | `start_angle` | turntable start angle in degrees |
 
+Top-level `slugs` maps a model filename (without `.blend`) to its output slug when plain lowercasing is not enough, e.g. `"ValmetM88": "valmet-m88"`.
+
 Top-level `slugs` maps a model filename (without .blend) to its output slug when plain lowercasing is not enough, e.g. `"ValmetM88": "valmet-m88"`.
 
 ## Output

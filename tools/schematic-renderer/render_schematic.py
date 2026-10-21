@@ -475,6 +475,12 @@ def main():
     styles = build_styles(palette)
     print(f"[palette] {palette}")
 
+    try:
+        with open(args.config, encoding="utf-8") as handle:
+            slug_aliases = json.load(handle).get("slugs", {})
+    except OSError:
+        slug_aliases = {}
+
     if args.models_dir:
         models = sorted(glob.glob(os.path.join(args.models_dir, "*.blend")))
     else:
@@ -483,7 +489,8 @@ def main():
         raise SystemExit("No .blend models found.")
 
     for model in models:
-        slug = args.slug if (args.slug and not args.models_dir) else slugify(os.path.splitext(os.path.basename(model))[0])
+        stem = os.path.splitext(os.path.basename(model))[0]
+        slug = args.slug if (args.slug and not args.models_dir) else slug_aliases.get(stem) or slugify(stem)
         if args.models_dir and not args.stills and not args.force and os.path.exists(os.path.join(work, "output", f"{slug}.mp4")):
             print(f"[{slug}] exists, skipping (use --force)")
             continue

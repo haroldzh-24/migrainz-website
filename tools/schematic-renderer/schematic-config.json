@@ -1,4 +1,7 @@
 {
+  "slugs": {
+    "ValmetM88": "valmet-m88"
+  },
   "defaults": {
     "style": "blueprint",
     "tilt": 18,
