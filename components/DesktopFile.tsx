@@ -17,6 +17,8 @@ type Props = Classified & {
   thumbnail?: ComicPage;
   imagePreview?: boolean;
   viewerTab?: ViewerTab;
+  /** Keep the viewer tab's thumbnail but navigate to href instead of opening the Art Viewer. */
+  opensPage?: boolean;
   metadata?: { label: string; value: string }[];
 };
 
@@ -25,7 +27,7 @@ export default function DesktopFile(props: Props) {
   return <PublicDesktopFile {...props} />;
 }
 
-function PublicDesktopFile({ label, type, href, subtitle, viewerTab, thumbnail, imagePreview, metadata = [] }: Props) {
+function PublicDesktopFile({ label, type, href, subtitle, viewerTab, opensPage, thumbnail, imagePreview, metadata = [] }: Props) {
   const { openViewerTab } = useWindowManager();
   const id = useId();
   const root = useRef<HTMLDivElement>(null);
@@ -76,7 +78,7 @@ function PublicDesktopFile({ label, type, href, subtitle, viewerTab, thumbnail, 
       onClick={event => {
         if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
         dismiss();
-        if (viewerTab) { event.preventDefault(); openViewerTab(viewerTab); }
+        if (viewerTab && !opensPage) { event.preventDefault(); openViewerTab(viewerTab); }
       }}>
       {(viewerTab || imagePreview) ? <DirectoryThumbnail eager={imagePreview} image={thumbnail ?? viewerTab?.images.find(image => image.src && !/\.pdf(?:\?|$)/i.test(image.src))} label={label} /> : <span className="desktop-file-icon" aria-hidden="true">{type}</span>}
       <span className="desktop-file-copy"><strong>{label}</strong>{subtitle && <small>{subtitle}</small>}</span>

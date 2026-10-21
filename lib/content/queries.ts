@@ -157,9 +157,15 @@ export function equipmentSpecifications(item: Equipment) {
   return [...fields.flatMap(([key, label]) => item[key]?.trim() ? [{ label, value: item[key]!.trim() }] : []),
     ...(item.technicalSpecifications ?? []).filter(row => row.label?.trim() && row.value?.trim()).map(row => ({ label: row.label, value: row.value }))];
 }
+// Card/viewer fallback for equipment without concept art; same authorization as the schematic poster.
+function schematicPoster(item: Pick<Equipment, 'schematicEnabled' | 'schematicPoster'>) {
+  const poster = item.schematicEnabled ? image(item.schematicPoster) : undefined;
+  return poster && !poster.classification && poster.src ? poster : undefined;
+}
 function equipmentSummary(item: Equipment) {
   return { slug: item.slug, name: item.name, category: item.category || item.equipmentType || '', description: item.description || '',
-    specifications: equipmentSpecifications(item), images: images(item.images).filter(file => !file.classification), updated: item.updatedAt.slice(0, 10) };
+    specifications: equipmentSpecifications(item), images: images(item.images).filter(file => !file.classification),
+    poster: schematicPoster(item), updated: item.updatedAt.slice(0, 10) };
 }
 
 export const getCharacterEquipment = cache(async (projectSlug: string, characterSlug: string) => {
@@ -274,7 +280,7 @@ export const getEquipmentDirectory = cache(async (project: number) => {
   const cms = await getPayload({ config });
   const result = await findListing(cms, { collection: 'equipment', overrideAccess: false, depth: 1, pagination: false,
     where: { and: [publicWhere, { project: { equals: project } }] }, sort: ['order', 'name'],
-    select: { slug: true, name: true, category: true, description: true, images: true, updatedAt: true } });
+    select: { slug: true, name: true, category: true, description: true, images: true, schematicEnabled: true, schematicPoster: true, updatedAt: true } });
   return result.docs.map(item => ({ ...classificationOf(item), slug: item.slug, name: item.name, category: item.category || '',
-    description: item.description || '', images: images(item.images), updated: item.updatedAt.slice(0, 10) }));
+    description: item.description || '', images: images(item.images), poster: schematicPoster(item), updated: item.updatedAt.slice(0, 10) }));
 });
