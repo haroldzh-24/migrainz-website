@@ -6,14 +6,16 @@ import type { Classified } from '@/lib/content/types';
 export function Directory({
   path,
   title,
+  compact = false,
   children,
 }: {
   path: string;
   title: string;
+  compact?: boolean;
   children: ReactNode;
 }) {
   return (
-    <section className="directory-page">
+    <section className={compact ? "directory-page directory-compact" : "directory-page"}>
       <nav className="breadcrumbs" aria-label="Directory navigation">
         <Link href="/">HOME</Link>
         <Link href="/projects">PROJECTS</Link>
