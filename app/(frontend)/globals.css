@@ -769,7 +769,6 @@ button {
 
 /* Recolour to the terminal palette first, then glow. Applied once on the container, not per image. */
 .watcher { filter: url(#crt-tune) drop-shadow(var(--crt-glow-filter)); }
-}
 
 .watcher-label,
 .scan-readout {
