@@ -101,7 +101,7 @@
   /* CRT effect strengths; html[data-crt] switches them (on / reduced / off). */
   --crt-scanline-alpha: 0.06;
   --crt-vignette: inset 0 0 60px rgba(0, 0, 0, 0.5);
-  --crt-font: var(--font-plex-mono), "Courier New", Courier, monospace;
+  --crt-font: var(--font-plex-mono, "IBM Plex Mono"), "Courier New", Courier, monospace;
 
   --bg: var(--crt-bg);
   --panel: var(--crt-panel);

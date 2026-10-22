@@ -1,5 +1,14 @@
 # Features
 
+## Implemented - 2026-10-22 / CRT readability theme (feature/crt-readability)
+
+- One token set (--crt-bg #0a0e0b, --crt-panel #0f1511, --crt-text #a8d8b0, --crt-bright #d4f5da, --crt-mid #7fb08a, --crt-dim #5f8a6b, --crt-border, --crt-accent #e8b45a, --crt-glow). The legacy --bg/--panel/--green/--green2/--hot/--dim/--line names are aliases, so .project-application keeps its light overrides. --term-* is gone; the schematic module reads --crt-*.
+- Headings, brand and active items glow; body text does not. Body is 16px at line-height 1.6 in IBM Plex Mono (next/font/local, 400 and 700, OFL licence in app/fonts/); Win95 windows keep Arial.
+- .crt overlay: static scanlines (.06) and vignette, no continuous flicker; the sweep runs once on load. The watcher grain is static; jitter and interference loops are removed. The schematic panel gets scanlines and vignette; video, posters, comics and artwork never do.
+- Recolour filter #crt-tune (root layout) applied with a glow to the watcher container and to schematic video, posters and schematic thumbnails only. Concept art, galleries and the Art Viewer are never filtered.
+- Watcher tracks the pointer across the whole window (window listeners, distance-scaled, full deflection at 180px, recentres when the pointer leaves the document). Touch follows pointerdown/move without capture, holds about 1.2s after lift-off, then recentres.
+- CRT effects toggle in the header: ON / REDUCED / OFF, saved in localStorage and set on <html data-crt> before first paint. Palette and recolour stay in every mode.
+
 ## Implemented - 2026-10-21 / Equipment item page fits a laptop window; poster cards on faction pages
 
 - On wide screens the schematic height is capped by the visible project-window height (keeping the video ratio) and the module width follows it, so the video and the full spec list fit 1366x768, 1440x900, 1536x864 and 1920x1080 at 125% without scrolling. Specs use two columns on wide modules; a long description sits below the specs and may extend past the fold. Mobile stays stacked. The back link now shares the path line and the title/module spacing is tighter.

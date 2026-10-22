@@ -49,6 +49,8 @@ const character = { slug: 'nobody', name: 'Character Without Art', role: 'Scout'
 const faction = { slug: 'crew', name: 'Crew', description: 'No emblem', type: 'Group', status: '', updatedAt: '2026-10-21T00:00:00Z' };
 const path = location.pathname;
 const page = path.startsWith('/projects/fixture/equipment/') ? items.find(item => path.endsWith('/' + item.slug)) : null;
+// Same recolour filter the root layout provides (app/(frontend)/layout.tsx).
+document.body.insertAdjacentHTML('afterbegin', '<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="crt-tune" color-interpolation-filters="sRGB"><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncR type="table" tableValues="0.039 0.373 0.659 0.831"/><feFuncG type="table" tableValues="0.055 0.541 0.847 0.961"/><feFuncB type="table" tableValues="0.043 0.420 0.690 0.855"/></feComponentTransfer></filter></svg>');
 createRoot(document.getElementById('root')).render(<SoundProvider><WindowManagerProvider><main className="shell">
   {page ? <RouteApplication id="project" title="PROJECT: Fixture Project" navigation={[{ label: 'OVERVIEW', href: '/projects/fixture' }, { label: 'FACTIONS', href: '/projects/fixture#factions' }, { label: 'CHARACTERS', href: '/projects/fixture/characters' }, { label: 'EQUIPMENT', href: '/projects/fixture/equipment' }]}>
     <Directory path={'SYS:/PROJECTS/FIXTURE/EQUIPMENT/' + page.slug.toUpperCase()} title={page.name} compact>

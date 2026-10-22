@@ -1,5 +1,11 @@
 # Changelog
 
+## Changed - 2026-10-22 / CRT readability theme
+
+- New --crt-* tokens replace hard-coded greens (legacy names alias them); IBM Plex Mono via next/font/local; 16px / 1.6 body; glow limited to headings and active items.
+- Removed continuous CRT flicker, watcher grain drift, jitter and interference; the power-on sweep runs once. Scanlines and vignette follow the new CRT effects toggle (on / reduced / off).
+- Added the #crt-tune recolour filter for the watcher and schematic media, window-wide watcher tracking and equipment module contrast (body 7:1 or more, meta 4.5:1 or more). Regression assertions updated; the stale .head path check was replaced with a filter check. Code and CSS only: no database, Blob or media changes.
+
 ## Changed - 2026-10-21 / Equipment item page fits a laptop window; poster cards on faction pages
 
 - On wide screens the schematic height is capped by the visible project-window height (keeping the video ratio) and the module width follows it, so the video and the full spec list fit 1366x768, 1440x900, 1536x864 and 1920x1080 at 125% without scrolling. Specs use two columns on wide modules; a long description sits below the specs and may extend past the fold. Mobile stays stacked. The back link now shares the path line and the title/module spacing is tighter.
