@@ -126,7 +126,8 @@ const { chromium } = require(
     }
     await page.getByRole("heading", { level: 1 }).waitFor();
     assert.equal(await page.locator('.crt').evaluate(el => getComputedStyle(el).pointerEvents), 'none');
-    assert.match(await page.locator('.crt').evaluate(el => getComputedStyle(el).animationName), /crt-flicker/);
+    assert.equal(await page.locator('.crt').evaluate(el => getComputedStyle(el).animationName), 'none', 'no continuous flicker');
+    assert.equal(await page.locator('.crt').evaluate(el => getComputedStyle(el, '::before').animationIterationCount), '1', 'power-on sweep runs once');
     const sound = page.locator('.sound-toggle');
     assert.equal(await sound.getAttribute('aria-pressed'), 'false');
     await sound.click();
@@ -143,14 +144,8 @@ const { chromium } = require(
       "rgb(168, 216, 176)",
       "Original phosphor green must survive CSS extraction",
     );
-    assert.equal(
-      await page
-        .locator(".head path")
-        .first()
-        .evaluate((el) => getComputedStyle(el).stroke),
-      "rgb(114, 255, 98)",
-      "Face outline must be visible",
-    );
+    // (The old `.head path` outline assertion targeted markup removed with the image watcher; check the recolour instead.)
+    assert.match(await page.locator('.watcher').evaluate((el) => getComputedStyle(el).filter), /url\(.*crt-tune/, 'watcher uses the crt-tune filter');
     await page.screenshot({
       path: "test-results/home-desktop.png",
       fullPage: true,
@@ -174,6 +169,9 @@ const { chromium } = require(
     }
     const watcher = page.locator("#watcher");
     await watcher.hover({ position: { x: 100, y: 100 } });
+    // Tracking is window-wide: a pointer far outside the watcher box still steers the eyes.
+    await page.mouse.move(5, 5);
+    await page.waitForFunction(() => /translate\(-/.test(document.querySelector('.watcher-eyes').style.transform));
     await page.waitForFunction(() => document.querySelector("#readout-x")?.textContent !== "000");
     const patronTrigger = page.getByRole('button', { name: '06 PATREON ACCESS' });
     await patronTrigger.hover();

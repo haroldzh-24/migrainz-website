@@ -179,7 +179,8 @@ button {
   justify-content: flex-end;
 }
 
-.sound-toggle {
+.sound-toggle,
+.crt-toggle {
   border: 0;
   padding: 0;
   color: var(--green);
@@ -189,6 +190,7 @@ button {
 }
 
 .sound-toggle:hover,
+.crt-toggle:hover,
 .sound-toggle[aria-pressed="true"] {
   color: var(--hot);
 }

@@ -19,7 +19,7 @@ export default function CrtToggle() {
     try { localStorage.setItem("crt-effects", value); } catch { /* storage may be blocked */ }
   };
   return (
-    <button className="sound-toggle" type="button" onClick={next} aria-label={`CRT effects: ${mode}. Activate to change.`}>
+    <button className="crt-toggle" type="button" onClick={next} aria-label={`CRT effects: ${mode}. Activate to change.`}>
       CRT: {mode.toUpperCase()}
     </button>
   );
