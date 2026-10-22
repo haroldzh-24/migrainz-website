@@ -322,4 +322,20 @@ try {
   }
   await context.close();
   console.log('PASS resize sweep');
+  // Optional review screenshots: CRT_SCREENS=<dir> writes item pages and the Art Viewer for every effects mode.
+  if (process.env.CRT_SCREENS) {
+    const shots = path.resolve(process.env.CRT_SCREENS);
+    await mkdir(shots, { recursive: true });
+    for (const [name, width, height] of [['desktop', 1440, 900], ['mobile', 390, 844]]) for (const mode of ['on', 'reduced', 'off']) {
+      const context = await browser.newContext({ viewport: { width, height }, hasTouch: width < 700 });
+      const open = async (url, seed) => { const page = await context.newPage(); if (seed) await seed(page); await page.goto(base + url); await page.evaluate(value => { document.documentElement.dataset.crt = value; }, mode); return page; };
+      const done = async (page, file) => { await page.waitForTimeout(250); await page.screenshot({ path: path.join(shots, `${file}-${name}-${mode}.png`) }); await page.close(); };
+      let page = await open('/projects/fixture/equipment/laptop'); await page.waitForSelector('.equipment-panel'); await done(page, 'item-poster-fallback');
+      page = await open('/projects/fixture/equipment/with-art'); await page.waitForSelector('.equipment-panel'); await done(page, 'item-concept-art');
+      page = await open('/projects/fixture/equipment/with-art', seedTabs([tab('with-art', 'Equipment With Concept Art', [conceptImage], posterImage)])); await viewer(page).waitFor(); await done(page, 'art-viewer-concept');
+      page = await open('/projects/fixture/equipment/poster-only', seedTabs([tab('poster-only', 'MP5 10MM Company Custom', [], posterImage)])); await viewer(page).waitFor(); await done(page, 'art-viewer-poster-fallback');
+      await context.close();
+    }
+    console.log('Wrote CRT review screenshots to ' + shots);
+  }
 } finally { await browser.close(); server.close(); }
