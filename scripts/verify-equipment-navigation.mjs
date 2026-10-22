@@ -224,15 +224,15 @@ try {
         const lum = ([r, g, b]) => { const c = [r, g, b].map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
         const panel = document.querySelector('.equipment-panel'), bg = rgb(getComputedStyle(panel).backgroundColor);
         const probe = (name, el) => { const style = getComputedStyle(el), [r, g, b, a = 1] = rgb(style.color); const alpha = a * parseFloat(style.opacity); const mixed = [r, g, b].map((v, i) => v * alpha + bg[i] * (1 - alpha));
-          const [hi, lo] = [Math.max(lum(mixed), lum(bg)), Math.min(lum(mixed), lum(bg))]; return { name, color: style.color, contrast: (hi + 0.05) / (lo + 0.05), green: mixed[1] > mixed[0] * 1.3 && mixed[1] > mixed[2] * 1.3 && mixed[1] >= 120 }; };
+          const [hi, lo] = [Math.max(lum(mixed), lum(bg)), Math.min(lum(mixed), lum(bg))]; return { name, color: style.color, contrast: (hi + 0.05) / (lo + 0.05), green: mixed[1] > mixed[0] * 1.1 && mixed[1] > mixed[2] * 1.1 && mixed[1] >= 130 }; };
         const all = [...panel.querySelectorAll('dt')].map((el, i) => probe('label ' + i, el)).concat([...panel.querySelectorAll('dd')].map((el, i) => probe('value ' + i, el)), [probe('description', panel.querySelector('.lede')), probe('category line', panel.querySelector('.eyebrow'))]);
         const module = getComputedStyle(document.querySelector('.equipment-module'));
         return { all, bg: getComputedStyle(panel).backgroundColor, inProjectWindow: Boolean(document.querySelector('.project-application .equipment-module')), border: module.borderTopColor };
       });
       assert(readable.inProjectWindow, 'fixture must render the module inside .project-application');
-      assert.equal(readable.bg, 'rgb(1, 3, 0)');
-      for (const item of readable.all) { assert(item.contrast >= 4.5, item.name + ' contrast ' + item.contrast.toFixed(2) + ' (' + item.color + ')'); assert(item.green, item.name + ' is not green: ' + item.color); }
-      assert.match(readable.border, /rgba?\(114, 255, 98/);
+      assert.equal(readable.bg, 'rgb(10, 14, 11)');
+      for (const item of readable.all) { const need = /^(label|category)/.test(item.name) ? 4.5 : 7; assert(item.contrast >= need, item.name + ' contrast ' + item.contrast.toFixed(2) + ' (' + item.color + ')'); assert(item.green, item.name + ' is not green: ' + item.color); }
+      assert.match(readable.border, /rgba?\(140, 220, 160/);
       console.log(`  ${key} ${shot} panel contrast: ` + ['label 0', 'value 0', 'description', 'category line'].map(n => n + ' ' + readable.all.find(item => item.name === n).contrast.toFixed(1)).join(', '));
       assert.notEqual(copy.color, copy.valueColor); assert.match(copy.font, /monospace|Courier/i); assert(copy.ratio >= 1.6, 'line height ' + copy.ratio);
       assert.deepEqual(copy.order.slice(0, 3), ['eyebrow', 'lede', 'equipment-specifications']);

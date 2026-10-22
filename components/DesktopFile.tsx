@@ -16,6 +16,8 @@ type Props = Classified & {
   subtitle?: string;
   thumbnail?: ComicPage;
   imagePreview?: boolean;
+  /** The thumbnail is a schematic poster, not artwork: it gets the terminal recolour. */
+  schematicThumbnail?: boolean;
   viewerTab?: ViewerTab;
   /** Keep the viewer tab's thumbnail but navigate to href instead of opening the Art Viewer. */
   opensPage?: boolean;
@@ -27,7 +29,7 @@ export default function DesktopFile(props: Props) {
   return <PublicDesktopFile {...props} />;
 }
 
-function PublicDesktopFile({ label, type, href, subtitle, viewerTab, opensPage, thumbnail, imagePreview, metadata = [] }: Props) {
+function PublicDesktopFile({ label, type, href, subtitle, viewerTab, opensPage, thumbnail, imagePreview, schematicThumbnail, metadata = [] }: Props) {
   const { openViewerTab } = useWindowManager();
   const id = useId();
   const root = useRef<HTMLDivElement>(null);
@@ -80,7 +82,7 @@ function PublicDesktopFile({ label, type, href, subtitle, viewerTab, opensPage, 
         dismiss();
         if (viewerTab && !opensPage) { event.preventDefault(); openViewerTab(viewerTab); }
       }}>
-      {(viewerTab || imagePreview) ? <DirectoryThumbnail eager={imagePreview} image={thumbnail ?? viewerTab?.images.find(image => image.src && !/\.pdf(?:\?|$)/i.test(image.src))} label={label} /> : <span className="desktop-file-icon" aria-hidden="true">{type}</span>}
+      {(viewerTab || imagePreview) ? <DirectoryThumbnail schematic={schematicThumbnail} eager={imagePreview} image={thumbnail ?? viewerTab?.images.find(image => image.src && !/\.pdf(?:\?|$)/i.test(image.src))} label={label} /> : <span className="desktop-file-icon" aria-hidden="true">{type}</span>}
       <span className="desktop-file-copy"><strong>{label}</strong>{subtitle && <small>{subtitle}</small>}</span>
     </Link>
     <button className="desktop-file-info" type="button" aria-label={`Properties for ${label}`} aria-expanded={open} aria-describedby={open ? id : undefined} aria-controls={open ? id : undefined}

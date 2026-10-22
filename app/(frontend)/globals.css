@@ -945,7 +945,7 @@ button {
   gap: 16px;
 }
 
-.classified-placeholder { display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: 18px; border: 1px solid var(--line); background: #151a15; color: var(--green); }
+.classified-placeholder { display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: 18px; border: 1px solid var(--line); background: var(--crt-panel); color: var(--green); }
 .classified-placeholder-label { font: 11px monospace; overflow-wrap: anywhere; }
 .classified-placeholder-bars { display: grid; gap: 7px; width: 100%; }
 .classified-placeholder-bars i { display: block; width: 72%; height: 12px; background: var(--green); }
@@ -958,7 +958,7 @@ button {
 .patron-locked-trigger:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
 .classified-placeholder--patron { background: #959a90; color: #101510; }
 .classified-placeholder--patron .classified-placeholder-bars i { background: #000; }
-.classified-placeholder--patron.classified-placeholder--media { background: #171b17; color: var(--green); border: 4px solid var(--green); }
+.classified-placeholder--patron.classified-placeholder--media { background: var(--crt-panel); color: var(--green); border: 4px solid var(--green); }
 .classified-image { display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .classified-x { display: block; color: var(--green); font: bold 72px/1 monospace; text-align: center; }
 .patreon-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-block: 16px; }
@@ -1836,24 +1836,25 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
 }
 .project-app-content .directory-compact h1 { font-size: clamp(20px, 2.6vw, 30px); margin: 2px 0 6px; line-height: 1.1; }
 .equipment-card { display: flex; align-items: flex-start; gap: 1rem; border: 1px solid var(--line, #234b2f); padding: 1rem; min-width: 0; overflow-wrap: anywhere; }
-.equipment-card > img { width: 80px; height: 100px; object-fit: contain; background: #111; flex-shrink: 0; }
+.equipment-card > img { width: 80px; height: 100px; object-fit: contain; background: var(--crt-bg); flex-shrink: 0; }
+/* Schematic posters (no concept art on file) get the terminal recolour; concept art never does. */
+.equipment-card > img[data-schematic], .directory-thumbnail img[data-schematic] { filter: url(#crt-tune) drop-shadow(var(--crt-glow-filter)); }
 .equipment-card > div { min-width: 0; flex: 1; }
 .equipment-card h3 { margin: 0; }
 /* Schematic video and specs read as one terminal module. --schematic-bg is the background the encoded
    video actually decodes to (sampled from rendered pixels); the faint grid continues into the panel. */
-/* Dedicated --term-* tokens: .project-application redefines --green/--green2/--hot/--line for the light
-   window theme, so the module must not read those. Fixed to the root terminal palette. */
-.equipment-module { --term-green: #72ff62; --term-green2: #42c93a; --term-hot: #baffaa; --term-line: rgba(var(--crt-border-rgb), 0.32);
-  --schematic-bg: #010300; --schematic-grid: var(--term-green);
-  container-type: inline-size; margin: 1rem 0; border: 1px solid var(--term-line); background: var(--schematic-bg); color: var(--term-green); text-shadow: none;
+/* The module reads --crt-* directly: .project-application redefines the legacy --green/--hot/--line names for the
+   light window theme, but never --crt-*. Meta (labels, category) is dim, values bright, description plain text. */
+.equipment-module { --schematic-bg: var(--crt-bg); --schematic-grid: var(--crt-text);
+  container-type: inline-size; margin: 1rem 0; border: 1px solid var(--crt-border); background: var(--schematic-bg); color: var(--crt-text); text-shadow: none;
   /* Width follows the video, whose height is capped by --video-max-h (set from the visible window height). */
   width: min(100%, calc(var(--video-max-h, 100000px) * var(--schematic-ratio, 2))); }
 .equipment-schematic-display { position: relative; overflow: hidden; background: var(--schematic-bg); line-height: 0; user-select: none; -webkit-user-select: none; }
-.equipment-schematic-display > img, .equipment-schematic-display > video { position: absolute; inset: 0; width: 100%; height: 100%; display: block; object-fit: contain; -webkit-touch-callout: none; }
+.equipment-schematic-display > img, .equipment-schematic-display > video { filter: url(#crt-tune) drop-shadow(var(--crt-glow-filter)); position: absolute; inset: 0; width: 100%; height: 100%; display: block; object-fit: contain; -webkit-touch-callout: none; }
 /* The video takes no pointer input, so hover/tap/right-click never reach a media UI. */
 .equipment-schematic-display > video { pointer-events: none; opacity: 0; }
 .equipment-schematic-display[data-playing] > video { opacity: 1; }
-.equipment-panel { padding: .9rem 1rem 1rem; font-family: "Courier New", Courier, monospace; color: var(--term-green);
+.equipment-panel { position: relative; padding: .9rem 1rem 1rem; font-family: var(--crt-font); color: var(--crt-text); box-shadow: var(--crt-vignette);
   background-color: var(--schematic-bg);
   background-image:
     linear-gradient(to right, color-mix(in srgb, var(--schematic-bg), var(--schematic-grid) 8.5%) 1px, transparent 1px),
@@ -1861,15 +1862,18 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
     linear-gradient(to right, color-mix(in srgb, var(--schematic-bg), var(--schematic-grid) 4.5%) 1px, transparent 1px),
     linear-gradient(to bottom, color-mix(in srgb, var(--schematic-bg), var(--schematic-grid) 4.5%) 1px, transparent 1px);
   background-size: 12.5cqw 12.5cqw, 12.5cqw 12.5cqw, 3.125cqw 3.125cqw, 3.125cqw 3.125cqw; }
+/* Static scanlines over the panel text, never over the schematic video or poster. */
+.equipment-panel::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(0, 0, 0, var(--crt-scanline-alpha)) 0 2px, transparent 2px 4px); }
 .equipment-panel > :first-child { margin-top: 0; }
 .equipment-panel > :last-child, .equipment-panel .equipment-specifications { margin-bottom: 0; }
-.equipment-panel .eyebrow { color: color-mix(in srgb, var(--term-green2) 78%, var(--schematic-bg)); }
-/* Description: a softer green than the spec values and a comfortable measure so long text stays readable. */
-.equipment-panel .lede { max-width: 74ch; margin: .6rem 0; color: color-mix(in srgb, var(--term-green2) 88%, var(--term-hot)); font-size: .85rem; line-height: 1.7; letter-spacing: .01em; }
+.equipment-panel .eyebrow { color: var(--crt-dim); }
+/* Description is body text: plain, a comfortable measure and line height. */
+.equipment-panel .lede { max-width: 70ch; margin: .6rem 0; color: var(--crt-text); font-size: 1rem; line-height: 1.6; letter-spacing: .01em; }
 .equipment-panel .equipment-specifications { margin-top: .75rem; }
 .equipment-panel .equipment-specifications > div { border-bottom: 1px dotted rgba(var(--crt-border-rgb), .22); }
-.equipment-panel .equipment-specifications dt { color: color-mix(in srgb, var(--term-green2) 78%, var(--schematic-bg)); opacity: 1; }
-.equipment-panel .equipment-specifications dd { color: var(--term-hot); }
+.equipment-panel .equipment-specifications dt { color: var(--crt-dim); opacity: 1; }
+.equipment-panel .equipment-specifications dd { color: var(--crt-bright); }
+.equipment-panel a { color: var(--crt-accent); }
 /* Wide modules: specs in two columns, the description below them (it may extend past the fold). */
 @container (min-width: 420px) {
   .equipment-panel { display: flex; flex-direction: column; padding: .65rem 1rem .8rem; }

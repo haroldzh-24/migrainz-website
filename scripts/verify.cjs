@@ -140,7 +140,7 @@ const { chromium } = require(
     );
     assert.equal(
       await page.locator("body").evaluate((el) => getComputedStyle(el).color),
-      "rgb(114, 255, 98)",
+      "rgb(168, 216, 176)",
       "Original phosphor green must survive CSS extraction",
     );
     assert.equal(
