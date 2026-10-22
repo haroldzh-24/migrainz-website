@@ -1,5 +1,10 @@
 # Changelog
 
+## Changed - 2026-10-21 / Equipment item page fits a laptop window; poster cards on faction pages
+
+- On wide screens the schematic height is capped by the visible project-window height (keeping the video ratio) and the module width follows it, so the video and the full spec list fit 1366x768, 1440x900, 1536x864 and 1920x1080 at 125% without scrolling. Specs use two columns on wide modules; a long description sits below the specs and may extend past the fold. Mobile stays stacked. The back link now shares the path line and the title/module spacing is tighter.
+- Equipment cards on faction pages fall back to the schematic poster like the Equipment tab (shared listing shape in lib/content/queries.ts). Cards also appear on character pages, which already had the fallback. Code only.
+
 ## Fixed - 2026-10-21 / Schematic panel readable inside project windows
 
 - The equipment module now uses dedicated terminal colour tokens instead of --green/--green2/--hot, which the light .project-application theme redefines to grey and near-black (labels were rgb(68,68,68) and values rgb(17,17,17) on the panel). The fixture now renders the page inside .project-application and asserts at least 4.5:1 contrast and green hue for labels, values, description and category line. Code only.

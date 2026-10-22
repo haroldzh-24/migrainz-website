@@ -141,14 +141,13 @@ export const getFactionContents = cache(async (project: number, faction: number)
       select: { slug: true, name: true, role: true, description: true, images: true, updatedAt: true } }),
     findListing(cms, { collection: 'equipment', overrideAccess: false, depth: 1, pagination: false, sort: ['order', 'name'],
       where: { and: [publicWhere, { project: { equals: project } }, { faction: { equals: faction } }] },
-      select: { slug: true, name: true, category: true, description: true, images: true, updatedAt: true } }),
+      select: equipmentListingSelect }),
   ]);
   return {
     characters: characters.docs.map(character => ({ ...classificationOf(character), slug: character.slug, name: character.name,
       role: character.role || '', description: character.description || '', images: images(character.images),
       updated: character.updatedAt.slice(0, 10) })),
-    equipment: equipment.docs.map(item => ({ ...classificationOf(item), slug: item.slug, name: item.name, category: item.category || '',
-      description: item.description || '', images: images(item.images), updated: item.updatedAt.slice(0, 10) })),
+    equipment: equipment.docs.map(equipmentListing),
   };
 });
 
@@ -161,6 +160,12 @@ export function equipmentSpecifications(item: Equipment) {
 function schematicPoster(item: Pick<Equipment, 'schematicEnabled' | 'schematicPoster'>) {
   const poster = item.schematicEnabled ? image(item.schematicPoster) : undefined;
   return poster && !poster.classification && poster.src ? poster : undefined;
+}
+// Fields every equipment card needs, including the poster fallback for items without concept art.
+const equipmentListingSelect = { slug: true, name: true, category: true, description: true, images: true, schematicEnabled: true, schematicPoster: true, updatedAt: true } as const;
+function equipmentListing(item: Pick<Equipment, 'slug' | 'name' | 'category' | 'description' | 'images' | 'schematicEnabled' | 'schematicPoster' | 'updatedAt'> & Classified) {
+  return { ...classificationOf(item), slug: item.slug, name: item.name, category: item.category || '', description: item.description || '',
+    images: images(item.images), poster: schematicPoster(item), updated: item.updatedAt.slice(0, 10) };
 }
 function equipmentSummary(item: Equipment) {
   return { slug: item.slug, name: item.name, category: item.category || item.equipmentType || '', description: item.description || '',
@@ -280,8 +285,6 @@ export const getArchiveItems = cache(async () => {
 export const getEquipmentDirectory = cache(async (project: number) => {
   const cms = await getPayload({ config });
   const result = await findListing(cms, { collection: 'equipment', overrideAccess: false, depth: 1, pagination: false,
-    where: { and: [publicWhere, { project: { equals: project } }] }, sort: ['order', 'name'],
-    select: { slug: true, name: true, category: true, description: true, images: true, schematicEnabled: true, schematicPoster: true, updatedAt: true } });
-  return result.docs.map(item => ({ ...classificationOf(item), slug: item.slug, name: item.name, category: item.category || '',
-    description: item.description || '', images: images(item.images), poster: schematicPoster(item), updated: item.updatedAt.slice(0, 10) }));
+    where: { and: [publicWhere, { project: { equals: project } }] }, sort: ['order', 'name'], select: equipmentListingSelect });
+  return result.docs.map(equipmentListing);
 });

@@ -1879,6 +1879,18 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
 .equipment-specifications dt { opacity: .7; }
 .equipment-specifications dd { margin: 0; white-space: pre-wrap; }
 .equipment-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 1rem; }
+/* Item page: tighten the space above the module (path line, back link, title). */
+.directory-compact .directory-path { margin: 0; }
+.directory-compact .section-link { margin: 4px 0 0; }
+@media (min-width: 701px) {
+  /* Back link shares the path line; the title and module sit right under it. */
+  .directory-compact { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 16px; align-items: baseline; }
+  .directory-compact > * { grid-column: 1 / -1; }
+  .directory-compact .directory-path { grid-column: 1; }
+  .directory-compact .section-link { margin: 0; grid-column: 2; grid-row: 1; }
+  .directory-compact .equipment-module { margin-top: .5rem; }
+}
+.project-app-content .directory-compact h1 { font-size: clamp(20px, 2.6vw, 30px); margin: 2px 0 6px; line-height: 1.1; }
 .equipment-card { display: flex; align-items: flex-start; gap: 1rem; border: 1px solid var(--line, #234b2f); padding: 1rem; min-width: 0; overflow-wrap: anywhere; }
 .equipment-card > img { width: 80px; height: 100px; object-fit: contain; background: #111; flex-shrink: 0; }
 .equipment-card > div { min-width: 0; flex: 1; }
@@ -1889,7 +1901,9 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
    window theme, so the module must not read those. Fixed to the root terminal palette. */
 .equipment-module { --term-green: #72ff62; --term-green2: #42c93a; --term-hot: #baffaa; --term-line: rgba(114, 255, 98, 0.32);
   --schematic-bg: #010300; --schematic-grid: var(--term-green);
-  container-type: inline-size; margin: 1.5rem 0; border: 1px solid var(--term-line); background: var(--schematic-bg); color: var(--term-green); text-shadow: none; }
+  container-type: inline-size; margin: 1rem 0; border: 1px solid var(--term-line); background: var(--schematic-bg); color: var(--term-green); text-shadow: none;
+  /* Width follows the video, whose height is capped by --video-max-h (set from the visible window height). */
+  width: min(100%, calc(var(--video-max-h, 100000px) * var(--schematic-ratio, 2))); }
 .equipment-schematic-display { position: relative; overflow: hidden; background: var(--schematic-bg); line-height: 0; user-select: none; -webkit-user-select: none; }
 .equipment-schematic-display > img, .equipment-schematic-display > video { position: absolute; inset: 0; width: 100%; height: 100%; display: block; object-fit: contain; -webkit-touch-callout: none; }
 /* The video takes no pointer input, so hover/tap/right-click never reach a media UI. */
@@ -1912,5 +1926,13 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
 .equipment-panel .equipment-specifications > div { border-bottom: 1px dotted rgba(114, 255, 98, .22); }
 .equipment-panel .equipment-specifications dt { color: color-mix(in srgb, var(--term-green2) 78%, var(--schematic-bg)); opacity: 1; }
 .equipment-panel .equipment-specifications dd { color: var(--term-hot); }
+/* Wide modules: specs in two columns, the description below them (it may extend past the fold). */
+@container (min-width: 420px) {
+  .equipment-panel { display: flex; flex-direction: column; padding: .65rem 1rem .8rem; }
+  .equipment-panel .eyebrow { order: 1; margin: 0 0 .35rem; }
+  .equipment-panel .equipment-specifications { order: 2; display: grid; grid-template-columns: 1fr 1fr; column-gap: 2rem; margin-top: 0; }
+  .equipment-panel .equipment-specifications > div { grid-template-columns: minmax(0, 9.6rem) minmax(0, 1fr); gap: .6rem; padding: .28rem 0; }
+  .equipment-panel .lede { order: 3; margin: .7rem 0 0; }
+}
 @media (max-width: 480px) { .equipment-panel { padding: .7rem .75rem .8rem; } .equipment-panel .equipment-specifications > div { grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); gap: .6rem; } }
 @media (max-width: 480px) { .equipment-card { flex-direction: column; } .equipment-card > img { width: 100%; height: 140px; } }
