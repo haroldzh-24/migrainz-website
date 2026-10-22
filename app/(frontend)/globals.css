@@ -97,6 +97,7 @@
   --crt-text-rgb: 168, 216, 176;
   --crt-border-rgb: 140, 220, 160;
   --crt-glow: 0 0 4px rgba(180, 245, 195, 0.35);
+  --crt-glow-filter: 0 0 4px rgba(180, 245, 195, 0.35);
   /* CRT effect strengths; html[data-crt] switches them (on / reduced / off). */
   --crt-scanline-alpha: 0.06;
   --crt-vignette: inset 0 0 60px rgba(0, 0, 0, 0.5);
@@ -139,7 +140,7 @@ body {
 :where(h1, h2, h3, .brand) { color: var(--crt-bright); text-shadow: var(--crt-glow); }
 .retro-window, .project-application { --crt-glow: none; }
 html[data-crt="reduced"] { --crt-scanline-alpha: 0.03; --crt-vignette: none; }
-html[data-crt="off"] { --crt-scanline-alpha: 0; --crt-vignette: none; --crt-glow: none; }
+html[data-crt="off"] { --crt-scanline-alpha: 0; --crt-vignette: none; --crt-glow: none; --crt-glow-filter: 0 0 0 transparent; }
 
 a {
   color: inherit;
@@ -213,49 +214,30 @@ button {
   inset: 0;
   pointer-events: none;
   z-index: 20;
-
-  background: repeating-linear-gradient(
-    to bottom,
-    rgba(255, 255, 255, 0.018) 0,
-    rgba(255, 255, 255, 0.018) 1px,
-    transparent 1px,
-    transparent 4px
-  );
-
-  mix-blend-mode: screen;
-  opacity: 0.38;
-  box-shadow: inset 0 0 70px rgba(var(--crt-border-rgb), 0.035);
-  animation: crt-flicker 17s steps(1, end) infinite;
+  /* Static scanlines; strength follows html[data-crt]. Windows (comic reader, Art Viewer) sit above this layer. */
+  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, var(--crt-scanline-alpha)) 0 2px, transparent 2px 4px);
+  overflow: hidden;
 }
 
+/* One-time power-on sweep; no continuous flicker. */
 .crt::before {
   content: "";
   position: absolute;
   inset: -100% 0;
-  background: linear-gradient(to bottom, transparent 49.8%, rgba(255, 255, 255, 0.045) 50%, transparent 50.2%);
-  animation: crt-sweep 14s linear infinite;
+  background: linear-gradient(to bottom, transparent 49.8%, rgba(var(--crt-text-rgb), 0.08) 50%, transparent 50.2%);
+  animation: crt-sweep 1.6s ease-out 1 both;
 }
 
 .crt::after {
   content: "";
   position: absolute;
   inset: 0;
-
-  background: radial-gradient(
-    circle at center,
-    transparent 50%,
-    rgba(0, 0, 0, 0.55) 100%
-  );
+  box-shadow: var(--crt-vignette);
 }
 
 @keyframes crt-sweep {
-  to { transform: translateY(200%); }
-}
-
-@keyframes crt-flicker {
-  0%, 96%, 100% { opacity: 0.38; }
-  96.2% { opacity: 0.34; }
-  96.4% { opacity: 0.39; }
+  from { transform: translateY(0); opacity: 1; }
+  to { transform: translateY(100%); opacity: 0; }
 }
 
 /* HERO */
@@ -648,7 +630,7 @@ button {
 .art-viewer-meta small { color: #444; }
 .art-viewer-meta p { margin: 3px 0 0; max-height: 3.2em; overflow: auto; }
 .art-viewer-window[data-maximized="true"] .art-viewer-meta { display: none; }
-.terminal-panel { border: 1px solid var(--line); min-width: 0; padding: 18px; background: rgba(var(--crt-text-rgb), 0.018); }
+.terminal-panel { border: 1px solid var(--line); box-shadow: var(--crt-vignette); min-width: 0; padding: 18px; background: rgba(var(--crt-text-rgb), 0.018); }
 .terminal-panel-head { display: flex; justify-content: space-between; align-items: baseline; gap: 14px; padding-bottom: 13px; border-bottom: 1px solid var(--line); }
 .terminal-panel-head h2 { margin: 0; color: var(--hot); font-size: 16px; letter-spacing: 0.1em; }
 .terminal-panel-head a, .terminal-panel-head > span { color: var(--dim); font-size: 10px; white-space: nowrap; }
@@ -757,91 +739,36 @@ button {
 .watcher-static {
   --watcher-grain-opacity: 0.12;
   --watcher-grain-size: 96px;
-  --watcher-scanline-opacity: 0.045;
-  --watcher-interference-opacity: 0.09;
-  --watcher-interference-period: 6.8s;
-  --watcher-jitter-period: 3.7s;
   position: absolute;
-  /* Overscan keeps tiny signal shifts from exposing clean display edges. */
-  inset: -3px;
+  inset: 0;
   z-index: 1;
   overflow: hidden;
   pointer-events: none;
   contain: paint;
-  animation: watcher-signal-jitter var(--watcher-jitter-period) steps(1, end) infinite;
 }
 
+/* Static texture only: no grain drift, jitter or interference bursts. */
 .watcher-static::before,
-.watcher-static::after,
-.watcher-interference {
+.watcher-static::after {
   content: "";
   position: absolute;
   pointer-events: none;
 }
 
 .watcher-static::before {
-  inset: calc(-1 * var(--watcher-grain-size));
+  inset: 0;
   background: url("/images/watcher/crt-noise.png") repeat;
   background-size: var(--watcher-grain-size) var(--watcher-grain-size);
   opacity: var(--watcher-grain-opacity);
-  /* Pre-rasterized tile: no runtime SVG noise filter on any browser. */
-  animation: watcher-grain 8s linear infinite;
 }
 
 .watcher-static::after {
   inset: 0;
-  background: repeating-linear-gradient(
-    to bottom, transparent 0 3px, #a4c99a 3px 5px
-  );
-  opacity: var(--watcher-scanline-opacity);
+  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, var(--crt-scanline-alpha)) 0 2px, transparent 2px 4px);
 }
 
-.watcher-interference {
-  inset: 0 -2px;
-  background: linear-gradient(
-    to bottom, transparent 43%, #9fbf96 49%, #c0d6b8 50%, transparent 57%
-  );
-  opacity: 0;
-  animation: watcher-interference var(--watcher-interference-period) linear infinite;
-}
-
-@keyframes watcher-grain {
-  from { transform: translate(0, 0); }
-  to { transform: translate(var(--watcher-grain-size), var(--watcher-grain-size)); }
-}
-
-/* Signal-only instability: no changes to artwork or tracking transforms.
-   Irregular holds avoid a regular vibration; bursts last about 40–75ms. */
-@keyframes watcher-signal-jitter {
-  0%, 100% { transform: translateX(0.5px); }
-  7% { transform: translateX(-0.75px); }
-  19% { transform: translateX(1px); }
-  27% { transform: translateX(-0.5px); }
-  38% { transform: translateX(0.75px); }
-  46% { transform: translateX(-1.25px); }
-  58% { transform: translateX(0.5px); }
-  71% { transform: translateX(3px); }
-  72.2% { transform: translateX(-2px); }
-  74% { transform: translateX(0.75px); }
-  83% { transform: translateX(-0.5px); }
-  94% { transform: translateX(1.25px); }
-}
-
-@keyframes watcher-interference {
-  0%, 84% { opacity: 0; transform: translate(0, -100%); }
-  86% { opacity: var(--watcher-interference-opacity); transform: translate(0, -80%); }
-  90% { transform: translate(0, 0); }
-  90.3% { transform: translate(3px, 6%); }
-  90.6% { transform: translate(-2px, 12%); }
-  91% { transform: translate(0, 20%); }
-  94% { opacity: var(--watcher-interference-opacity); transform: translate(0, 80%); }
-  96%, 100% { opacity: 0; transform: translate(0, 100%); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .watcher-static { animation: none; transform: none; }
-  .watcher-static::before { animation: none; }
-  .watcher-interference { animation: none; opacity: 0; }
+/* Recolour to the terminal palette first, then glow. Applied once on the container, not per image. */
+.watcher { filter: url(#crt-tune) drop-shadow(var(--crt-glow-filter)); }
 }
 
 .watcher-label,
@@ -1481,10 +1408,6 @@ footer {
   .activity-feed p {
     grid-template-columns: 52px 1fr auto;
   }
-
-  .crt {
-    opacity: 0.22;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1499,10 +1422,7 @@ footer {
     transform: none !important;
   }
 
-  .crt,
-  .crt::before {
-    animation: none !important;
-  }
+  .crt::before { display: none; }
 
 }
 
