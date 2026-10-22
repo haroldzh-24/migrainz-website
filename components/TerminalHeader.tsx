@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useSound } from "@/components/SoundProvider";
+import CrtToggle from "@/components/CrtToggle";
 
 export default function TerminalHeader() {
   const [clock, setClock] = useState("--:--:--");
@@ -39,6 +40,7 @@ export default function TerminalHeader() {
         >
           SND: {enabled ? "ON" : "OFF"}
         </button>
+        <CrtToggle />
       </div>
     </header>
   );

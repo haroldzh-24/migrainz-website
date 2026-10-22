@@ -85,13 +85,30 @@
 .content-gallery figcaption { color: var(--green2); font-size: 12px; margin-top: 8px; }
 
 :root {
-  --bg: #010301;
-  --panel: #030803;
-  --green: #72ff62;
-  --green2: #42c93a;
-  --dim: #247d21;
-  --hot: #baffaa;
-  --line: rgba(114, 255, 98, 0.32);
+  /* Terminal theme: the single source of colour. The legacy names below are aliases. */
+  --crt-bg: #0a0e0b;
+  --crt-panel: #0f1511;
+  --crt-text: #a8d8b0;
+  --crt-bright: #d4f5da;
+  --crt-mid: #7fb08a;
+  --crt-dim: #5f8a6b;
+  --crt-border: rgba(140, 220, 160, 0.18);
+  --crt-accent: #e8b45a;
+  --crt-text-rgb: 168, 216, 176;
+  --crt-border-rgb: 140, 220, 160;
+  --crt-glow: 0 0 4px rgba(180, 245, 195, 0.35);
+  /* CRT effect strengths; html[data-crt] switches them (on / reduced / off). */
+  --crt-scanline-alpha: 0.06;
+  --crt-vignette: inset 0 0 60px rgba(0, 0, 0, 0.5);
+  --crt-font: var(--font-plex-mono), "Courier New", Courier, monospace;
+
+  --bg: var(--crt-bg);
+  --panel: var(--crt-panel);
+  --green: var(--crt-text);
+  --green2: var(--crt-mid);
+  --dim: var(--crt-dim);
+  --hot: var(--crt-bright);
+  --line: var(--crt-border);
 
   --mx: 0;
   --my: 0;
@@ -103,19 +120,26 @@
 
 html {
   scroll-behavior: smooth;
-  background: #010301;
+  background: var(--crt-bg);
   color-scheme: dark;
 }
 
 body {
   margin: 0;
   min-height: 100%;
-  background: #010301;
+  background: var(--crt-bg);
   color: var(--green);
-  font-family: "Courier New", Courier, monospace;
-  line-height: 1.45;
-  letter-spacing: 0.02em;
+  font-family: var(--crt-font);
+  font-size: 16px;
+  line-height: 1.6;
+  letter-spacing: 0.01em;
 }
+
+/* Headings and the brand glow; body text does not. Win95 and light project windows turn the glow off. */
+:where(h1, h2, h3, .brand) { color: var(--crt-bright); text-shadow: var(--crt-glow); }
+.retro-window, .project-application { --crt-glow: none; }
+html[data-crt="reduced"] { --crt-scanline-alpha: 0.03; --crt-vignette: none; }
+html[data-crt="off"] { --crt-scanline-alpha: 0; --crt-vignette: none; --crt-glow: none; }
 
 a {
   color: inherit;
@@ -200,7 +224,7 @@ button {
 
   mix-blend-mode: screen;
   opacity: 0.38;
-  box-shadow: inset 0 0 70px rgba(114, 255, 98, 0.035);
+  box-shadow: inset 0 0 70px rgba(var(--crt-border-rgb), 0.035);
   animation: crt-flicker 17s steps(1, end) infinite;
 }
 
@@ -260,7 +284,7 @@ button {
   color: var(--hot);
   letter-spacing: -0.07em;
 
-  text-shadow: 0 0 14px rgba(155, 212, 125, 0.13);
+  text-shadow: 0 0 14px rgba(var(--crt-text-rgb), 0.13);
 }
 
 .lede {
@@ -624,7 +648,7 @@ button {
 .art-viewer-meta small { color: #444; }
 .art-viewer-meta p { margin: 3px 0 0; max-height: 3.2em; overflow: auto; }
 .art-viewer-window[data-maximized="true"] .art-viewer-meta { display: none; }
-.terminal-panel { border: 1px solid var(--line); min-width: 0; padding: 18px; background: rgba(155, 212, 125, 0.018); }
+.terminal-panel { border: 1px solid var(--line); min-width: 0; padding: 18px; background: rgba(var(--crt-text-rgb), 0.018); }
 .terminal-panel-head { display: flex; justify-content: space-between; align-items: baseline; gap: 14px; padding-bottom: 13px; border-bottom: 1px solid var(--line); }
 .terminal-panel-head h2 { margin: 0; color: var(--hot); font-size: 16px; letter-spacing: 0.1em; }
 .terminal-panel-head a, .terminal-panel-head > span { color: var(--dim); font-size: 10px; white-space: nowrap; }
@@ -672,7 +696,7 @@ button {
 
 .terminal-nav a:hover,
 .terminal-nav a:focus-visible {
-  background: rgba(155, 212, 125, 0.08);
+  background: rgba(var(--crt-text-rgb), 0.08);
   color: var(--hot);
   padding-left: 16px;
   outline: none;
@@ -687,7 +711,7 @@ button {
   border: 1px solid var(--line);
 
   background:
-    linear-gradient(145deg, rgba(155, 212, 125, 0.035), transparent 45%),
+    linear-gradient(145deg, rgba(var(--crt-text-rgb), 0.035), transparent 45%),
     #060a06;
 
   overflow: hidden;
@@ -887,7 +911,7 @@ button {
 .project-status {
   border: 1px solid var(--line);
   padding: 26px;
-  background: rgba(155, 212, 125, 0.018);
+  background: rgba(var(--crt-text-rgb), 0.018);
 }
 
 .status-title {
@@ -1138,7 +1162,7 @@ button {
     linear-gradient(
       135deg,
       transparent 40%,
-      rgba(155, 212, 125, 0.14) 41% 42%,
+      rgba(var(--crt-text-rgb), 0.14) 41% 42%,
       transparent 43%
     ),
     linear-gradient(45deg, #081208, #030503);
@@ -1158,7 +1182,7 @@ button {
     repeating-linear-gradient(
       90deg,
       transparent 0 22px,
-      rgba(155, 212, 125, 0.06) 23px 24px
+      rgba(var(--crt-text-rgb), 0.06) 23px 24px
     ),
     linear-gradient(#071007, #020402);
 }
@@ -1307,8 +1331,8 @@ body::before {
   z-index: -1;
 
   background:
-    radial-gradient(circle at 50% 0%, rgba(32, 120, 28, 0.08), transparent 38%),
-    #010301;
+    radial-gradient(circle at 50% 0%, rgba(var(--crt-border-rgb), 0.05), transparent 38%),
+    var(--crt-bg);
 }
 
 main,
@@ -1319,7 +1343,7 @@ footer {
 
 ::selection {
   background: var(--green);
-  color: #010301;
+  color: var(--crt-bg);
 }
 
 /* TABLET */
@@ -1577,7 +1601,7 @@ button:disabled {
   font-size: 10px;
 }
 a.directory-row:hover {
-  background: rgba(114, 255, 98, 0.06);
+  background: rgba(var(--crt-border-rgb), 0.06);
   color: var(--hot);
 }
 .character-record {
@@ -1614,7 +1638,7 @@ a.directory-row:hover {
 .nav-trigger:focus-visible {
   padding-left: 16px;
   color: var(--hot);
-  background: rgba(155, 212, 125, 0.08);
+  background: rgba(var(--crt-text-rgb), 0.08);
 }
 .promo-window {
   position: absolute;
@@ -1871,7 +1895,7 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
   .startup-sequence[data-phase="announcement"] .startup-window { width: calc(100% - 24px); }
 }
 /* Preserve the existing green classification treatment inside neutral applications. */
-.project-application .classified-placeholder { --green: #72ff62; --green2: #42c93a; }
+.project-application .classified-placeholder { --green: var(--crt-text); --green2: var(--crt-mid); }
 
 /* Optional Equipment records: specifications, assignments and native schematics. */
 .equipment-specifications { margin: 1rem 0; font-size: .8rem; }
@@ -1899,7 +1923,7 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
    video actually decodes to (sampled from rendered pixels); the faint grid continues into the panel. */
 /* Dedicated --term-* tokens: .project-application redefines --green/--green2/--hot/--line for the light
    window theme, so the module must not read those. Fixed to the root terminal palette. */
-.equipment-module { --term-green: #72ff62; --term-green2: #42c93a; --term-hot: #baffaa; --term-line: rgba(114, 255, 98, 0.32);
+.equipment-module { --term-green: #72ff62; --term-green2: #42c93a; --term-hot: #baffaa; --term-line: rgba(var(--crt-border-rgb), 0.32);
   --schematic-bg: #010300; --schematic-grid: var(--term-green);
   container-type: inline-size; margin: 1rem 0; border: 1px solid var(--term-line); background: var(--schematic-bg); color: var(--term-green); text-shadow: none;
   /* Width follows the video, whose height is capped by --video-max-h (set from the visible window height). */
@@ -1923,7 +1947,7 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
 /* Description: a softer green than the spec values and a comfortable measure so long text stays readable. */
 .equipment-panel .lede { max-width: 74ch; margin: .6rem 0; color: color-mix(in srgb, var(--term-green2) 88%, var(--term-hot)); font-size: .85rem; line-height: 1.7; letter-spacing: .01em; }
 .equipment-panel .equipment-specifications { margin-top: .75rem; }
-.equipment-panel .equipment-specifications > div { border-bottom: 1px dotted rgba(114, 255, 98, .22); }
+.equipment-panel .equipment-specifications > div { border-bottom: 1px dotted rgba(var(--crt-border-rgb), .22); }
 .equipment-panel .equipment-specifications dt { color: color-mix(in srgb, var(--term-green2) 78%, var(--schematic-bg)); opacity: 1; }
 .equipment-panel .equipment-specifications dd { color: var(--term-hot); }
 /* Wide modules: specs in two columns, the description below them (it may extend past the fold). */
