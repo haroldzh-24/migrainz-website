@@ -263,33 +263,33 @@ const { chromium } = require(
     assert.equal(await chapterLink.getAttribute('href'), '/comics/blushland/chapter-01');
     await chapterLink.click();
     await page.waitForURL('**/comics/blushland/chapter-01');
-    const previous = page.getByRole("button", { name: "← PREVIOUS" }).first();
-    const next = page.getByRole("button", { name: "NEXT →" }).first();
+    const previous = page.getByRole("button", { name: "PREV", exact: true }).first();
+    const next = page.getByRole("button", { name: "NEXT", exact: true }).first();
     assert.equal(await previous.isDisabled(), true);
     await next.click();
     assert.match(
-      await page.locator(".comic-figure img").getAttribute("src"),
+      await page.locator(".comic-page-stage .art-viewer-canvas img").getAttribute("src"),
       /02.svg/,
     );
     await next.press("ArrowRight");
     assert.equal(await next.isDisabled(), true);
     assert.match(
-      await page.locator(".comic-figure img").getAttribute("src"),
+      await page.locator(".comic-page-stage .art-viewer-canvas img").getAttribute("src"),
       /03.svg/,
     );
-    await page.getByLabel("GO TO PAGE").selectOption("0");
+    await page.getByLabel("Go to page").selectOption("0");
     assert.equal(await previous.isDisabled(), true);
     await page.waitForFunction(() => {
-      const img = document.querySelector('.comic-figure img');
+      const img = document.querySelector('.comic-page-stage .art-viewer-canvas img');
       return img?.complete && img.naturalWidth > 0;
     });
     assert.equal(
       await page
-        .locator(".comic-figure img")
+        .locator(".comic-page-stage .art-viewer-canvas img")
         .evaluate((img) => img.complete && img.naturalWidth > 0),
       true,
     );
-    await page.getByRole("link", { name: "← RETURN TO BLUSHLAND" }).click();
+    await page.getByRole("link", { name: "PROJECT", exact: true }).click();
     await page.waitForURL("**/projects/blushland");
     assert.equal(new URL(page.url()).pathname, "/projects/blushland");
     await page.getByRole("button", { name: "VIEW LOG +" }).click();
@@ -372,7 +372,7 @@ const { chromium } = require(
     );
     await touch.getByRole("link", { name: ">>> JOIN PATREON <<<" }).tap();
     await touch
-      .getByRole("button", { name: "CONNECT PATREON — COMING LATER" })
+      .getByRole("button", { name: "PATREON SIGN-IN UNAVAILABLE" })
       .waitFor();
     await touch.goto("/");
     await touch.getByRole("button", { name: "03 REQUISITIONS / SHOP" }).tap();
@@ -405,9 +405,9 @@ const { chromium } = require(
     assert.equal(await touch.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     await touch.getByRole('button', { name: 'Close THE OBSERVER', exact: true }).tap();
     await touch.goto("/comics/blushland/chapter-01");
-    await touch.getByRole("button", { name: "NEXT →" }).first().tap();
+    await touch.getByRole("button", { name: "NEXT", exact: true }).first().tap();
     assert.match(
-      await touch.locator(".comic-figure img").getAttribute("src"),
+      await touch.locator(".comic-page-stage .art-viewer-canvas img").getAttribute("src"),
       /02.svg/,
     );
     assert.equal(

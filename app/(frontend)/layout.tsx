@@ -10,6 +10,7 @@ import { AccessDeniedWindow, PatreonAccessProvider } from '@/components/PatreonA
 import { viewerAccess } from '@/lib/patreon/viewer';
 import { patreonConfig, patreonJoinURL } from '@/lib/patreon/server';
 import localFont from "next/font/local";
+import InlineScript from "@/components/InlineScript";
 import "./globals.css";
 
 // Bundled locally (SIL OFL, app/fonts/IBM-Plex-Mono-OFL.txt) so the build never reaches a font host.
@@ -41,7 +42,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const viewer = await viewerAccess();
   return (
     <html lang="en" data-scroll-behavior="smooth" data-crt="on" className={plexMono.variable} suppressHydrationWarning>
-      <head><script dangerouslySetInnerHTML={{ __html: crtModeScript }} /></head>
+      <head><InlineScript code={crtModeScript} /></head>
       <body>
         {/* Display-time recolour (black to #0a0e0b, white to #d4f5da); used as filter: url(#crt-tune). */}
         <svg width="0" height="0" style={{ position: "absolute" }} aria-hidden="true" focusable="false">
