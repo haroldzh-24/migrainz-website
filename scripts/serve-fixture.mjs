@@ -43,7 +43,7 @@ const env = {
   PAYLOAD_SECRET: randomBytes(32).toString('hex'),
   BOOT_ONLY: '0',
   DESKTOP_TEST_FIXTURE: fixture,
-  DEV_ALLOWED_ORIGINS: lan.join(','),
+  DEV_ALLOWED_ORIGINS: ['127.0.0.1', 'localhost', ...lan].join(','),
 };
 mkdirSync(env.CMS_MEDIA_DIR);
 const run = args => { const r = spawnSync(process.execPath, args, { env, stdio: 'inherit', windowsHide: true }); if (r.status !== 0) { console.error('Fixture setup failed: ' + args.join(' ')); process.exit(1); } };

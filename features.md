@@ -1,5 +1,13 @@
 # Features
 
+## Implemented - 2026-10-22 / CRT readability follow-ups
+
+- Watcher recolour and glow are baked into watcher-base.crt.png and watcher-eyes.crt.png (scripts/bake-watcher-crt.mjs, originals kept), so the moving container no longer carries a runtime filter. The baked glow is fixed and does not follow the CRT effects toggle. scripts/compare-watcher-bake.mjs renders runtime vs baked side by side: mean difference 1.5 of 255, 5.7 percent of pixels differ by more than 8, concentrated on thin line art. Schematic video and posters keep the runtime #crt-tune filter.
+- The Art Viewer's schematic poster fallback gets the recolour; concept art, comics and galleries never do.
+- Long-form prose (.lede, about copy, rich text) is about 70ch at 16px in body colour; grids, tables and terminal panels keep their own widths.
+- The CRT mode script uses an InlineScript client component (type text/plain on the client), which stops React's "script tag" console error on client navigation.
+- scripts/serve-fixture.mjs serves the seeded isolated fixture on a LAN address for phone checks (DEV_ALLOWED_ORIGINS in next.config.mjs); scripts/verify-equipment-navigation.mjs writes review screenshots when CRT_SCREENS=<dir> is set.
+
 ## Implemented - 2026-10-22 / CRT readability theme (feature/crt-readability)
 
 - One token set (--crt-bg #0a0e0b, --crt-panel #0f1511, --crt-text #a8d8b0, --crt-bright #d4f5da, --crt-mid #7fb08a, --crt-dim #5f8a6b, --crt-border, --crt-accent #e8b45a, --crt-glow). The legacy --bg/--panel/--green/--green2/--hot/--dim/--line names are aliases, so .project-application keeps its light overrides. --term-* is gone; the schematic module reads --crt-*.

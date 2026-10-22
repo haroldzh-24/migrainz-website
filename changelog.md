@@ -1,5 +1,10 @@
 # Changelog
 
+## Changed - 2026-10-22 / CRT readability follow-ups
+
+- Baked the watcher recolour and glow into tuned PNG copies (originals kept) and removed the runtime filter from the watcher; filtered the Art Viewer schematic poster fallback; 70ch prose; InlineScript for the CRT mode script (fixes a React console error on client navigation).
+- Regression suite: the comic reader checks now use PREV / NEXT / Go to page / the PROJECT title-bar link (changed in 5b36ecd, "monitor comic reader") and the Patreon check uses PATREON SIGN-IN UNAVAILABLE (real sign-in replaced the preview in 293d23d). The suite passes end to end on the isolated fixture. Code, CSS and scripts only.
+
 ## Changed - 2026-10-22 / CRT readability theme
 
 - New --crt-* tokens replace hard-coded greens (legacy names alias them); IBM Plex Mono via next/font/local; 16px / 1.6 body; glow limited to headings and active items.
