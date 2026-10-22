@@ -144,8 +144,10 @@ const { chromium } = require(
       "rgb(168, 216, 176)",
       "Original phosphor green must survive CSS extraction",
     );
-    // (The old `.head path` outline assertion targeted markup removed with the image watcher; check the recolour instead.)
-    assert.match(await page.locator('.watcher').evaluate((el) => getComputedStyle(el).filter), /url\(.*crt-tune/, 'watcher uses the crt-tune filter');
+    // The old `.head path` outline check targeted markup removed with the image watcher. The recolour is baked into
+    // the watcher layers (scripts/bake-watcher-crt.mjs), so the moving container must not carry a runtime filter.
+    assert.equal(await page.locator('.watcher').evaluate((el) => getComputedStyle(el).filter), 'none', 'watcher has no runtime filter');
+    assert.match(await page.locator('.watcher-art > img').getAttribute('src'), /watcher-base.crt.png/);
     await page.screenshot({
       path: "test-results/home-desktop.png",
       fullPage: true,
