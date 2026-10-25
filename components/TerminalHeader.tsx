@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useSound } from "@/components/SoundProvider";
+import CrtToggle from "@/components/CrtToggle";
 
 export default function TerminalHeader() {
   const [clock, setClock] = useState("--:--:--");
@@ -17,7 +18,7 @@ export default function TerminalHeader() {
   return (
     <header className="topbar shell">
       <Link className="brand" href="/#top" aria-label="Home">
-        MIGRAINZ // PUBLIC ACCESS TERMINAL
+        MIGRAINZ<span className="brand-full"> // PUBLIC ACCESS TERMINAL</span>
       </Link>
       <div className="topbar-meta">
         <span>NODE 01</span>
@@ -39,6 +40,7 @@ export default function TerminalHeader() {
         >
           SND: {enabled ? "ON" : "OFF"}
         </button>
+        <CrtToggle />
       </div>
     </header>
   );

@@ -7,7 +7,7 @@ import { RetroWindow, useWindowManager, type ViewerImage } from "@/components/Wi
 export type View = { scale: number | null; x: number; y: number };
 export const fitView: View = { scale: null, x: 0, y: 0 };
 
-export function ArtworkCanvas({ image, view, onChange }: { image: ViewerImage; view: View; onChange: (view: View) => void }) {
+export function ArtworkCanvas({ image, view, onChange, schematic = false }: { image: ViewerImage; view: View; onChange: (view: View) => void; schematic?: boolean }) {
   const canvas = useRef<HTMLDivElement>(null);
   const [space, setSpace] = useState({ width: 0, height: 0 });
   const [natural, setNatural] = useState({ width: 0, height: 0 });
@@ -150,7 +150,7 @@ export function ArtworkCanvas({ image, view, onChange }: { image: ViewerImage; v
         transform(previousDistance > 0 ? distance(after) / previousDistance : 1, midpoint(before), midpoint(after));
       }}
       onPointerUp={stopPan} onPointerCancel={stopPan} onLostPointerCapture={stopPan}>
-      <img src={sources[sourceIndex]} alt={image.alt} draggable={false}
+      <img data-schematic={schematic || undefined} src={sources[sourceIndex]} alt={image.alt} draggable={false}
         onError={() => {
           if (sourceIndex + 1 < sources.length) setSourceIndex(sourceIndex + 1);
           else setFailed(true);
@@ -204,7 +204,7 @@ export default function ArtViewer() {
       toggleMaximizeWindow("art-viewer");
     }}
   >
-    {image ? <ArtworkCanvas key={viewKey} image={image} view={views[viewKey] ?? fitView} onChange={(view) => setViews((current) => ({ ...current, [viewKey]: view }))} /> : <div className="art-viewer-canvas"><div className="art-viewer-placeholder">NO PUBLIC ARTWORK FILED<br /><Link className="art-viewer-page-link" href={active.href} prefetch={false} onClick={() => closeWindow("art-viewer")}>OPEN {active.title.toUpperCase()} PAGE</Link></div></div>}
+    {image ? <ArtworkCanvas key={viewKey} schematic={!artwork} image={image} view={views[viewKey] ?? fitView} onChange={(view) => setViews((current) => ({ ...current, [viewKey]: view }))} /> : <div className="art-viewer-canvas"><div className="art-viewer-placeholder">NO PUBLIC ARTWORK FILED<br /><Link className="art-viewer-page-link" href={active.href} prefetch={false} onClick={() => closeWindow("art-viewer")}>OPEN {active.title.toUpperCase()} PAGE</Link></div></div>}
     {active.images.length > 1 && <div className="art-viewer-thumbs" aria-label={`${active.title} artwork pages`}>
       {active.images.map((item, index) => <button type="button" key={`${item.src}-${index}`} className={index === imageIndex ? "is-active" : ""} aria-label={`Show image ${index + 1}`} onClick={() => setImageIndex(index)}>
         <img src={item.thumbnailSrc ?? item.src} alt="" loading="lazy" />

@@ -49,6 +49,8 @@ const character = { slug: 'nobody', name: 'Character Without Art', role: 'Scout'
 const faction = { slug: 'crew', name: 'Crew', description: 'No emblem', type: 'Group', status: '', updatedAt: '2026-10-21T00:00:00Z' };
 const path = location.pathname;
 const page = path.startsWith('/projects/fixture/equipment/') ? items.find(item => path.endsWith('/' + item.slug)) : null;
+// Same recolour filter the root layout provides (app/(frontend)/layout.tsx).
+document.body.insertAdjacentHTML('afterbegin', '<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="crt-tune" color-interpolation-filters="sRGB"><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncR type="table" tableValues="0.039 0.373 0.659 0.831"/><feFuncG type="table" tableValues="0.055 0.541 0.847 0.961"/><feFuncB type="table" tableValues="0.043 0.420 0.690 0.855"/></feComponentTransfer></filter></svg>');
 createRoot(document.getElementById('root')).render(<SoundProvider><WindowManagerProvider><main className="shell">
   {page ? <RouteApplication id="project" title="PROJECT: Fixture Project" navigation={[{ label: 'OVERVIEW', href: '/projects/fixture' }, { label: 'FACTIONS', href: '/projects/fixture#factions' }, { label: 'CHARACTERS', href: '/projects/fixture/characters' }, { label: 'EQUIPMENT', href: '/projects/fixture/equipment' }]}>
     <Directory path={'SYS:/PROJECTS/FIXTURE/EQUIPMENT/' + page.slug.toUpperCase()} title={page.name} compact>
@@ -224,15 +226,15 @@ try {
         const lum = ([r, g, b]) => { const c = [r, g, b].map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
         const panel = document.querySelector('.equipment-panel'), bg = rgb(getComputedStyle(panel).backgroundColor);
         const probe = (name, el) => { const style = getComputedStyle(el), [r, g, b, a = 1] = rgb(style.color); const alpha = a * parseFloat(style.opacity); const mixed = [r, g, b].map((v, i) => v * alpha + bg[i] * (1 - alpha));
-          const [hi, lo] = [Math.max(lum(mixed), lum(bg)), Math.min(lum(mixed), lum(bg))]; return { name, color: style.color, contrast: (hi + 0.05) / (lo + 0.05), green: mixed[1] > mixed[0] * 1.3 && mixed[1] > mixed[2] * 1.3 && mixed[1] >= 120 }; };
+          const [hi, lo] = [Math.max(lum(mixed), lum(bg)), Math.min(lum(mixed), lum(bg))]; return { name, color: style.color, contrast: (hi + 0.05) / (lo + 0.05), green: mixed[1] > mixed[0] * 1.1 && mixed[1] > mixed[2] * 1.1 && mixed[1] >= 130 }; };
         const all = [...panel.querySelectorAll('dt')].map((el, i) => probe('label ' + i, el)).concat([...panel.querySelectorAll('dd')].map((el, i) => probe('value ' + i, el)), [probe('description', panel.querySelector('.lede')), probe('category line', panel.querySelector('.eyebrow'))]);
         const module = getComputedStyle(document.querySelector('.equipment-module'));
         return { all, bg: getComputedStyle(panel).backgroundColor, inProjectWindow: Boolean(document.querySelector('.project-application .equipment-module')), border: module.borderTopColor };
       });
       assert(readable.inProjectWindow, 'fixture must render the module inside .project-application');
-      assert.equal(readable.bg, 'rgb(1, 3, 0)');
-      for (const item of readable.all) { assert(item.contrast >= 4.5, item.name + ' contrast ' + item.contrast.toFixed(2) + ' (' + item.color + ')'); assert(item.green, item.name + ' is not green: ' + item.color); }
-      assert.match(readable.border, /rgba?\(114, 255, 98/);
+      assert.equal(readable.bg, 'rgb(10, 14, 11)');
+      for (const item of readable.all) { const need = /^(label|category)/.test(item.name) ? 4.5 : 7; assert(item.contrast >= need, item.name + ' contrast ' + item.contrast.toFixed(2) + ' (' + item.color + ')'); assert(item.green, item.name + ' is not green: ' + item.color); }
+      assert.match(readable.border, /rgba?\(140, 220, 160/);
       console.log(`  ${key} ${shot} panel contrast: ` + ['label 0', 'value 0', 'description', 'category line'].map(n => n + ' ' + readable.all.find(item => item.name === n).contrast.toFixed(1)).join(', '));
       assert.notEqual(copy.color, copy.valueColor); assert.match(copy.font, /monospace|Courier/i); assert(copy.ratio >= 1.6, 'line height ' + copy.ratio);
       assert.deepEqual(copy.order.slice(0, 3), ['eyebrow', 'lede', 'equipment-specifications']);
@@ -320,4 +322,20 @@ try {
   }
   await context.close();
   console.log('PASS resize sweep');
+  // Optional review screenshots: CRT_SCREENS=<dir> writes item pages and the Art Viewer for every effects mode.
+  if (process.env.CRT_SCREENS) {
+    const shots = path.resolve(process.env.CRT_SCREENS);
+    await mkdir(shots, { recursive: true });
+    for (const [name, width, height] of [['desktop', 1440, 900], ['mobile', 390, 844]]) for (const mode of ['on', 'reduced', 'off']) {
+      const context = await browser.newContext({ viewport: { width, height }, hasTouch: width < 700 });
+      const open = async (url, seed) => { const page = await context.newPage(); if (seed) await seed(page); await page.goto(base + url); await page.evaluate(value => { document.documentElement.dataset.crt = value; }, mode); return page; };
+      const done = async (page, file) => { await page.waitForTimeout(250); await page.screenshot({ path: path.join(shots, `${file}-${name}-${mode}.png`) }); await page.close(); };
+      let page = await open('/projects/fixture/equipment/laptop'); await page.waitForSelector('.equipment-panel'); await done(page, 'item-poster-fallback');
+      page = await open('/projects/fixture/equipment/with-art'); await page.waitForSelector('.equipment-panel'); await done(page, 'item-concept-art');
+      page = await open('/projects/fixture/equipment/with-art', seedTabs([tab('with-art', 'Equipment With Concept Art', [conceptImage], posterImage)])); await viewer(page).waitFor(); await done(page, 'art-viewer-concept');
+      page = await open('/projects/fixture/equipment/poster-only', seedTabs([tab('poster-only', 'MP5 10MM Company Custom', [], posterImage)])); await viewer(page).waitFor(); await done(page, 'art-viewer-poster-fallback');
+      await context.close();
+    }
+    console.log('Wrote CRT review screenshots to ' + shots);
+  }
 } finally { await browser.close(); server.close(); }

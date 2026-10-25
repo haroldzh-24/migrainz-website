@@ -2,10 +2,17 @@
 
 ## Open Bugs
 
-### 2026-10-21 - Art Viewer close button off-screen and page shifted left at about 669px (not reproducible)
+### 2026-10-22 - Art Viewer Escape only closes the viewer while it is the focused window (minor, logging only)
+
+- components/ArtViewer.tsx (around line 175) closes on Escape through a document keydown listener, but only while the window manager marks the viewer focused, not minimized and visible. The viewer does take focus when it opens (components/WindowManager.tsx line 271 moves DOM focus to the focused window element), so Escape works straight after opening.
+- It stops working once another window (a project window, the comic reader) is clicked or focused: Escape then does nothing until the viewer is clicked. Escape is also ignored when a handler already called preventDefault. This may be what the original "Escape did not close it" report hit; not confirmed with the reporter.
+- Not fixed in feature/crt-readability. Status: Open, minor.
+
+### 2026-10-21 - Art Viewer close button off-screen and page shifted left at about 669px (not reproducible; simulated check only)
 
 - Reported in the Claude desktop app built-in browser (Chromium) on Windows, viewport 669x1025: scroll down on the mp510mmcc page, open the Equipment tab, click the card; the viewer's close button was not visible and, after closing, the page looked shifted left with its left edge cut off.
 - A JavaScript check in that browser showed no horizontal overflow, so this was most likely a screenshot artifact rather than a layout bug. Also not reproduced by scripts/verify-equipment-navigation.mjs (real components and CSS at 1440, 670 and 390px, a 1440-to-360px resize sweep with eight tabs and a large artwork) or a read-only Chrome check of the live Equipment page at 390-1200px.
+- Every check above is simulated (Playwright with real components and CSS, headless Chrome, and a read-only desktop Chrome check of the live page). Nothing was tried on a real phone or in the Claude desktop app browser: recheck there.
 - Status: Not reproducible; no code change. Reopen with a screenshot plus document.documentElement.scrollWidth, window.scrollX and the close button's bounding rect if it recurs.
 
 ### 2026-10-21 - Art Viewer shows no poster for mp510mmcc (minor)
@@ -17,6 +24,7 @@
 
 ### 2026-10-15 - Watcher stutter on other devices
 
+- 2026-10-22: the recolour filter that was briefly on the moving container is gone; the recolour and glow are baked into the PNGs (scripts/bake-watcher-crt.mjs), so the per-frame cost is back to the original. Recheck on the affected Macs.
 - User reports smooth deployed animation on one Windows laptop but stutter on Macs and a Raider HX 14V-class machine. Exact affected-browser/GPU/refresh-rate configuration is unknown.
 - Public deployment matches the pre-optimization watcher behavior. Isolated throttled Chrome profiling confirms near-per-event React rerenders and repeated style/layout work; these are removed/reduced locally using an elapsed-time frame loop. Preserve effects, clipping, touch and scrolling; no deployment performed.
 - Status: Local optimization verified by typecheck/build, Chrome/Edge interaction tests and simulated 60/120Hz timing. The original hardware-specific stutter is not reproduced or confirmed fixed. Safari/GPU/full-page interactions remain hypotheses. Measurements and next device checks: documentation/watcher-performance-20261015.md.

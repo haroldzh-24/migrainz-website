@@ -7,7 +7,7 @@ export default function EquipmentCards({ projectSlug, equipment }: { projectSlug
   if (!equipment.length) return null;
   return <section aria-label="Character equipment"><h2>EQUIPMENT</h2><div className="equipment-cards">
     {equipment.map((item, index) => { const art = item.images[0] ?? item.poster; return <article className="equipment-card" key={`${item.slug}-${index}`}>
-      {art && <img src={art.thumbnailSrc ?? art.src} alt={art.alt} loading="lazy" />}
+      {art && <img data-schematic={!item.images[0] || undefined} src={art.thumbnailSrc ?? art.src} alt={art.alt} loading="lazy" />}
       <div><h3><Link href={`/projects/${projectSlug}/equipment/${item.slug}`}>{item.designation || item.name}</Link></h3>
         {item.designation && <p>{item.name}</p>}
         {item.category && <p className="eyebrow">{item.category}</p>}

@@ -76,11 +76,20 @@ const { chromium } = require(
     // A real page control outside the hanging window remains usable.
     await page.getByRole('link', { name: 'Home', exact: true }).click();
     assert.equal(await page.locator('.startup-announcement').isVisible(), true);
+    // The shop ad cannot be opened (hover or click) while the splash is showing.
+    const splashShop = page.getByRole('button', { name: '03 REQUISITIONS / SHOP' });
+    await splashShop.hover();
+    await splashShop.click();
+    assert.equal(await splashShop.getAttribute('aria-expanded'), 'false');
+    await page.mouse.move(5, 5);
     await page.getByRole('button', { name: 'ENTER', exact: true }).focus();
     await page.waitForTimeout(1000);
     assert.equal(await page.locator('#top').isVisible(), true);
     await page.keyboard.press('Enter');
     await page.locator('.startup-sequence').waitFor({ state: 'hidden' });
+    // Focus lands on main#top after the splash, without a visible ring around the whole page.
+    assert.equal(await page.evaluate(() => document.activeElement?.id), 'top');
+    assert.equal(await page.locator('#top').evaluate(el => getComputedStyle(el).outlineStyle), 'none');
     for (const key of ['Enter', 'Escape', 'click']) {
       await page.evaluate(() => sessionStorage.clear());
       await page.reload();
@@ -126,7 +135,8 @@ const { chromium } = require(
     }
     await page.getByRole("heading", { level: 1 }).waitFor();
     assert.equal(await page.locator('.crt').evaluate(el => getComputedStyle(el).pointerEvents), 'none');
-    assert.match(await page.locator('.crt').evaluate(el => getComputedStyle(el).animationName), /crt-flicker/);
+    assert.equal(await page.locator('.crt').evaluate(el => getComputedStyle(el).animationName), 'none', 'no continuous flicker');
+    assert.equal(await page.locator('.crt').evaluate(el => getComputedStyle(el, '::before').animationIterationCount), '1', 'power-on sweep runs once');
     const sound = page.locator('.sound-toggle');
     assert.equal(await sound.getAttribute('aria-pressed'), 'false');
     await sound.click();
@@ -140,17 +150,13 @@ const { chromium } = require(
     );
     assert.equal(
       await page.locator("body").evaluate((el) => getComputedStyle(el).color),
-      "rgb(114, 255, 98)",
+      "rgb(168, 216, 176)",
       "Original phosphor green must survive CSS extraction",
     );
-    assert.equal(
-      await page
-        .locator(".head path")
-        .first()
-        .evaluate((el) => getComputedStyle(el).stroke),
-      "rgb(114, 255, 98)",
-      "Face outline must be visible",
-    );
+    // The old `.head path` outline check targeted markup removed with the image watcher. The recolour is baked into
+    // the watcher layers (scripts/bake-watcher-crt.mjs), so the moving container must not carry a runtime filter.
+    assert.equal(await page.locator('.watcher').evaluate((el) => getComputedStyle(el).filter), 'none', 'watcher has no runtime filter');
+    assert.match(await page.locator('.watcher-art > img').getAttribute('src'), /watcher-base.crt.png/);
     await page.screenshot({
       path: "test-results/home-desktop.png",
       fullPage: true,
@@ -174,6 +180,9 @@ const { chromium } = require(
     }
     const watcher = page.locator("#watcher");
     await watcher.hover({ position: { x: 100, y: 100 } });
+    // Tracking is window-wide: a pointer far outside the watcher box still steers the eyes.
+    await page.mouse.move(5, 5);
+    await page.waitForFunction(() => /translate\(-/.test(document.querySelector('.watcher-eyes').style.transform));
     await page.waitForFunction(() => document.querySelector("#readout-x")?.textContent !== "000");
     const patronTrigger = page.getByRole('button', { name: '06 PATREON ACCESS' });
     await patronTrigger.hover();
@@ -190,12 +199,17 @@ const { chromium } = require(
     await page.screenshot({ path: 'test-results/patreon-desktop.png' });
     await page.keyboard.press('Escape');
     const shop = page.getByRole("button", { name: "03 REQUISITIONS / SHOP" });
+    // The shop ad hover-opens once per visit: start from a fresh visit.
+    await page.evaluate(() => sessionStorage.removeItem("migrainz-shop-promo-seen"));
     await shop.hover();
     await page.getByRole("region", { name: "SHOP promotional window" }).hover();
     assert.equal(await shop.getAttribute("aria-expanded"), "true");
     await page.screenshot({ path: "test-results/shop-desktop.png" });
     await page.keyboard.press("Escape");
     assert.equal(await shop.getAttribute("aria-expanded"), "false");
+    await page.mouse.move(5, 5);
+    await shop.hover();
+    assert.equal(await shop.getAttribute("aria-expanded"), "false", "shop ad must not hover-open a second time in one visit");
     await shop.press("Enter");
     assert.equal(await shop.getAttribute("aria-expanded"), "true");
     assert.equal(
@@ -265,33 +279,33 @@ const { chromium } = require(
     assert.equal(await chapterLink.getAttribute('href'), '/comics/blushland/chapter-01');
     await chapterLink.click();
     await page.waitForURL('**/comics/blushland/chapter-01');
-    const previous = page.getByRole("button", { name: "← PREVIOUS" }).first();
-    const next = page.getByRole("button", { name: "NEXT →" }).first();
+    const previous = page.getByRole("button", { name: "PREV", exact: true }).first();
+    const next = page.getByRole("button", { name: "NEXT", exact: true }).first();
     assert.equal(await previous.isDisabled(), true);
     await next.click();
     assert.match(
-      await page.locator(".comic-figure img").getAttribute("src"),
+      await page.locator(".comic-page-stage .art-viewer-canvas img").getAttribute("src"),
       /02.svg/,
     );
     await next.press("ArrowRight");
     assert.equal(await next.isDisabled(), true);
     assert.match(
-      await page.locator(".comic-figure img").getAttribute("src"),
+      await page.locator(".comic-page-stage .art-viewer-canvas img").getAttribute("src"),
       /03.svg/,
     );
-    await page.getByLabel("GO TO PAGE").selectOption("0");
+    await page.getByLabel("Go to page").selectOption("0");
     assert.equal(await previous.isDisabled(), true);
     await page.waitForFunction(() => {
-      const img = document.querySelector('.comic-figure img');
+      const img = document.querySelector('.comic-page-stage .art-viewer-canvas img');
       return img?.complete && img.naturalWidth > 0;
     });
     assert.equal(
       await page
-        .locator(".comic-figure img")
+        .locator(".comic-page-stage .art-viewer-canvas img")
         .evaluate((img) => img.complete && img.naturalWidth > 0),
       true,
     );
-    await page.getByRole("link", { name: "← RETURN TO BLUSHLAND" }).click();
+    await page.getByRole("link", { name: "PROJECT", exact: true }).click();
     await page.waitForURL("**/projects/blushland");
     assert.equal(new URL(page.url()).pathname, "/projects/blushland");
     await page.getByRole("button", { name: "VIEW LOG +" }).click();
@@ -350,6 +364,10 @@ const { chromium } = require(
     assert.equal(await patreon.getAttribute("aria-expanded"), "true");
     const touchPopup = await touch.locator('#patreon-promo').boundingBox();
     assert.ok(touchPopup.x >= 0 && touchPopup.y >= 0 && touchPopup.x + touchPopup.width <= 390 && touchPopup.y + touchPopup.height <= 844, 'Touch popup fits viewport');
+    // Phone widths: the promo window is a small in-flow card with a finger-sized close button.
+    assert.equal(await touch.locator('#patreon-promo').evaluate(el => getComputedStyle(el).position), 'static');
+    const closeBox = await touch.getByRole('button', { name: 'Close patreon promotion' }).boundingBox();
+    assert.ok(closeBox.width >= 28 && closeBox.height >= 28, 'Phone promo close button is at least 28px');
     assert.equal(
       await touch
         .locator(".promo-new")
@@ -374,9 +392,14 @@ const { chromium } = require(
     );
     await touch.getByRole("link", { name: ">>> JOIN PATREON <<<" }).tap();
     await touch
-      .getByRole("button", { name: "CONNECT PATREON — COMING LATER" })
+      .getByRole("button", { name: "PATREON SIGN-IN UNAVAILABLE" })
       .waitFor();
     await touch.goto("/");
+    await touch.getByRole("button", { name: "03 REQUISITIONS / SHOP" }).tap();
+    assert.equal(await touch.locator('#shop-promo').evaluate(el => getComputedStyle(el).position), 'static');
+    assert.equal(await touch.locator('#shop-promo small').isVisible(), true, 'Placeholder-store note stays visible on phones');
+    await touch.keyboard.press("Escape");
+    assert.equal(await touch.getByRole("button", { name: "03 REQUISITIONS / SHOP" }).getAttribute("aria-expanded"), "false");
     await touch.getByRole("button", { name: "03 REQUISITIONS / SHOP" }).tap();
     await touch.locator(".lede").first().tap();
     assert.equal(
@@ -407,9 +430,9 @@ const { chromium } = require(
     assert.equal(await touch.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     await touch.getByRole('button', { name: 'Close THE OBSERVER', exact: true }).tap();
     await touch.goto("/comics/blushland/chapter-01");
-    await touch.getByRole("button", { name: "NEXT →" }).first().tap();
+    await touch.getByRole("button", { name: "NEXT", exact: true }).first().tap();
     assert.match(
-      await touch.locator(".comic-figure img").getAttribute("src"),
+      await touch.locator(".comic-page-stage .art-viewer-canvas img").getAttribute("src"),
       /02.svg/,
     );
     assert.equal(

@@ -1,5 +1,36 @@
 # Changelog
 
+## Changed - 2026-10-25 / CRT review fixes after approval
+
+- No focus ring on containers focused by script (`main#top` after the splash, windows); buttons, links and form controls keep theirs.
+- The shop ad cannot be opened by click either while the transmission splash is showing (hover was already blocked). verify.cjs checks both and the focus ring.
+- Added docs/deploy-checklist-crt.md (post-deploy checks and rollback). Simulated checks only; log in test-results/crt-regression-20261025c.txt.
+
+## Changed - 2026-10-25 / CRT design-pass fixes (docs/redesign-plan.md step 1)
+
+- Main menu items 01-07 (and the SHOP / PATREON triggers) are 16px; `[ LATEST ]` / `[ SYSTEM ]` buttons, panel links and row titles 14px; 12px stays for timestamps and labels.
+- Phone header (480px and below): brand shows `MIGRAINZ` only, ONLINE is hidden, clock + SND + CRT stay on one line.
+- Shop ad (BEST_DEALS.exe): hover-opens at most once per visit (sessionStorage), never while the transmission splash is up; clicking always opens it. Under 480px the SHOP and PATREON windows are small in-flow cards (scrolled into view) with a larger close button; Escape closes them. verify.cjs checks the once-per-visit rule.
+- Review fixture now seeds synthetic equipment on BLUSHLAND: `/projects/blushland/equipment`, `/equipment/fixture-scanner` (schematic with poster fallback), `/equipment/fixture-satchel`, `/characters/fixture-operative`. Synthetic data only.
+- Desktop only, not changed: at 1440x900 the open shop window can extend below the viewport.
+- Checks are simulated (headless Chrome); log in test-results/crt-regression-20261025b.txt. Nothing tried on a real phone.
+
+## Changed - 2026-10-25 / CRT text-size floor
+
+- Body 16px; secondary and meta text (row copy, captions, notes, spec tables) 14px; labels, title bars, header, footer and the CRT toggle 12px. Nothing in globals.css is below 12px, including the `font:` shorthand rules. CSS only.
+- Regression, verify-equipment-navigation and verify-equipment-browser pass (log: test-results/crt-regression-20261025.txt). Not yet checked by eye on a phone.
+
+## Changed - 2026-10-22 / CRT readability follow-ups
+
+- Baked the watcher recolour and glow into tuned PNG copies (originals kept) and removed the runtime filter from the watcher; filtered the Art Viewer schematic poster fallback; 70ch prose; InlineScript for the CRT mode script (fixes a React console error on client navigation).
+- Regression suite: the comic reader checks now use PREV / NEXT / Go to page / the PROJECT title-bar link (changed in 5b36ecd, "monitor comic reader") and the Patreon check uses PATREON SIGN-IN UNAVAILABLE (real sign-in replaced the preview in 293d23d). The suite passes end to end on the isolated fixture. Code, CSS and scripts only.
+
+## Changed - 2026-10-22 / CRT readability theme
+
+- New --crt-* tokens replace hard-coded greens (legacy names alias them); IBM Plex Mono via next/font/local; 16px / 1.6 body; glow limited to headings and active items.
+- Removed continuous CRT flicker, watcher grain drift, jitter and interference; the power-on sweep runs once. Scanlines and vignette follow the new CRT effects toggle (on / reduced / off).
+- Added the #crt-tune recolour filter for the watcher and schematic media, window-wide watcher tracking and equipment module contrast (body 7:1 or more, meta 4.5:1 or more). Regression assertions updated; the stale .head path check was replaced with a filter check. Code and CSS only: no database, Blob or media changes.
+
 ## Changed - 2026-10-21 / Equipment item page fits a laptop window; poster cards on faction pages
 
 - On wide screens the schematic height is capped by the visible project-window height (keeping the video ratio) and the module width follows it, so the video and the full spec list fit 1366x768, 1440x900, 1536x864 and 1920x1080 at 125% without scrolling. Specs use two columns on wide modules; a long description sits below the specs and may extend past the fold. Mobile stays stacked. The back link now shares the path line and the title/module spacing is tighter.

@@ -18,7 +18,7 @@ function tabFor({ project, equipment }: Props): ViewerTab {
 export function EquipmentViewerLink(props: Props) {
   if (props.equipment.classification) return <ClassifiedPlaceholder classification={props.equipment.classification} label={props.equipment.safeLabel} />;
   const tab = tabFor(props);
-  return <DesktopFile label={`${props.equipment.name.replace(/\s+/g, "_")}.EQP`} type="EQP" subtitle={props.equipment.category} href={tab.href} viewerTab={tab} opensPage thumbnail={tab.images[0] ?? tab.poster}
+  return <DesktopFile label={`${props.equipment.name.replace(/\s+/g, "_")}.EQP`} type="EQP" subtitle={props.equipment.category} href={tab.href} viewerTab={tab} opensPage thumbnail={tab.images[0] ?? tab.poster} schematicThumbnail={!tab.images[0] && Boolean(tab.poster)}
     metadata={[{ label: "NAME", value: tab.title }, { label: "PROJECT", value: tab.project },
       { label: "CATEGORY", value: props.equipment.category }, { label: "TYPE", value: "EQUIPMENT" },
       { label: "IMAGE COUNT", value: String(tab.images.length) }, { label: "UPDATED", value: props.equipment.updated }]} />;
