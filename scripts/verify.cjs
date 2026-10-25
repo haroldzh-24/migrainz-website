@@ -76,11 +76,20 @@ const { chromium } = require(
     // A real page control outside the hanging window remains usable.
     await page.getByRole('link', { name: 'Home', exact: true }).click();
     assert.equal(await page.locator('.startup-announcement').isVisible(), true);
+    // The shop ad cannot be opened (hover or click) while the splash is showing.
+    const splashShop = page.getByRole('button', { name: '03 REQUISITIONS / SHOP' });
+    await splashShop.hover();
+    await splashShop.click();
+    assert.equal(await splashShop.getAttribute('aria-expanded'), 'false');
+    await page.mouse.move(5, 5);
     await page.getByRole('button', { name: 'ENTER', exact: true }).focus();
     await page.waitForTimeout(1000);
     assert.equal(await page.locator('#top').isVisible(), true);
     await page.keyboard.press('Enter');
     await page.locator('.startup-sequence').waitFor({ state: 'hidden' });
+    // Focus lands on main#top after the splash, without a visible ring around the whole page.
+    assert.equal(await page.evaluate(() => document.activeElement?.id), 'top');
+    assert.equal(await page.locator('#top').evaluate(el => getComputedStyle(el).outlineStyle), 'none');
     for (const key of ['Enter', 'Escape', 'click']) {
       await page.evaluate(() => sessionStorage.clear());
       await page.reload();

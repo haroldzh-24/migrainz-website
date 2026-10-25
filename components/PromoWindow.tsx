@@ -112,7 +112,11 @@ export default function PromoWindow({
         data-sound={open ? "close" : "open"}
         aria-expanded={open}
         aria-controls={`${kind}-promo`}
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => {
+          // The shop ad stays closed while the transmission splash is showing, for clicks as well as hover.
+          if (shop && !open && document.querySelector(".startup-sequence")) return;
+          setOpen((value) => !value);
+        }}
       >
         <span>{number}</span>
         {shop ? "REQUISITIONS / SHOP" : "PATREON ACCESS"}

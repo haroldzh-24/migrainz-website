@@ -1434,6 +1434,9 @@ footer {
   outline: 2px solid var(--hot);
   outline-offset: 4px;
 }
+/* Containers focused by script (main#top after the splash, windows) get no ring; real controls keep theirs. */
+[tabindex="-1"]:not(button, a, input, select, textarea, summary):focus,
+[tabindex="-1"]:not(button, a, input, select, textarea, summary):focus-visible { outline: none; }
 .skip-link {
   position: fixed;
   top: 8px;
