@@ -1,5 +1,11 @@
 # Changelog
 
+## Changed - 2026-10-25 / CRT review fixes after approval
+
+- No focus ring on containers focused by script (`main#top` after the splash, windows); buttons, links and form controls keep theirs.
+- The shop ad cannot be opened by click either while the transmission splash is showing (hover was already blocked). verify.cjs checks both and the focus ring.
+- Added docs/deploy-checklist-crt.md (post-deploy checks and rollback). Simulated checks only; log in test-results/crt-regression-20261025c.txt.
+
 ## Changed - 2026-10-25 / CRT design-pass fixes (docs/redesign-plan.md step 1)
 
 - Main menu items 01-07 (and the SHOP / PATREON triggers) are 16px; `[ LATEST ]` / `[ SYSTEM ]` buttons, panel links and row titles 14px; 12px stays for timestamps and labels.
