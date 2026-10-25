@@ -1,5 +1,10 @@
 # Changelog
 
+## Changed - 2026-10-25 / CRT text-size floor
+
+- Body 16px; secondary and meta text (row copy, captions, notes, spec tables) 14px; labels, title bars, header, footer and the CRT toggle 12px. Nothing in globals.css is below 12px, including the `font:` shorthand rules. CSS only.
+- Regression, verify-equipment-navigation and verify-equipment-browser pass (log: test-results/crt-regression-20261025.txt). Not yet checked by eye on a phone.
+
 ## Changed - 2026-10-22 / CRT readability follow-ups
 
 - Baked the watcher recolour and glow into tuned PNG copies (originals kept) and removed the runtime filter from the watcher; filtered the Art Viewer schematic poster fallback; 70ch prose; InlineScript for the CRT mode script (fixes a React console error on client navigation).
