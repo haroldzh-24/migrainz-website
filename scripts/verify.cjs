@@ -355,6 +355,10 @@ const { chromium } = require(
     assert.equal(await patreon.getAttribute("aria-expanded"), "true");
     const touchPopup = await touch.locator('#patreon-promo').boundingBox();
     assert.ok(touchPopup.x >= 0 && touchPopup.y >= 0 && touchPopup.x + touchPopup.width <= 390 && touchPopup.y + touchPopup.height <= 844, 'Touch popup fits viewport');
+    // Phone widths: the promo window is a small in-flow card with a finger-sized close button.
+    assert.equal(await touch.locator('#patreon-promo').evaluate(el => getComputedStyle(el).position), 'static');
+    const closeBox = await touch.getByRole('button', { name: 'Close patreon promotion' }).boundingBox();
+    assert.ok(closeBox.width >= 28 && closeBox.height >= 28, 'Phone promo close button is at least 28px');
     assert.equal(
       await touch
         .locator(".promo-new")
@@ -382,6 +386,11 @@ const { chromium } = require(
       .getByRole("button", { name: "PATREON SIGN-IN UNAVAILABLE" })
       .waitFor();
     await touch.goto("/");
+    await touch.getByRole("button", { name: "03 REQUISITIONS / SHOP" }).tap();
+    assert.equal(await touch.locator('#shop-promo').evaluate(el => getComputedStyle(el).position), 'static');
+    assert.equal(await touch.locator('#shop-promo small').isVisible(), true, 'Placeholder-store note stays visible on phones');
+    await touch.keyboard.press("Escape");
+    assert.equal(await touch.getByRole("button", { name: "03 REQUISITIONS / SHOP" }).getAttribute("aria-expanded"), "false");
     await touch.getByRole("button", { name: "03 REQUISITIONS / SHOP" }).tap();
     await touch.locator(".lede").first().tap();
     assert.equal(

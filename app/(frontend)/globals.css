@@ -1897,6 +1897,6 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
   /* Promo windows become small in-flow cards instead of covering content. */
   .promo-window, #patreon > .promo-window { position: static; width: 100%; max-height: none; margin: 4px 0 0; box-shadow: 2px 2px 0 #000; }
   .promo-body h2 { font-size: 15px; }
-  .promo-body > p:not(.promo-slogan), .promo-body > small, .promo-new { display: none; }
+  .promo-body > p:not(.promo-slogan), .promo-new { display: none; }
   .promo-window .window-controls button { min-width: 32px; min-height: 28px; font-size: 16px; }
 }
