@@ -5,15 +5,17 @@
 //   node scripts/serve-fixture.mjs [port]     start (prints the local and network URLs, keeps running)
 //   node scripts/serve-fixture.mjs --stop     stop the server started earlier
 //
-// next dev still reads .env.local, but every variable that file defines or that could reach Blob/Patreon is
-// overridden here, and process.env always wins over .env.local. Stop it before running the regression suite.
+// next dev still reads .env.local, but every variable named in .env*, .env.local or .env.vercel.local (names only,
+// values are never read into the log) and every Blob/Patreon variable is set here, blank unless the fixture needs it.
+// Next only fills variables that are undefined, so blank values hold. The server aborts before starting if anything
+// still points at a non-fixture database or holds a Blob token. Stop it before running the regression suite.
 import { spawn, spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 mkdirSync('test-results', { recursive: true });
 const pidFile = path.resolve('test-results/serve-fixture.pid');
@@ -33,9 +35,11 @@ const port = Number(process.argv[2]) || await new Promise((resolve, reject) => {
 });
 const lan = Object.values(os.networkInterfaces()).flat().filter(i => i && i.family === 'IPv4' && !i.internal).map(i => i.address);
 const blank = ['VERCEL_OIDC_TOKEN', 'BLOB_READ_WRITE_TOKEN', 'BLOB_STORE_ID', 'BLOB_WEBHOOK_PUBLIC_KEY', 'PATREON_CLIENT_ID', 'PATREON_CLIENT_SECRET', 'PATREON_REDIRECT_URI', 'PATREON_CAMPAIGN_ID', 'PATREON_URL'];
+const fileNames = ['.env', '.env.local', '.env.vercel.local', '.env.development', '.env.development.local'].flatMap(file =>
+  existsSync(file) ? readFileSync(file, 'utf8').split(String.fromCharCode(10)).map(line => line.trim().replace(/^export /, '').match(/^([A-Za-z_][A-Za-z0-9_]*) *=/)?.[1]).filter(Boolean) : []);
 const env = {
   ...process.env,
-  ...Object.fromEntries(blank.map(name => [name, ''])),
+  ...Object.fromEntries([...new Set([...blank, ...fileNames])].map(name => [name, ''])),
   NODE_ENV: 'development',
   CMS_DATABASE: 'sqlite',
   DATABASE_URL: pathToFileURL(path.join(fixture, 'content.db')).href,
@@ -46,6 +50,18 @@ const env = {
   DEV_ALLOWED_ORIGINS: ['127.0.0.1', 'localhost', ...lan].join(','),
 };
 mkdirSync(env.CMS_MEDIA_DIR);
+
+// Fail closed: report variable names only, never values.
+const problems = [];
+if (!env.DATABASE_URL.startsWith('file:') || !path.resolve(fileURLToPath(env.DATABASE_URL)).startsWith(fixture + path.sep)) problems.push('DATABASE_URL (not inside the fixture directory)');
+if (env.CMS_DATABASE !== 'sqlite') problems.push('CMS_DATABASE (not sqlite)');
+if (!path.resolve(env.CMS_MEDIA_DIR).startsWith(fixture + path.sep)) problems.push('CMS_MEDIA_DIR (not inside the fixture directory)');
+for (const [name, value] of Object.entries(env)) {
+  if (name === 'DATABASE_URL' || !value) continue;
+  if (/^postgres(ql)?:[/][/]/i.test(value) || /neon[.]tech|supabase[.]co|vercel-storage[.]com|blob[.]vercel/i.test(value)) problems.push(name + ' (remote database or storage address)');
+  else if (/(BLOB|PATREON|OIDC|POSTGRES|NEON|SUPABASE).*(TOKEN|SECRET|URL|KEY|ID)$/i.test(name) && value) problems.push(name + ' (credential-like variable is set)');
+}
+if (problems.length) { rmSync(fixture, { recursive: true, force: true }); console.error('Refusing to start. Offending variables: ' + [...new Set(problems)].join(', ')); process.exit(1); }
 const run = args => { const r = spawnSync(process.execPath, args, { env, stdio: 'inherit', windowsHide: true }); if (r.status !== 0) { console.error('Fixture setup failed: ' + args.join(' ')); process.exit(1); } };
 run(['--import', 'tsx', 'scripts/migrate-legacy-content.ts', '--apply']);
 run(['--import', 'tsx', 'scripts/seed-desktop-fixture.ts']);
