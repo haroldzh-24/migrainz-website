@@ -16,8 +16,12 @@ AGENTS.md is authoritative for conventions. This file adds production-safety rul
 The Vercel build command is `npm run build` and must not run migrations. Migrations are applied manually: back up, rehearse on a Neon branch copy, then apply.
 
 ## Release status (update when it changes)
-- `main` is the deployed line. `feature/equipment-schematics-assignments` (local only, unpushed) holds the Equipment expansion and migration `20261015_080148_equipment_schematics_assignments`. NOT approved for production.
-- Blockers: production `payload_migrations` ledger and schema verified; Neon and Blob backups taken; restore tested in isolation; Preview confirmed on a separate DB branch; pending migrations rehearsed against a production copy.
+- Status as of 2026-10-25 (from docs/redesign-plan.md "Current state"). `origin/main` (`88913ea`) is the deployed line and already contains the Equipment expansion (`feature/equipment-schematics-assignments`, migration `20261015_080148_equipment_schematics_assignments`). Whether that migration has been applied to the production database has NOT been verified in this repo; do not assume either way.
+- Local `main` is 5 commits ahead of `origin/main`, all unpushed: laptop fit and faction poster cards (`3611c0e`, `46b5caf`), the CLAUDE.md and bugs.md docs, and the merge of `docs/claude-md`. Pushing `main` deploys production; it needs explicit approval.
+- `feature/crt-readability` (local only, unpushed) holds the CRT restyle, the text-size floor and the review fixture server. Code, CSS and scripts only: no database, Blob or media changes. Awaiting Harold's look at the review server before merging into local `main`.
+- There is no isolated Preview yet (a push creates a Vercel Preview built with production credentials), so no branch is pushed. Preview isolation is listed in docs/redesign-plan.md "Workflow setup".
+- Blockers before any further production schema work: production `payload_migrations` ledger and schema verified; Neon and Blob backups taken; restore tested in isolation; Preview confirmed on a separate DB branch; pending migrations rehearsed against a production copy.
+- The review server (`node scripts/serve-fixture.mjs`) runs in dev mode on a throwaway SQLite fixture; production builds on SQLite are refused by design.
 
 ## Commands (PowerShell: use npm.cmd)
 - `npm.cmd run typecheck` and `npm.cmd run build` (offline build; does not prove DB or migration state)
