@@ -190,12 +190,17 @@ const { chromium } = require(
     await page.screenshot({ path: 'test-results/patreon-desktop.png' });
     await page.keyboard.press('Escape');
     const shop = page.getByRole("button", { name: "03 REQUISITIONS / SHOP" });
+    // The shop ad hover-opens once per visit: start from a fresh visit.
+    await page.evaluate(() => sessionStorage.removeItem("migrainz-shop-promo-seen"));
     await shop.hover();
     await page.getByRole("region", { name: "SHOP promotional window" }).hover();
     assert.equal(await shop.getAttribute("aria-expanded"), "true");
     await page.screenshot({ path: "test-results/shop-desktop.png" });
     await page.keyboard.press("Escape");
     assert.equal(await shop.getAttribute("aria-expanded"), "false");
+    await page.mouse.move(5, 5);
+    await shop.hover();
+    assert.equal(await shop.getAttribute("aria-expanded"), "false", "shop ad must not hover-open a second time in one visit");
     await shop.press("Enter");
     assert.equal(await shop.getAttribute("aria-expanded"), "true");
     assert.equal(

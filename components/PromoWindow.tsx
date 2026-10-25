@@ -4,6 +4,9 @@ import Link from "next/link";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { site } from "@/data/site";
 
+const shopSeenKey = "migrainz-shop-promo-seen";
+const compactQuery = "(max-width: 480px)";
+
 export default function PromoWindow({
   kind,
   number,
@@ -16,6 +19,16 @@ export default function PromoWindow({
   const trigger = useRef<HTMLButtonElement>(null);
   const popup = useRef<HTMLDivElement>(null);
   const shop = kind === "shop";
+  // The shop ad pops on hover at most once per visit and never over the transmission splash; clicking always opens it.
+  const hoverOpen = () => {
+    if (!shop) return true;
+    if (document.querySelector(".startup-sequence")) return false;
+    try {
+      if (sessionStorage.getItem(shopSeenKey)) return false;
+      sessionStorage.setItem(shopSeenKey, "1");
+    } catch { /* Optional storage: without it the ad can hover-open again. */ }
+    return true;
+  };
   useLayoutEffect(() => {
     if (!open || shop) return;
     const anchor = wrapper.current;
@@ -53,6 +66,10 @@ export default function PromoWindow({
     };
   }, [open, shop]);
   useEffect(() => {
+    // The compact in-flow card may open below the fold: bring it into view without moving the page otherwise.
+    if (open && window.matchMedia(compactQuery).matches) popup.current?.scrollIntoView({ block: "nearest" });
+  }, [open]);
+  useEffect(() => {
     if (!open) return;
     const outside = (event: PointerEvent) => {
       if (!wrapper.current?.contains(event.target as Node)) setOpen(false);
@@ -76,7 +93,7 @@ export default function PromoWindow({
       id={kind}
       ref={wrapper}
       onPointerEnter={(event) => {
-        if (event.pointerType === "mouse") setOpen(true);
+        if (event.pointerType === "mouse" && hoverOpen()) setOpen(true);
       }}
       onPointerLeave={(event) => {
         if (

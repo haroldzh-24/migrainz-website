@@ -18,7 +18,7 @@ export default function TerminalHeader() {
   return (
     <header className="topbar shell">
       <Link className="brand" href="/#top" aria-label="Home">
-        MIGRAINZ // PUBLIC ACCESS TERMINAL
+        MIGRAINZ<span className="brand-full"> // PUBLIC ACCESS TERMINAL</span>
       </Link>
       <div className="topbar-meta">
         <span>NODE 01</span>
