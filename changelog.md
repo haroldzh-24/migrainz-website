@@ -1,5 +1,14 @@
 # Changelog
 
+## Changed - 2026-10-25 / CRT design-pass fixes (docs/redesign-plan.md step 1)
+
+- Main menu items 01-07 (and the SHOP / PATREON triggers) are 16px; `[ LATEST ]` / `[ SYSTEM ]` buttons, panel links and row titles 14px; 12px stays for timestamps and labels.
+- Phone header (480px and below): brand shows `MIGRAINZ` only, ONLINE is hidden, clock + SND + CRT stay on one line.
+- Shop ad (BEST_DEALS.exe): hover-opens at most once per visit (sessionStorage), never while the transmission splash is up; clicking always opens it. Under 480px the SHOP and PATREON windows are small in-flow cards (scrolled into view) with a larger close button; Escape closes them. verify.cjs checks the once-per-visit rule.
+- Review fixture now seeds synthetic equipment on BLUSHLAND: `/projects/blushland/equipment`, `/equipment/fixture-scanner` (schematic with poster fallback), `/equipment/fixture-satchel`, `/characters/fixture-operative`. Synthetic data only.
+- Desktop only, not changed: at 1440x900 the open shop window can extend below the viewport.
+- Checks are simulated (headless Chrome); log in test-results/crt-regression-20261025b.txt. Nothing tried on a real phone.
+
 ## Changed - 2026-10-25 / CRT text-size floor
 
 - Body 16px; secondary and meta text (row copy, captions, notes, spec tables) 14px; labels, title bars, header, footer and the CRT toggle 12px. Nothing in globals.css is below 12px, including the `font:` shorthand rules. CSS only.
