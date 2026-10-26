@@ -1968,7 +1968,8 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
   .brand-full, .topbar-meta .online { display: none; }
   .topbar-meta { flex-wrap: nowrap; gap: 10px; white-space: nowrap; }
   /* Promo windows become small in-flow cards instead of covering content. */
-  .promo-window, #patreon > .promo-window { position: static; width: 100%; max-height: none; margin: 4px 0 0; box-shadow: 2px 2px 0 #000; }
+  /* scroll-margin: scrolled into view with a small gap, never a sub-pixel past the bottom edge. */
+  .promo-window, #patreon > .promo-window { position: static; width: 100%; max-height: none; margin: 4px 0 0; box-shadow: 2px 2px 0 #000; scroll-margin: 8px; }
   .promo-body h2 { font-size: 15px; }
   .promo-body > p:not(.promo-slogan), .promo-new { display: none; }
   .promo-window .window-controls button { min-width: 32px; min-height: 28px; font-size: 16px; }
