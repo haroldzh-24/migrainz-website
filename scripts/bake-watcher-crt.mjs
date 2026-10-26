@@ -1,26 +1,40 @@
-// Bakes the terminal recolour into the watcher artwork so the homepage no longer re-filters a moving container
-// every frame. Applies the same mapping as the #crt-tune SVG filter in app/(frontend)/layout.tsx (saturate 0, then
-// the R/G/B tables) and the soft glow drop-shadow(0 0 4px rgba(180,245,195,.35)) to the head silhouette.
+// Bakes the terminal recolour and the Watcher glow into the watcher artwork, so the homepage never re-filters a moving
+// container every frame. Applies the same mapping as the #crt-tune / #crt-tune-amber SVG filters in
+// app/(frontend)/layout.tsx (saturate 0, then the R/G/B tables) and the glow
+// drop-shadow(0 0 4px rgba(180,245,195,.7)) drop-shadow(0 0 16px rgba(120,220,150,.45)) (amber: the amber colours),
+// chained the way CSS chains filters: each layer blurs the alpha of the art plus the layers before it.
 //
-//   node scripts/bake-watcher-crt.mjs                     green phosphor (#crt-tune)       -> watcher-{base,eyes}.crt.png
-//   node scripts/bake-watcher-crt.mjs --phosphor amber    amber phosphor (#crt-tune-amber) -> watcher-{base,eyes}.amber.png
+//   node scripts/bake-watcher-crt.mjs                     green phosphor -> watcher-{base,eyes}.crt.png
+//   node scripts/bake-watcher-crt.mjs --phosphor amber    amber phosphor -> watcher-{base,eyes}.amber.png, crt-noise.amber.png
 //
-// Reads public/images/watcher/watcher-{base,eyes}.png (kept as the originals).
-// Both outputs share one canvas, PAD px larger on every side, so the glow is not clipped; WatcherArt.tsx offsets by
-// the same amount so the geometry is unchanged. Run it again only if the originals or the mapping change.
+// Reads public/images/watcher/watcher-{base,eyes}.png (kept as the originals). Both outputs share one canvas, PAD px
+// larger on every side, so the glow is never clipped (checked below). WatcherArt.tsx and the .watcher-art CSS offset by
+// the same amount (80 of 1200), and scripts/compare-watcher-bake.mjs repeats PAD. Run it again only if the originals,
+// the mapping or the glow change.
 import sharp from 'sharp';
 import path from 'node:path';
 
 const dir = path.resolve('public/images/watcher');
 const SIZE = 1200;
-export const PAD = 24;
+const PAD = 80;
 const OUT = SIZE + PAD * 2;
-// The CSS drop-shadow blur radius is 4px (sigma 2px) on a ~507px wide art box (1440px desktop); the source is 1200px.
-const GLOW_SIGMA = 2 * (SIZE / 507);
-// Tables map black to --crt-bg, then --crt-dim, --crt-text, white to --crt-bright; the glow matches --crt-glow-filter.
+// A CSS drop-shadow blur radius r is a Gaussian with sigma r/2, at display size: the art box is ~507px wide on a 1440px
+// desktop, and the source is 1200px. sharp's default blur mask stops at 20% amplitude (~1.8 sigma); 0.01 keeps the
+// tail out to ~3 sigma, like the browser.
+const DISPLAY = 507;
+const sigmaFor = radius => (radius / 2) * (SIZE / DISPLAY);
+// Tables map black to --crt-bg, then --crt-dim, --crt-text, white to --crt-bright. Glow layers in CSS order.
 const PHOSPHORS = {
-  green: { suffix: 'crt', glow: { r: 180, g: 245, b: 195, a: 0.35 }, table: { r: [0.039, 0.373, 0.659, 0.831], g: [0.055, 0.541, 0.847, 0.961], b: [0.043, 0.420, 0.690, 0.855] } },
-  amber: { suffix: 'amber', glow: { r: 255, g: 210, b: 150, a: 0.35 }, table: { r: [0.055, 0.627, 0.922, 1], g: [0.039, 0.478, 0.769, 0.878], b: [0.024, 0.282, 0.549, 0.690] } },
+  green: {
+    suffix: 'crt',
+    glow: [{ radius: 4, r: 180, g: 245, b: 195, a: 0.7 }, { radius: 16, r: 120, g: 220, b: 150, a: 0.45 }],
+    table: { r: [0.039, 0.373, 0.659, 0.831], g: [0.055, 0.541, 0.847, 0.961], b: [0.043, 0.420, 0.690, 0.855] },
+  },
+  amber: {
+    suffix: 'amber',
+    glow: [{ radius: 4, r: 255, g: 210, b: 150, a: 0.7 }, { radius: 16, r: 235, g: 165, b: 75, a: 0.45 }],
+    table: { r: [0.055, 0.627, 0.922, 1], g: [0.039, 0.478, 0.769, 0.878], b: [0.024, 0.282, 0.549, 0.690] },
+  },
 };
 const flag = process.argv.indexOf('--phosphor');
 const phosphor = PHOSPHORS[flag === -1 ? 'green' : process.argv[flag + 1]];
@@ -53,29 +67,46 @@ const save = (pixels, name) => sharp(pixels, { raw: { width: OUT, height: OUT, c
 const base = recolour(await read('watcher-base.png'));
 const eyes = recolour(await read('watcher-eyes.png'));
 
-// Glow from the silhouette of head plus eyes (the eyes fill the transparent sockets, so no glow lands in them).
+// Glow source: the silhouette of head plus eyes (the eyes fill the transparent sockets, so no glow lands in them).
 const union = Buffer.alloc(OUT * OUT);
 for (let p = 0; p < union.length; p++) union[p] = Math.max(base[p * 4 + 3], eyes[p * 4 + 3]);
-const { data: blurred, info } = await sharp(union, { raw: { width: OUT, height: OUT, channels: 1 } }).blur(GLOW_SIGMA).toColourspace('b-w').raw().toBuffer({ resolveWithObject: true });
-if (info.channels !== 1) throw new Error('expected a single-channel blur, got ' + info.channels);
-for (let p = 0; p < union.length; p++) {
-  const o = p * 4, a = base[o + 3] / 255;
-  const s = union[p] === 255 ? 0 : (blurred[p] / 255) * GLOW.a; // shadow only outside the silhouette
-  if (a === 1 || s === 0) continue;
-  const outA = a + s * (1 - a);
-  base[o] = Math.round((base[o] * a + GLOW.r * s * (1 - a)) / outA);
-  base[o + 1] = Math.round((base[o + 1] * a + GLOW.g * s * (1 - a)) / outA);
-  base[o + 2] = Math.round((base[o + 2] * a + GLOW.b * s * (1 - a)) / outA);
-  base[o + 3] = Math.round(outA * 255);
+let source = Buffer.from(union); // alpha of the art plus every glow layer so far
+for (const layer of GLOW) {
+  const { data: blurred, info } = await sharp(source, { raw: { width: OUT, height: OUT, channels: 1 } })
+    .blur({ sigma: sigmaFor(layer.radius), minAmplitude: 0.01 }).toColourspace('b-w').raw().toBuffer({ resolveWithObject: true });
+  if (info.channels !== 1) throw new Error('expected a single-channel blur, got ' + info.channels);
+  const next = Buffer.from(source);
+  for (let p = 0; p < union.length; p++) {
+    // Never under opaque art, so the moving eyes can never uncover glow inside the sockets.
+    if (union[p] === 255) continue;
+    const o = p * 4, a = base[o + 3] / 255, s = (blurred[p] / 255) * layer.a;
+    if (a === 1 || s === 0) continue;
+    // The shadow sits behind what is already there (art and earlier glow), as drop-shadow composites it.
+    const outA = a + s * (1 - a);
+    base[o] = Math.round((base[o] * a + layer.r * s * (1 - a)) / outA);
+    base[o + 1] = Math.round((base[o + 1] * a + layer.g * s * (1 - a)) / outA);
+    base[o + 2] = Math.round((base[o + 2] * a + layer.b * s * (1 - a)) / outA);
+    base[o + 3] = Math.round(outA * 255);
+    next[p] = Math.max(next[p], base[o + 3]);
+  }
+  source = next;
 }
+// Proof the padding is wide enough: the outermost 2px ring of the canvas must stay transparent.
+let ringMax = 0;
+for (let y = 0; y < OUT; y++) for (let x = 0; x < OUT; x++) {
+  if (x >= 2 && y >= 2 && x < OUT - 2 && y < OUT - 2) continue;
+  const o = (y * OUT + x) * 4;
+  ringMax = Math.max(ringMax, base[o + 3], eyes[o + 3]);
+}
+if (ringMax > 2) throw new Error(`the glow reaches the canvas edge (alpha ${ringMax}/255): raise PAD`);
 await save(base, `watcher-base.${suffix}.png`);
 await save(eyes, `watcher-eyes.${suffix}.png`);
-console.log(`wrote watcher-base.${suffix}.png and watcher-eyes.${suffix}.png (${OUT}x${OUT}, pad ${PAD}, glow sigma ${GLOW_SIGMA.toFixed(2)}px)`);
+console.log(`wrote watcher-base.${suffix}.png and watcher-eyes.${suffix}.png (${OUT}x${OUT}, pad ${PAD}, glow sigmas ${GLOW.map(l => sigmaFor(l.radius).toFixed(2)).join(' + ')}px, edge ring alpha ${ringMax}/255)`);
 
 // The grain tile (crt-noise.png, green-tinted by crt-noise.svg's 0.8/1/0.75 matrix) gets a matching tint per phosphor.
 if (suffix !== 'crt') {
   const { data: noise, info: tile } = await sharp(path.join(dir, 'crt-noise.png')).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
-  const tint = [GLOW.r / 255, GLOW.g / 255, GLOW.b / 255];
+  const tint = [GLOW[0].r / 255, GLOW[0].g / 255, GLOW[0].b / 255];
   for (let o = 0; o < noise.length; o += 4) {
     const gray = noise[o + 1]; // the green channel carries the untinted value
     for (let c = 0; c < 3; c++) noise[o + c] = Math.round(gray * tint[c]);
