@@ -2,6 +2,12 @@
 
 ## Open Bugs
 
+### 2026-10-26 - CRT vignette contrast (fix/crt-glow, decision for Harold)
+
+- The radial overlay vignette from the glow spec darkens the corners by up to .55 black. Calculated (alpha compositing over text and background, not measured from pixels; 1366x768): `--crt-dim` text (4.94:1 normally) falls to ~3.2:1 on menu file label 02, ~2.6:1 on label 03 and ~2.4:1 in the footer; 12px labels need 4.5:1 (AA). At 390x844 the footer text is ~2.2:1. The brand stays ~6.2:1. Green and amber behave the same.
+- Options (footer figure): keep the spec values (2.4:1); end alpha .35 (3.2:1); start at 65% (2.6:1); start 65% with end .45 (3.0:1). None reaches 4.5:1; that would need a brighter `--crt-dim` or no vignette (`CRT: REDUCED` already has none).
+- Status: Open; values left as specified until Harold decides.
+
 ### 2026-10-25 - Boot checklist doubles the project name on live data (cosmetic)
 
 - Live `/boot-status` after the phase 1 deploy: the tracker phase titled with the project name prints as `blushland_blushland_ch1`. lib/content/boot.ts always prefixes the project slug.
@@ -29,6 +35,7 @@
 
 ### 2026-10-15 - Watcher stutter on other devices
 
+- 2026-10-26 (fix/crt-glow): the Watcher now has a stepped opacity flicker and a rare 2px jitter when CRT is "on" (Harold's request). Headless profile: no extra paints, but the running flicker costs a style recalculation every frame while the Watcher is in view (so it pauses off-screen). The Macs need rechecking with CRT on and with CRT off; CRT off removes the motion.
 - 2026-10-22: the recolour filter that was briefly on the moving container is gone; the recolour and glow are baked into the PNGs (scripts/bake-watcher-crt.mjs), so the per-frame cost is back to the original. Recheck on the affected Macs.
 - User reports smooth deployed animation on one Windows laptop but stutter on Macs and a Raider HX 14V-class machine. Exact affected-browser/GPU/refresh-rate configuration is unknown.
 - Public deployment matches the pre-optimization watcher behavior. Isolated throttled Chrome profiling confirms near-per-event React rerenders and repeated style/layout work; these are removed/reduced locally using an elapsed-time frame loop. Preserve effects, clipping, touch and scrolling; no deployment performed.

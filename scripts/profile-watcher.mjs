@@ -24,11 +24,12 @@ const browser=await chromium.launch({executablePath:process.env.BROWSER_PATH || 
 try {
 const results=[];
 // CRT=on|reduced|off sets <html data-crt> (default on, as the site defaults). 'jitter' forces the Watcher jitter every 250ms while idle.
-for(const variant of ['full','no-eyes','no-clip','no-3d','no-static','idle','idle-sweep','jitter']) {
+for(const variant of ['full','no-eyes','no-clip','no-3d','no-static','idle','idle-sweep','jitter','offscreen']) {
  const page=await browser.newPage({viewport:{width:1440,height:1000}});
  await page.goto(`http://127.0.0.1:${server.address().port}`);await page.waitForTimeout(400);
  const css={'no-eyes':'.watcher-eyes {transform:none!important}', 'no-clip':'.watcher svg g {clip-path:none!important}', 'no-3d':'.watcher-art, .watcher > svg {transform:none!important}', 'no-static':'.watcher-static{display:none!important}', 'idle-sweep':'.watcher-interference{animation-delay:-11s}'}[variant];
  if(css)await page.addStyleTag({content:css});
+ if(variant==='offscreen'){await page.evaluate(()=>window.scrollTo(0,document.body.scrollHeight));await page.waitForTimeout(500);}
  const cdp=await page.context().newCDPSession(page);await cdp.send('Performance.enable');await cdp.send('Emulation.setCPUThrottlingRate',{rate:4});
  const metrics=async()=>Object.fromEntries((await cdp.send('Performance.getMetrics')).metrics.map(x=>[x.name,x.value]));
  const before=await metrics();
@@ -42,7 +43,7 @@ for(const variant of ['full','no-eyes','no-clip','no-3d','no-static','idle','idl
   const timer=active?setInterval(()=>{events++;el.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerType:'mouse',clientX:r.left+r.width*(.5+.45*Math.sin(events*.08)),clientY:r.top+r.height*(.5+.4*Math.cos(events*.06))}));},8):null;
   await new Promise(r=>setTimeout(r,2500));run=false;clearInterval(timer);clearInterval(jitterTimer);gaps.sort((a,b)=>a-b);
   return {events,jitters,renders:window.__renders,frames:gaps.length,p95ms:gaps[Math.floor(gaps.length*.95)],over25ms:gaps.filter(x=>x>25).length};
- },{active:!variant.startsWith('idle')&&variant!=='jitter',jitter:variant==='jitter'});
+ },{active:!variant.startsWith('idle')&&variant!=='jitter'&&variant!=='offscreen',jitter:variant==='jitter'});
  await cdp.send('Tracing.end');await new Promise(r=>cdp.once('Tracing.tracingComplete',r));
  const after=await metrics(),cost={};for(const k of ['ScriptDuration','TaskDuration','RecalcStyleDuration','LayoutDuration'])cost[k+'Ms']=+(1000*(after[k]-before[k])).toFixed(2);
  for(const name of ['Paint','PrePaint','UpdateLayoutTree','RasterTask']){const entries=trace.filter(e=>e.name===name&&e.ph==='X');cost[name+'Count']=entries.length;cost[name+'Ms']=+(entries.reduce((s,e)=>s+(e.dur||0),0)/1000).toFixed(2);}

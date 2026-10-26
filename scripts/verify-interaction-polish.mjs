@@ -211,7 +211,7 @@ try {
         body: style('.hero .lede', 'textShadow'), head: style('.hero h1', 'textShadow'), ui: style('.menu-name', 'textShadow'),
         lede: style('.hero .lede', 'color'), vignette: style('.crt', 'backgroundImage', '::after'),
         scanlines: Number(getComputedStyle(document.documentElement).getPropertyValue('--crt-scanline-alpha')),
-        bezel: style('.crt-bezel', 'display'), bezelEvents: style('.crt-bezel', 'pointerEvents'), flicker: style('.watcher-flicker', 'animationName'),
+        bezel: style('.crt-bezel', 'display'), bezelEvents: style('.crt-bezel', 'pointerEvents'), flicker: style('.watcher-flicker', 'animationName'), flickerTiming: style('.watcher-flicker', 'animationTimingFunction'), flickerDuration: style('.watcher-flicker', 'animationDuration'),
       };
     });
     const cases = [
@@ -235,6 +235,8 @@ try {
     assert.equal(on.scanlines, 0.07);
     assert.deepEqual([on.bezel, on.bezelEvents], ['block', 'none'], 'bezel shown in "on" on a wide screen and never takes clicks');
     assert.equal(on.flicker, 'watcher-flicker');
+    assert.ok(/^steps\(1(, (end|jump-end))?\)$/.test(on.flickerTiming), `the flicker is stepped, not eased (got ${on.flickerTiming})`);
+    assert.equal(on.flickerDuration, '1.3s');
     assert.equal(reduced.body, 'none', 'no body glow in "reduced"');
     assert.match(reduced.head, /18px/, '"reduced" keeps heading glow');
     assert.deepEqual([reduced.vignette, reduced.scanlines, reduced.bezel, reduced.flicker], ['none', 0.03, 'none', 'none']);
@@ -262,8 +264,20 @@ try {
       const at = parseFloat(key), back = keyframes.find(([k, o]) => parseFloat(k) > at && o === 1);
       assert.ok(back && parseFloat(back[0]) - at <= 3, 'each dip returns to full just after');
     }
-    const corner = await page.evaluate(() => { const el = document.elementFromPoint(3, 300); return el ? el.className || el.tagName : null; });
-    assert.ok(corner !== 'crt-bezel', 'clicks pass through the bezel');
+    // Hit-test the centre of the first menu link and the brand: the bezel must never be the element that gets the click.
+    const hits = await page.evaluate(() => ['.terminal-nav a', '.brand'].map(selector => {
+      const box = document.querySelector(selector).getBoundingClientRect();
+      const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+      return [selector, !!hit?.closest(selector), !!hit?.closest('.crt-bezel')];
+    }));
+    assert.deepEqual(hits, [['.terminal-nav a', true, false], ['.brand', true, false]], 'clicks reach content, not the bezel');
+    // The flicker loop pauses while the Watcher is scrolled away and resumes when it is back.
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await page.waitForFunction(() => document.querySelector('.watcher').hasAttribute('data-offscreen'));
+    assert.equal(await page.locator('.watcher-flicker').evaluate(el => getComputedStyle(el).animationPlayState), 'paused', 'flicker pauses off-screen');
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.waitForFunction(() => !document.querySelector('.watcher').hasAttribute('data-offscreen'));
+    assert.equal(await page.locator('.watcher-flicker').evaluate(el => getComputedStyle(el).animationPlayState), 'running', 'flicker resumes on-screen');
     // Keyboard, not click: a mouse click hovers first, which opens the shop ad, and the click would then close it.
     await page.getByRole('button', { name: 'Requisitions / shop 03 / requisitions.exe', exact: true }).focus();
     await page.keyboard.press('Enter');
@@ -275,6 +289,13 @@ try {
     assert.match(await page.locator('.equipment-panel p').first().evaluate(el => getComputedStyle(el).textShadow), /2\.8px/, 'the equipment panel keeps body glow');
     await context.close();
 
+    // The boot/announcement window body is terminal text: its headline keeps the glow.
+    const boot = await open({}, { boot: true, crt: 'on' });
+    await boot.page.goto(base + '/');
+    await boot.page.getByRole('button', { name: 'ENTER', exact: true }).waitFor();
+    assert.match(await boot.page.locator('.startup-announcement h2').evaluate(el => getComputedStyle(el).textShadow), /18px/, 'the announcement headline keeps its glow');
+    await boot.context.close();
+
     // Jitter: watched for 10.5s at once in "on", "off" and under reduced motion.
     const watch = async (options, modes) => {
       const run = await open(options, modes);
@@ -283,7 +304,7 @@ try {
         const el = document.querySelector('.watcher-jitter');
         window.__jitters = []; let started = 0;
         new MutationObserver(() => {
-          if (el.dataset.jitter) { started = performance.now(); window.__jitters.push({ side: el.dataset.jitter, ms: null }); }
+          if (el.dataset.jitter) { started = performance.now(); window.__jitters.push({ side: el.dataset.jitter, at: started, ms: null, x: new DOMMatrix(getComputedStyle(el).transform).m41 }); }
           else if (window.__jitters.length) window.__jitters.at(-1).ms = performance.now() - started;
         }).observe(el, { attributes: true, attributeFilter: ['data-jitter'] });
       });
@@ -291,10 +312,14 @@ try {
     };
     const watched = await Promise.all([watch({}, { crt: 'on' }), watch({}, { crt: 'off' }), watch({ reducedMotion: 'reduce' }, { crt: 'on' })]);
     await new Promise(resolve => setTimeout(resolve, 10500));
+    // Let a jitter that started at the very end finish its 90ms before reading.
+    await new Promise(resolve => setTimeout(resolve, 300));
     const [jOn, jOff, jMotion] = await Promise.all(watched.map(run => run.page.evaluate(() => window.__jitters)));
     await Promise.all(watched.map(run => run.context.close()));
     assert.ok(jOn.length >= 1, 'the Watcher jitters within 10.5s in "on"');
     assert.ok(jOn.every(j => ['left', 'right'].includes(j.side) && j.ms !== null && j.ms < 250), 'each jitter snaps back within ~90ms');
+    assert.ok(jOn.every(j => Math.abs(j.x) === 2 && (j.side === 'left') === (j.x < 0)), 'each jitter moves the art exactly 2px, left or right');
+    assert.ok(jOn.every((j, i) => i === 0 || j.at - jOn[i - 1].at >= 3400), 'jitters are at least 3.5s apart');
     assert.deepEqual([jOff.length, jMotion.length], [0, 0], 'no jitter in "off" or under reduced motion');
     pass('CRT modes: glow per mode/phosphor/context, vignette, scanlines, bezel, flicker and jitter gating');
   }

@@ -36,7 +36,13 @@ export default function Watcher() {
       schedule();
     };
     schedule();
-    return () => { clearTimeout(next); clearTimeout(back); delete element.dataset.jitter; };
+    // The flicker loop pauses (CSS) while the Watcher is scrolled out of view; written straight to the DOM, no state.
+    const watcher = element.closest<HTMLElement>(".watcher");
+    const visibility = watcher && "IntersectionObserver" in window
+      ? new IntersectionObserver(([entry]) => { if (entry.isIntersecting) delete watcher.dataset.offscreen; else watcher.dataset.offscreen = ""; })
+      : null;
+    if (watcher) visibility?.observe(watcher);
+    return () => { clearTimeout(next); clearTimeout(back); visibility?.disconnect(); delete element.dataset.jitter; };
   }, []);
   useEffect(() => {
     const container = root.current!;

@@ -4,7 +4,7 @@
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 import http from 'node:http';
-import { mkdirSync, readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import sharp from 'sharp';
 const root = process.argv[2];
 const phosphorName = process.argv[3] || 'green';
@@ -49,6 +49,15 @@ await page.screenshot({ path: path.join(out, `watcher-runtime-vs-baked-${phospho
 await browser.close(); server.close();
 const a = await sharp(A).raw().toBuffer({ resolveWithObject: true });
 const b = await sharp(B).raw().toBuffer({ resolveWithObject: true });
-let sum = 0, max = 0, over8 = 0; const n = a.info.width * a.info.height, ch = a.info.channels;
-for (let p = 0; p < n; p++) { let d = 0; for (let c = 0; c < 3; c++) d = Math.max(d, Math.abs(a.data[p * ch + c] - b.data[p * ch + c])); sum += d; max = Math.max(max, d); if (d > 8) over8++; }
-console.log(JSON.stringify({ phosphor: phosphorName, pixels: n, meanAbsDiff: +(sum / n).toFixed(3), maxDiff: max, pixelsOver8of255: over8, pctOver8: +(100 * over8 / n).toFixed(3) }));
+// Halo = pixels the runtime render shows as glow (dark, below 70/255 in every channel); art = everything brighter.
+const groups = { all: [0, 0, 0, 0], halo: [0, 0, 0, 0], art: [0, 0, 0, 0] }; // pixels, sum, max, over8
+const n = a.info.width * a.info.height, ch = a.info.channels;
+for (let p = 0; p < n; p++) {
+  let d = 0, bright = 0;
+  for (let c = 0; c < 3; c++) { d = Math.max(d, Math.abs(a.data[p * ch + c] - b.data[p * ch + c])); bright = Math.max(bright, a.data[p * ch + c]); }
+  for (const g of [groups.all, bright < 70 ? groups.halo : groups.art]) { g[0]++; g[1] += d; g[2] = Math.max(g[2], d); if (d > 8) g[3]++; }
+}
+const summary = Object.fromEntries(Object.entries(groups).map(([k, g]) => [k, { pixels: g[0], meanAbsDiff: +(g[1] / g[0]).toFixed(3), maxDiff: g[2], pctOver8of255: +(100 * g[3] / g[0]).toFixed(3) }]));
+const result = { phosphor: phosphorName, ...summary };
+writeFileSync(path.join(out, `watcher-bake-compare-${phosphorName}.json`), JSON.stringify(result, null, 2));
+console.log(JSON.stringify(result));

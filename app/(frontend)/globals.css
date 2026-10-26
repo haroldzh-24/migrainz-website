@@ -316,6 +316,8 @@ button {
    at least an 11px side margin at these widths, so the 6px frame and the corner wedges stay clear of it. */
 .crt-bezel { display: none; }
 @media (min-width: 481px) {
+  /* Keyboard focus scrolls controls at least 16px in from the frame, so the focus ring never sits under it. */
+  html[data-crt="on"] { scroll-padding: 16px; }
   html[data-crt="on"] .crt-bezel {
     display: block;
     position: fixed;
@@ -858,10 +860,15 @@ html[data-phosphor="amber"] .watcher-eyes-amber { display: inline; }
   inset: 0;
 }
 
-html[data-crt="on"] .watcher-jitter { will-change: transform; }
 html[data-crt="on"] .watcher-jitter[data-jitter="left"] { transform: translateX(-2px); }
 html[data-crt="on"] .watcher-jitter[data-jitter="right"] { transform: translateX(2px); }
-html[data-crt="on"] .watcher-flicker { will-change: opacity; animation: watcher-flicker 1.3s step-end infinite; }
+html[data-crt="on"] .watcher-flicker { animation: watcher-flicker 1.3s step-end infinite; }
+/* Watcher.tsx sets data-offscreen while the Watcher is scrolled out of view: the loop pauses, so the page can idle. */
+html[data-crt="on"] .watcher[data-offscreen] .watcher-flicker { animation-play-state: paused; }
+@media (prefers-reduced-motion: no-preference) {
+  html[data-crt="on"] .watcher-jitter { will-change: transform; }
+  html[data-crt="on"] .watcher-flicker { will-change: opacity; }
+}
 
 /* Dips of 3% or less, each held for 2% of the loop (~26ms, at least one frame at 60Hz), then back to full. */
 @keyframes watcher-flicker {
