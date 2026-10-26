@@ -35,7 +35,18 @@ The Vercel build command is `npm run build` and must not run migrations. Migrati
 - Media bytes are served only via `/api/media/file/...` after `mediaRead`. No public Blob URLs, signed links or client tokens. Protected originals never enter fallback candidates.
 - `Characters.equipmentAssignments` is the only source of equipment assignments; equipment pages derive the reverse.
 
+## Two lanes
+- **Code-only lane** (UI, styling, components, docs, scripts, fixtures, local tests): get one plan review (the `reviewer` subagent checks the plan against this file and docs/redesign-plan.md), then work and report at the end. Do not stop for approval on reversible, repo-only choices.
+- **Production lane** (database, Blob, Vercel, Neon, pushes, deploys, env vars, anything that reads production data): keep stop-and-approve. Every step needs Harold's explicit approval in the current conversation (see "Production safety").
+- A change that starts in the first lane and needs the second (for example a schema change, or any push) stops at that point and asks.
+
 ## Working style
-- One feature branch per change off `main`; small focused commits.
+- One feature branch per change off `main`; small focused commits. docs/redesign-plan.md is the source of truth for design decisions; keep it current in small docs commits.
 - Update features.md and changelog.md; log bugs in bugs.md with evidence and status.
 - Report validation honestly: separate simulated/synthetic checks from real-device or live checks.
+- Batch questions. For code-only, reversible choices pick the recommended option, note it in the report and continue. Stop only for production, data or design-direction questions.
+- Before showing work to Harold, run the `reviewer` subagent (fresh context) on the diff and screenshots, fix what is clearly in scope and list the rest. `/check-everything` runs typecheck, build, regression and both equipment verify scripts and saves the output.
+- Model choice: Opus 5.5 with higher effort for audits, planning and production steps; Sonnet 5.5 at medium effort for executing a clear plan. Raise effort if work skips files, skips tests or stops partway.
+
+## Project Claude Code settings
+`.claude/settings.json` denies `git push`, `payload migrate` and `migrate:*`, `vercel`, `neonctl`, the Blob recovery script, the `cms:*` scripts that load `.env.local`, and reading `.env*`; it allows the check scripts and basic git. These rules block Claude's own tool calls only. They do not stop a script from reading `.env*` itself, so the safety rules above still apply to every command. Pushing, deploying and Vercel or Neon changes are done by Harold, or by Claude only after explicit approval and a temporary, visible change to these rules.
