@@ -2,6 +2,11 @@
 
 ## Open Bugs
 
+### 2026-10-25 - Boot checklist doubles the project name on live data (cosmetic)
+
+- Live `/boot-status` after the phase 1 deploy: the tracker phase titled with the project name prints as `blushland_blushland_ch1`. lib/content/boot.ts always prefixes the project slug.
+- Fix (not yet made): skip the prefix when the slugified title already starts with the project slug. Status: Open, cosmetic.
+
 ### 2026-10-22 - Art Viewer Escape only closes the viewer while it is the focused window (minor, logging only)
 
 - components/ArtViewer.tsx (around line 175) closes on Escape through a document keydown listener, but only while the window manager marks the viewer focused, not minimized and visible. The viewer does take focus when it opens (components/WindowManager.tsx line 271 moves DOM focus to the focused window element), so Escape works straight after opening.
