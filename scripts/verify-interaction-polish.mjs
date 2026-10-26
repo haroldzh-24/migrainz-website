@@ -36,6 +36,11 @@ const open = async (options = {}, { boot = false, phosphor } = {}) => {
 };
 const afterStyle = (locator, property) => locator.evaluate((el, prop) => getComputedStyle(el, '::after')[prop], property);
 const pass = message => console.log('PASS ' + message);
+// The checklist closes ~0.5s after its last line, so read every line in one step the moment the clearance line exists.
+const bootSnapshot = page => page.waitForFunction(() => {
+  const lines = [...document.querySelectorAll('.boot-line')].map(li => ({ status: li.dataset.status, text: li.textContent }));
+  return lines.some(line => line.text.includes('clearance')) ? lines : null;
+}).then(handle => handle.jsonValue());
 // The server renders the opaque boot gate; a dismissed session only drops it after hydration. Wait for that before
 // interacting, or a press can land on the gate (seen on the slower regression server).
 const visit = async (page, url) => { await page.goto(url); await page.locator('.startup-sequence').waitFor({ state: 'hidden' }); };
@@ -55,12 +60,13 @@ try {
       assert.ok(!bootJSON.includes(sentinel), `${sentinel} must not be in /boot-status`);
     }
     await page.goto(base + '/');
-    await page.locator('.boot-line', { hasText: 'clearance' }).waitFor();
-    const text = await page.locator('.boot-checklist').textContent();
-    for (const sentinel of SENTINELS) assert.ok(!text.toLowerCase().includes(sentinel.toLowerCase()), `${sentinel} must not be in the checklist`);
-    assert.equal(await page.locator('.boot-line', { hasText: 'sealed_phase' }).filter({ hasText: 'CLASSIFIED' }).count(), 1, 'redacted phase shows its safe label');
-    assert.equal(await page.locator('.boot-line', { hasText: 'sealed_chapter' }).filter({ hasText: 'CLASSIFIED' }).count(), 1, 'redacted chapter shows its safe label');
+    const lines = await bootSnapshot(page);
+    // Best effort: the screenshot may already show the announcement on a slow machine.
     await page.screenshot({ path: path.join(out, 'boot-checklist-1366.png') });
+    const text = lines.map(line => line.text).join(' | ');
+    for (const sentinel of SENTINELS) assert.ok(!text.toLowerCase().includes(sentinel.toLowerCase()), `${sentinel} must not be in the checklist`);
+    assert.equal(lines.filter(line => line.text.includes('sealed_phase') && line.text.includes('CLASSIFIED')).length, 1, 'redacted phase shows its safe label');
+    assert.equal(lines.filter(line => line.text.includes('sealed_chapter') && line.text.includes('CLASSIFIED')).length, 1, 'redacted chapter shows its safe label');
     await context.close();
     pass('classified titles absent from checklist, HTML and RSC; safe labels shown');
   }
