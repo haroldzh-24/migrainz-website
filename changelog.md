@@ -1,5 +1,13 @@
 # Changelog
 
+## Changed - 2026-10-26 / CRT glow pass (fix/crt-glow)
+
+- Glow tokens per Harold's values: headings and the hero title (`--crt-glow-head`), menu names, brand and active items (`--crt-glow-ui`), amber links (`--crt-glow-link`; no amber links exist yet), paragraphs (`--crt-glow-body`, CRT "on" only). Amber mode uses the same strengths in amber colours.
+- Scanlines .07; the fixed overlay's vignette is now a radial gradient; a rounded screen bezel shows in CRT "on" above 480px and never takes clicks.
+- Watcher glow (two drop-shadows) baked into the tuned PNGs on a 1360px canvas (80px padding, checked unclipped). Watcher-only stepped flicker and a rare 2px jitter, CRT "on" only, stopped by reduced motion.
+- Fixed: the Win95 promo ad's headline glowed green (it now has no glow). The hero description keeps `--crt-text` (it already computed to it).
+- `scripts/verify-interaction-polish.mjs` checks the modes, contexts, bezel, vignette, flicker keyframes and jitter; `scripts/profile-watcher.mjs` runs with CRT on and has a forced-jitter variant; `scripts/compare-watcher-bake.mjs` compares both phosphors against the live filter chain.
+
 ## Changed - 2026-10-26 / Security updates without the Payload set (chore/dependency-updates)
 
 - next 16.3.4 -> 16.4.3 and sharp 0.35.4 -> 0.35.5; fast-uri, source-map-js and Blob's undici patched within their ranges. npm audit 26 -> 21. The `dompurify` override moves to `^3.4.17` (audit hygiene only; the copy that runs is bundled in monaco). The zod chain under `@vercel/blob` is accepted (no fixed release). The other 17 need the Payload upgrade, which needs a database migration (see bugs.md).

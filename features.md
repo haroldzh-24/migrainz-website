@@ -1,5 +1,14 @@
 # Features
 
+## Implemented - 2026-10-26 / CRT glow pass (fix/crt-glow)
+
+- Supersedes the 2026-10-22 notes "body text does not glow", "no continuous flicker" and "jitter loops removed" (Harold's explicit decision; values in docs/redesign-plan.md "Theme").
+- Glow tokens: phosphor-specific `--crt-glow-{head,ui,link,body}-value` tokens follow `html[data-crt]` (off: none; reduced: no body glow); rules use `--crt-glow-head|ui|link|body`, set to none in Win95 and light contexts and re-enabled for body and link text inside the dark equipment panel. The startup/announcement window body is terminal text and keeps its glow.
+- Fixed overlay: radial vignette (none in reduced/off); scanlines .07. Bezel: `.crt-bezel` beside `.crt` in the layout, fixed, z-index 21 (above the overlay, below promo windows, windows, the dock, the open header and the boot gate), CRT "on" and wider than 480px only. It sits inside the page wrapper, so it is not shown behind the boot checklist; maximized windows cover its corners.
+- Watcher: `.watcher-jitter > .watcher-flicker > .watcher-art`. Flicker is a `step-end` opacity animation (dips held 2% of 1.3s, ~26ms); jitter is a timer in Watcher.tsx that writes `data-jitter` straight to the wrapper (no re-render) only when CRT is "on", reduced motion is off and the page is visible. Profile (headless, 4x CPU throttle, CRT on): idle and forced-jitter runs show 0 paints and no frame over 25ms; main-thread task time rose about 100ms per 2.5s throttled.
+- Bake: two chained glow layers with sharp `minAmplitude: 0.01` (the default mask cut the tail at ~1.8 sigma), 80px padding, an edge-ring check that fails the bake if the glow is clipped. Face PNGs grew from ~198KB to ~474KB (wide soft halo); lossless WebP would be ~266KB. Bake vs live filter: halo pixels within 2.4/255 on average, line art 6.1/255 (resampling).
+- Validation: all simulated (headless Chrome, fixture). Real-device smoothness (the earlier Mac stutter report), Safari/Firefox rendering and how the glow strength reads on real screens are unverified.
+
 ## Implemented - 2026-10-25 / Phase 1 interaction polish (feature/interaction-polish)
 
 - Shared highlight (globals.css "SHARED HIGHLIGHT", components/HighlightEffects.tsx). Terminal: corner-bracket reticle drawn as an overlay; inline controls lock on from 9px out to 3px out, full-width cards and rows draw it on their own edge and fade in (never outside the box). Running-text links only brighten. Win95 contexts: navy bars, bevels, dotted focus, navy icon labels. Touch: `:active` with a passive touchstart listener (iOS), hover only under `(hover: hover)`; the press state is checked with a held mouse button in a no-hover phone context (headless Chrome ignores raw DevTools touch for `:active`), not on a real device. With a pointer, toolbar buttons sit flat and raise on hover; on touch they stay raised. Forced colours: real outline. Reduced motion: no animation.
