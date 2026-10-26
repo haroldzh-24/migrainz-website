@@ -44,13 +44,14 @@
 - Fix: hosted builds now validate supplied production configuration; runtime errors identify missing names without exposing values.
 - Verification: typecheck, production guard and production build pass. Local SQLite `/admin` returns HTTP 200 with first-user setup; live production still returns HTTP 500 before deployment of these changes.
 - Status: Code fix verified locally; deployment variable scopes, database connectivity and migration status require authenticated Vercel access. No CLI, token or project link is available in this workspace.
+- Update 2026-10-25 (Harold, live check): `/admin` on the live site returns 200 with the Payload login page. Login page loads; logged-in use not verified.
 
 ### 2026-09-09 - Upstream CMS dependency advisories
 
 - Description: npm audit reports 12 moderate package entries inherited from Payload/Drizzle dependencies. No high or critical entries remain after updating Sharp and DOMPurify.
 - Evidence: `npm audit`; ignored detailed report in test-results/npm-audit.json. Root advisories concern Payload default account-unlock access and older esbuild development-server tooling.
 - Mitigation: account unlock is explicitly restricted to CMS staff; this site does not run an esbuild development server. Do not apply npm audit fix --force, which suggests incompatible old Payload packages.
-- Status: Open for upstream package updates and production security review.
+- Status: Open for upstream package updates and production security review. Plan (2026-10-25, Harold): a small dependency-update branch after phase 1 ships.
 
 
 ### Bug Entry Template
@@ -62,6 +63,21 @@
 - Status: Open
 
 ## Resolved Bugs
+
+### 2026-10-25 - SND toggle never played its confirmation tone
+
+- Found while planning phase 1: the header button called `setEnabled(true)` and then `playSound("toggle")` in the same handler, and `playSound` still saw the old `enabled = false`, so turning sound on was silent. Each tone also created a new AudioContext.
+- Fix (feature/interaction-polish): `setEnabled(true)` plays the toggle tone itself; `playSound` reads a ref; one shared AudioContext, resumed on the first pointer or key gesture.
+- Status: Resolved in code. Not yet heard on a real device (headless tests cannot check audio).
+
+### 2026-10-25 - Boot checklist: a skipped boot rewrote its session key seconds later (found and fixed before review)
+
+- verify.cjs (skip loop) timed out waiting for the checklist after clearing the session and reloading. Cause: skipping did not cancel the end-of-boot timer, which fired ~3s after the boot started and set `migrainz-boot-seen` again while the slow dev reload was still in flight, so the reloaded page went straight to the ad.
+- Fix: skipping clears every pending boot timer. Status: Resolved; regression rerun.
+
+### 2026-10-25 - Reticle widened pages (found and fixed before review)
+
+- At 390px the invisible reticle (then resting at scale 1.3) widened the homepage to 438px; later the -3px reticle on full-width equipment cards overflowed a margin-less page by 3px (verify-equipment-browser.mjs). Fix: no scale at rest; full-width cards and rows draw the reticle at inset 0. Status: Resolved.
 
 ### 2026-09-29 - Public comic media denied by hidden listing metadata
 

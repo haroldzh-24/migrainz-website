@@ -95,9 +95,18 @@
   --crt-border: rgba(140, 220, 160, 0.18);
   --crt-accent: #e8b45a;
   --crt-text-rgb: 168, 216, 176;
+  --crt-bright-rgb: 212, 245, 218;
   --crt-border-rgb: 140, 220, 160;
+  /* Near-black tints for the Watcher frame, record cards and placeholder art. */
+  --crt-deep: #060a06;
+  --crt-deep-hi: #071007;
+  --crt-deep-lo: #030503;
   --crt-glow: 0 0 4px rgba(180, 245, 195, 0.35);
   --crt-glow-filter: 0 0 4px rgba(180, 245, 195, 0.35);
+  /* Phosphor-matched recolour (layout.tsx SVG filters) and baked Watcher layers (scripts/bake-watcher-crt.mjs). */
+  --crt-tune-filter: url(#crt-tune);
+  --watcher-base: url("/images/watcher/watcher-base.crt.png");
+  --watcher-noise: url("/images/watcher/crt-noise.png");
   /* CRT effect strengths; html[data-crt] switches them (on / reduced / off). */
   --crt-scanline-alpha: 0.06;
   --crt-vignette: inset 0 0 60px rgba(0, 0, 0, 0.5);
@@ -139,6 +148,30 @@ body {
 /* Headings and the brand glow; body text does not. Win95 and light project windows turn the glow off. */
 :where(h1, h2, h3, .brand) { color: var(--crt-bright); text-shadow: var(--crt-glow); }
 .retro-window, .project-application { --crt-glow: none; }
+/* Amber phosphor (SYSTEM menu, saved as crt-phosphor). Same contrast targets as green: text 12.0:1, bright 15.5:1,
+   mid 7.7:1, dim 5.1:1 on --crt-bg. The accent can't be amber here, so links are warm cream and underlined. */
+html[data-phosphor="amber"] {
+  --crt-bg: #0e0a06;
+  --crt-panel: #15100a;
+  --crt-text: #ebc48c;
+  --crt-bright: #ffe0b0;
+  --crt-mid: #c69a60;
+  --crt-dim: #a07a48;
+  --crt-border: rgba(235, 180, 110, 0.18);
+  --crt-accent: #fff1d6;
+  --crt-text-rgb: 235, 196, 140;
+  --crt-bright-rgb: 255, 224, 176;
+  --crt-border-rgb: 235, 180, 110;
+  --crt-deep: #0a0704;
+  --crt-deep-hi: #110b05;
+  --crt-deep-lo: #050302;
+  --crt-glow: 0 0 4px rgba(255, 210, 150, 0.35);
+  --crt-glow-filter: 0 0 4px rgba(255, 210, 150, 0.35);
+  --crt-tune-filter: url(#crt-tune-amber);
+  --watcher-base: url("/images/watcher/watcher-base.amber.png");
+  --watcher-noise: url("/images/watcher/crt-noise.amber.png");
+}
+html[data-phosphor="amber"] .equipment-panel a { text-decoration: underline; text-underline-offset: 3px; }
 html[data-crt="reduced"] { --crt-scanline-alpha: 0.03; --crt-vignette: none; }
 html[data-crt="off"] { --crt-scanline-alpha: 0; --crt-vignette: none; --crt-glow: none; --crt-glow-filter: 0 0 0 transparent; }
 
@@ -180,21 +213,38 @@ button {
   justify-content: flex-end;
 }
 
-.sound-toggle,
-.crt-toggle {
+.topbar-nav { flex: 1; min-width: 0; }
+
+/* SYSTEM menu: display settings in a dropdown under the header. */
+.system-menu { position: relative; }
+.system-menu-button,
+.system-menu-panel button {
   border: 0;
   padding: 0;
   color: var(--green);
   background: transparent;
   cursor: pointer;
   font: inherit;
+  white-space: nowrap;
 }
-
-.sound-toggle:hover,
-.crt-toggle:hover,
-.sound-toggle[aria-pressed="true"] {
-  color: var(--hot);
+.system-menu[data-open] .system-menu-button,
+.sound-toggle[aria-pressed="true"] { color: var(--hot); }
+.system-menu-panel {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  z-index: 1;
+  display: grid;
+  min-width: 190px;
+  padding: 6px 0;
+  border: 1px solid var(--line);
+  background: var(--crt-panel);
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.6), var(--crt-vignette);
 }
+.system-menu-panel[hidden] { display: none; }
+.system-menu-panel button { padding: 9px 14px; text-align: left; font-size: 14px; }
+/* While open, the header sits above windows, the dock and promo windows. */
+.topbar:has(.system-menu[data-open]) { z-index: 45; }
 
 .online {
   display: flex;
@@ -324,7 +374,7 @@ button {
 .pixel-monitor[hidden] { display: none; }
 .pixel-monitor-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; padding: 0 0 5px; }
 .pixel-monitor-header button { min-height: 25px; padding: 3px 7px; border: 2px outset #e4e3d6; background: #c9c8ba; color: #20221f; font: inherit; cursor: pointer; }
-.pixel-monitor button:focus-visible { outline: 2px solid #000080; outline-offset: -2px; }
+.pixel-monitor button:focus-visible { outline: 1px dotted #000; outline-offset: -4px; }
 .pixel-monitor-screen {
   display: flex;
   flex: 1;
@@ -455,7 +505,7 @@ button {
 .art-viewer-toolbar button[aria-pressed="true"] { border-style: inset; }
 .art-viewer-toolbar button:disabled { color: #666; cursor: default; }
 .art-viewer-toolbar button:focus-visible,
-.art-viewer-canvas:focus-visible { outline: 2px solid #000080; outline-offset: -2px; }
+.art-viewer-canvas:focus-visible { outline: 1px dotted #000; outline-offset: -4px; }
 @media (max-width: 700px) {
   .art-viewer-maximize { display: none; }
   .comic-reader-title-context { font-size: 12px; }
@@ -645,7 +695,7 @@ button {
 .home-feed-row { grid-template-columns: 48px 1fr 24px; }
 .home-feed-row time, .home-feed-row em, .home-directory-row span, .home-directory-row em { color: var(--dim); font-style: normal; font-size: 14px; }
 .home-feed-row b, .home-project-row b, .home-directory-row b { color: var(--hot); font-weight: 400; font-size: 14px; }
-.home-feed-row:hover, .home-feed-row:focus-visible, .home-project-row:hover, .home-project-row:focus-visible, .home-directory-row:hover, .home-directory-row:focus-visible { color: var(--hot); outline: none; padding-left: 6px; }
+.home-feed-row:hover, .home-feed-row:focus-visible, .home-project-row:hover, .home-project-row:focus-visible, .home-directory-row:hover, .home-directory-row:focus-visible { color: var(--hot); }
 .home-project-row { grid-template-columns: 58px 1fr 14px; }
 .home-project-mark { display: grid; place-items: center; aspect-ratio: 1; border: 1px solid var(--line); color: var(--hot); font-size: 12px; }
 .home-project-row small { display: block; margin-top: 4px; color: var(--green2); font-size: 12px; }
@@ -671,23 +721,27 @@ button {
 
 .terminal-nav a {
   font-size: 16px;
-  padding: 12px 8px;
+  padding: 10px 8px;
   border-bottom: 1px solid var(--line);
-  display: flex;
-  gap: 22px;
-  transition: 0.15s;
+  display: grid;
+  gap: 2px;
 }
 
-.terminal-nav a span {
+/* File name small over the readable name (main menu and the promo triggers). */
+.menu-file {
+  order: -1;
   color: var(--dim);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+}
+.menu-name {
+  font-size: 16px;
+  font-weight: 400;
 }
 
 .terminal-nav a:hover,
 .terminal-nav a:focus-visible {
-  background: rgba(var(--crt-text-rgb), 0.08);
   color: var(--hot);
-  padding-left: 16px;
-  outline: none;
 }
 
 /* INTERACTIVE FACE */
@@ -700,7 +754,7 @@ button {
 
   background:
     linear-gradient(145deg, rgba(var(--crt-text-rgb), 0.035), transparent 45%),
-    #060a06;
+    var(--crt-deep);
 
   overflow: hidden;
 }
@@ -730,13 +784,21 @@ button {
 
 /* The tuned layers carry 24px of glow padding on a 1200px canvas (2%), so the art keeps its original size and position. */
 .watcher-art > svg,
-.watcher-art > img {
+.watcher-art > .watcher-base {
   position: absolute;
   inset: -2%;
   width: 104%;
   height: 104%;
   pointer-events: none;
 }
+
+.watcher-art > .watcher-base {
+  background: var(--watcher-base) center / 100% 100% no-repeat;
+}
+
+.watcher-eyes-amber,
+html[data-phosphor="amber"] .watcher-eyes-green { display: none; }
+html[data-phosphor="amber"] .watcher-eyes-amber { display: inline; }
 
 .watcher-eyes {
   /* SVG user units preserve these limits on the 1200px source canvas. */
@@ -764,7 +826,7 @@ button {
 
 .watcher-static::before {
   inset: 0;
-  background: url("/images/watcher/crt-noise.png") repeat;
+  background: var(--watcher-noise) repeat;
   background-size: var(--watcher-grain-size) var(--watcher-grain-size);
   opacity: var(--watcher-grain-opacity);
 }
@@ -958,6 +1020,7 @@ button {
 .classified-placeholder--card { min-height: 110px; }
 .classified-placeholder--media { justify-content: center; width: 100%; min-height: 200px; aspect-ratio: 4 / 3; background: #292929; }
 .patron-locked-trigger { width: 100%; text-align: left; cursor: pointer; font: inherit; }
+/* Locked placeholders keep their own dark-on-grey colours, so they keep this outline rather than the pale reticle. */
 .patron-locked-trigger:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
 .classified-placeholder--patron { background: #959a90; color: #101510; }
 .classified-placeholder--patron .classified-placeholder-bars i { background: #000; }
@@ -1000,12 +1063,13 @@ button {
   font: 12px Arial, sans-serif;
   text-decoration: none;
 }
-.desktop-file-open:hover,
-.desktop-file-open:focus-visible {
-  background: #dcdcdc;
-  color: #000080;
-  outline: 2px solid #000080;
-  outline-offset: 1px;
+/* Win95 icon selection: navy label with a dotted border; the tile's dotted focus rectangle is in the shared Win95 rules. */
+.desktop-file-open:hover .desktop-file-copy strong,
+.desktop-file-open:focus-visible .desktop-file-copy strong {
+  background: #000080;
+  color: #fff;
+  outline: 1px dotted #fff;
+  outline-offset: -1px;
 }
 .desktop-file.is-disabled .desktop-file-open { opacity: .55; cursor: default; }
 .desktop-file-icon {
@@ -1024,6 +1088,8 @@ button {
 .desktop-file-copy { display: grid; min-width: 0; gap: 4px; }
 .desktop-file-copy strong { overflow-wrap: anywhere; font-weight: bold; }
 .desktop-file-copy small { color: #444; font-size: 12px; }
+.desktop-file-copy strong { font-size: 14px; }
+.desktop-file-copy .desktop-file-name { font-family: monospace; color: #333; overflow-wrap: anywhere; }
 .desktop-file-info {
   position: absolute;
   top: 7px;
@@ -1062,7 +1128,7 @@ button {
 
 .record-card {
   border: 1px solid var(--line);
-  background: #060a06;
+  background: var(--crt-deep);
 }
 
 .record-image {
@@ -1086,7 +1152,7 @@ button {
   background:
     radial-gradient(
       circle at 32% 38%,
-      rgba(213, 255, 189, 0.18),
+      rgba(var(--crt-bright-rgb), 0.18),
       transparent 8%
     ),
     linear-gradient(
@@ -1095,7 +1161,7 @@ button {
       rgba(var(--crt-text-rgb), 0.14) 41% 42%,
       transparent 43%
     ),
-    linear-gradient(45deg, #081208, #030503);
+    linear-gradient(45deg, var(--crt-deep-hi), var(--crt-deep-lo));
 }
 
 .art-a::before {
@@ -1114,7 +1180,7 @@ button {
       transparent 0 22px,
       rgba(var(--crt-text-rgb), 0.06) 23px 24px
     ),
-    linear-gradient(#071007, #020402);
+    linear-gradient(var(--crt-deep-hi), var(--crt-deep-lo));
 }
 
 .art-b::before {
@@ -1129,10 +1195,10 @@ button {
 .art-c {
   background: linear-gradient(
     135deg,
-    #071007 25%,
-    #030503 25% 50%,
-    #071007 50% 75%,
-    #030503 75%
+    var(--crt-deep-hi) 25%,
+    var(--crt-deep-lo) 25% 50%,
+    var(--crt-deep-hi) 50% 75%,
+    var(--crt-deep-lo) 75%
   );
 }
 
@@ -1185,7 +1251,6 @@ button {
 
 .archive-list button:hover {
   color: var(--hot);
-  padding-left: 8px;
 }
 
 .archive-list span,
@@ -1324,7 +1389,7 @@ footer {
   }
   .art-viewer-canvas { padding: 10px; }
 
-  .topbar-meta span:first-child {
+  .topbar-meta > span:first-child {
     display: none;
   }
 }
@@ -1471,7 +1536,7 @@ footer {
 }
 .terminal-button:hover:not(:disabled) {
   color: var(--hot);
-  background: #102010;
+  background: rgba(var(--crt-text-rgb), 0.08);
 }
 button:disabled {
   opacity: 0.5;
@@ -1547,25 +1612,19 @@ a.directory-row:hover {
 .nav-trigger {
   width: 100%;
   font-size: 16px;
-  display: flex;
-  gap: 22px;
-  padding: 12px 8px;
+  display: grid;
+  gap: 2px;
+  padding: 10px 8px;
   border: 0;
   border-bottom: 1px solid var(--line);
   background: transparent;
   color: var(--green);
   text-align: left;
   cursor: pointer;
-  transition: 0.15s;
-}
-.nav-trigger > span {
-  color: var(--dim);
 }
 .nav-trigger:hover,
 .nav-trigger:focus-visible {
-  padding-left: 16px;
   color: var(--hot);
-  background: rgba(var(--crt-text-rgb), 0.08);
 }
 .promo-window {
   position: absolute;
@@ -1671,7 +1730,8 @@ a.directory-row:hover {
   background: #ffff00;
   color: blue;
   padding-left: 4px;
-  outline: 2px solid #000080;
+  outline: 1px dotted #000;
+  outline-offset: -4px;
 }
 .promo-body small {
   display: block;
@@ -1777,8 +1837,21 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
   .startup-sequence[data-phase="announcement"] .promo-title { cursor: grab; touch-action: none; user-select: none; }
   .startup-sequence[data-phase="announcement"] .promo-title:active { cursor: grabbing; }
 }
-.startup-compromised { border: 1px dashed var(--green); padding: 16px 8px; margin-top: 12px; }
-.startup-compromised p { font-size: 14px; text-align: center; margin-top: 12px; }
+/* Boot checklist: [ OK ] label ......... value, built from real data (lib/content/boot.ts). */
+.boot-checklist { display: grid; gap: 4px; margin: 12px 0 0; padding: 0; list-style: none; }
+.boot-line { display: grid; grid-template-columns: auto minmax(0, auto) minmax(16px, 1fr) auto; gap: 8px; align-items: baseline; font-size: 14px; }
+.boot-status { white-space: pre; color: var(--hot); }
+.boot-line[data-status="warn"] .boot-status { color: var(--crt-accent); }
+.boot-label { overflow-wrap: anywhere; }
+.boot-leader { border-bottom: 1px dotted var(--dim); }
+.boot-value { white-space: nowrap; color: var(--hot); }
+.boot-hint { margin: 16px 0 0; color: var(--dim); font-size: 12px; letter-spacing: 0.08em; }
+@media (max-width: 480px) {
+  /* Phones: the value sits under its label instead of squeezing the label into fragments. */
+  .boot-line { grid-template-columns: auto minmax(0, 1fr); gap: 0 8px; font-size: 13px; }
+  .boot-leader { display: none; }
+  .boot-value { grid-column: 2; }
+}
 @media (max-width: 700px) {
   .startup-window { height: min(540px, calc(100dvh - 100px)); }
   .startup-sequence[data-phase="announcement"] .startup-window { width: calc(100% - 40px); }
@@ -1794,7 +1867,7 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
 .project-app-content .breadcrumbs { display: none; }
 .project-app-content h1 { font-size: clamp(22px, 4vw, 38px); margin: 8px 0 14px; }
 .project-app-content img { filter: none; }
-.project-app-content a:focus-visible, .project-app-nav a:focus-visible { outline: 2px solid #000080; outline-offset: -2px; }
+.project-app-nav a:focus-visible { outline: 1px dotted #000; outline-offset: -4px; }
 .application-desktop { min-height: 60vh; padding-top: 40px; display: flex; flex-direction: column; align-items: flex-start; gap: 16px; }
 .directory-thumbnail { display: flex; align-items: center; justify-content: center; background: #ddd; border: 1px solid #999; width: 100%; height: 170px; color: #555; }
 .directory-thumbnail img { display: block; width: 100%; height: 100%; object-fit: contain; }
@@ -1826,7 +1899,7 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
 
 /* Optional Equipment records: specifications, assignments and native schematics. */
 .equipment-specifications { margin: 1rem 0; font-size: .875rem; }
-.equipment-specifications > div { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 1rem; border-bottom: 1px solid var(--line, #234b2f); padding: .4rem 0; overflow-wrap: anywhere; }
+.equipment-specifications > div { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 1rem; border-bottom: 1px solid var(--line); padding: .4rem 0; overflow-wrap: anywhere; }
 .equipment-specifications dt { opacity: .7; }
 .equipment-specifications dd { margin: 0; white-space: pre-wrap; }
 .equipment-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 1rem; }
@@ -1842,12 +1915,13 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
   .directory-compact .equipment-module { margin-top: .5rem; }
 }
 .project-app-content .directory-compact h1 { font-size: clamp(20px, 2.6vw, 30px); margin: 2px 0 6px; line-height: 1.1; }
-.equipment-card { display: flex; align-items: flex-start; gap: 1rem; border: 1px solid var(--line, #234b2f); padding: 1rem; min-width: 0; overflow-wrap: anywhere; }
+.equipment-card { display: flex; align-items: flex-start; gap: 1rem; border: 1px solid var(--line); padding: 1rem; min-width: 0; overflow-wrap: anywhere; }
 .equipment-card > img { width: 80px; height: 100px; object-fit: contain; background: var(--crt-bg); flex-shrink: 0; }
 /* Schematic posters (no concept art on file) get the terminal recolour; concept art never does. */
-.equipment-card > img[data-schematic], .directory-thumbnail img[data-schematic], .art-viewer-canvas img[data-schematic] { filter: url(#crt-tune) drop-shadow(var(--crt-glow-filter)); }
+.equipment-card > img[data-schematic], .directory-thumbnail img[data-schematic], .art-viewer-canvas img[data-schematic] { filter: var(--crt-tune-filter) drop-shadow(var(--crt-glow-filter)); }
 .equipment-card > div { min-width: 0; flex: 1; }
 .equipment-card h3 { margin: 0; }
+.equipment-card .equipment-card-file { margin: 2px 0 6px; color: var(--dim); font-size: 12px; overflow-wrap: anywhere; }
 /* Schematic video and specs read as one terminal module. --schematic-bg is the background the encoded
    video actually decodes to (sampled from rendered pixels); the faint grid continues into the panel. */
 /* The module reads --crt-* directly: .project-application redefines the legacy --green/--hot/--line names for the
@@ -1857,7 +1931,7 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
   /* Width follows the video, whose height is capped by --video-max-h (set from the visible window height). */
   width: min(100%, calc(var(--video-max-h, 100000px) * var(--schematic-ratio, 2))); }
 .equipment-schematic-display { position: relative; overflow: hidden; background: var(--schematic-bg); line-height: 0; user-select: none; -webkit-user-select: none; }
-.equipment-schematic-display > img, .equipment-schematic-display > video { filter: url(#crt-tune) drop-shadow(var(--crt-glow-filter)); position: absolute; inset: 0; width: 100%; height: 100%; display: block; object-fit: contain; -webkit-touch-callout: none; }
+.equipment-schematic-display > img, .equipment-schematic-display > video { filter: var(--crt-tune-filter) drop-shadow(var(--crt-glow-filter)); position: absolute; inset: 0; width: 100%; height: 100%; display: block; object-fit: contain; -webkit-touch-callout: none; }
 /* The video takes no pointer input, so hover/tap/right-click never reach a media UI. */
 .equipment-schematic-display > video { pointer-events: none; opacity: 0; }
 .equipment-schematic-display[data-playing] > video { opacity: 1; }
@@ -1892,14 +1966,144 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
 @media (max-width: 480px) { .equipment-panel { padding: .7rem .75rem .8rem; } .equipment-panel .equipment-specifications > div { grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); gap: .6rem; } }
 @media (max-width: 480px) { .equipment-card { flex-direction: column; } .equipment-card > img { width: 100%; height: 140px; } }
 
-/* Phone header: brand only, SND and CRT stay on the first line. */
+/* Phone header: MIGRAINZ, the clock and SYSTEM on one line. */
 @media (max-width: 480px) {
   .topbar { gap: 10px; }
   .brand-full, .topbar-meta .online { display: none; }
   .topbar-meta { flex-wrap: nowrap; gap: 10px; white-space: nowrap; }
   /* Promo windows become small in-flow cards instead of covering content. */
-  .promo-window, #patreon > .promo-window { position: static; width: 100%; max-height: none; margin: 4px 0 0; box-shadow: 2px 2px 0 #000; }
+  /* scroll-margin: scrolled into view with a small gap, never a sub-pixel past the bottom edge. */
+  .promo-window, #patreon > .promo-window { position: static; width: 100%; max-height: none; margin: 4px 0 0; box-shadow: 2px 2px 0 #000; scroll-margin: 8px; }
   .promo-body h2 { font-size: 15px; }
   .promo-body > p:not(.promo-slogan), .promo-new { display: none; }
   .promo-window .window-controls button { min-width: 32px; min-height: 28px; font-size: 16px; }
+}
+
+/* SHARED HIGHLIGHT (phase 1). One style for every link, button, card, tab and window control.
+   Terminal: the Watcher's reticle, four corner brackets drawn as an overlay (no layout shift).
+   Win95 (windows, monitor, promo/startup windows, taskbar, desktop icons): navy bars, bevels and a dotted focus rectangle.
+   Selectors stay inside :where() so they never outrank component rules; the state rules carry one pseudo-class. */
+:where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .retro-window-titlebar, .desktop-file) *):not(:where(.skip-link, .equipment-card a, .patron-locked-trigger, p a, dd a, .content-writing a)) {
+  position: relative;
+}
+:where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .retro-window-titlebar, .desktop-file) *):not(:where(.skip-link, .equipment-card a, .patron-locked-trigger, p a, dd a, .content-writing a))::after {
+  --reticle: var(--hot);
+  content: "";
+  position: absolute;
+  inset: var(--reticle-inset, -3px);
+  pointer-events: none;
+  background:
+    linear-gradient(var(--reticle), var(--reticle)) left top / 10px 2px,
+    linear-gradient(var(--reticle), var(--reticle)) left top / 2px 10px,
+    linear-gradient(var(--reticle), var(--reticle)) right top / 10px 2px,
+    linear-gradient(var(--reticle), var(--reticle)) right top / 2px 10px,
+    linear-gradient(var(--reticle), var(--reticle)) left bottom / 10px 2px,
+    linear-gradient(var(--reticle), var(--reticle)) left bottom / 2px 10px,
+    linear-gradient(var(--reticle), var(--reticle)) right bottom / 10px 2px,
+    linear-gradient(var(--reticle), var(--reticle)) right bottom / 2px 10px;
+  background-repeat: no-repeat;
+  opacity: 0;
+}
+/* Full-width cards and rows draw the reticle on their own edge, never outside it, so it can't widen a page that has
+   no side margin (it only fades in there; even mid-animation nothing leaves the box). */
+:where(.equipment-card, .terminal-nav a, .nav-trigger, .home-feed-row, .home-project-row, .home-directory-row, a.directory-row, .archive-list button, .system-menu-panel button)::after {
+  --reticle-inset: 0px;
+  --reticle-from: 0px;
+}
+/* In: ~120ms lock-on, the corners closing in from further out. Out: instant. Nothing is scaled at rest: an invisible
+   scaled overlay still counts as overflow and widened the page on phones. */
+@keyframes reticle-lock { from { inset: var(--reticle-from, -9px); opacity: 0; } }
+:where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .retro-window-titlebar, .desktop-file) *):not(:where(.skip-link, .equipment-card a, .patron-locked-trigger, p a, dd a, .content-writing a)):is(:focus-visible, :active),
+.equipment-card:has(a:focus-visible, a:active) {
+  color: var(--hot);
+  text-shadow: var(--crt-glow);
+  /* Transparent normally; Windows High Contrast turns it into a real outline. */
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+:where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .retro-window-titlebar, .desktop-file) *):not(:where(.skip-link, .equipment-card a, .patron-locked-trigger, p a, dd a, .content-writing a)):is(:focus-visible, :active)::after,
+.equipment-card:has(a:focus-visible, a:active)::after {
+  opacity: 1;
+  animation: reticle-lock 120ms ease-out;
+}
+/* Hover only where a real pointer hovers, so a tap on a phone doesn't leave the reticle stuck. */
+@media (hover: hover) {
+  :where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .retro-window-titlebar, .desktop-file) *):not(:where(.skip-link, .equipment-card a, .patron-locked-trigger, p a, dd a, .content-writing a)):hover {
+    color: var(--hot);
+    text-shadow: var(--crt-glow);
+  }
+  :where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .retro-window-titlebar, .desktop-file) *):not(:where(.skip-link, .equipment-card a, .patron-locked-trigger, p a, dd a, .content-writing a)):hover::after {
+    opacity: 1;
+    animation: reticle-lock 120ms ease-out;
+  }
+}
+/* Links inside running text: colour and glow only; brackets around wrapped text read as broken. */
+:where(p a, dd a, .content-writing a):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence) *):is(:focus-visible, :active) {
+  color: var(--hot);
+  text-shadow: var(--crt-glow);
+}
+@media (hover: hover) {
+  :where(p a, dd a, .content-writing a):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence) *):hover {
+    color: var(--hot);
+    text-shadow: var(--crt-glow);
+  }
+}
+
+/* Win95: dotted focus rectangle on every control inside Win95 chrome. */
+:where(.retro-window:not(.project-application), .retro-window-titlebar, .pixel-monitor, .promo-window, .startup-window, .window-taskbar, .project-app-nav) :is(a, button, select, summary, [tabindex="0"]):focus-visible,
+.desktop-file-open:focus-visible,
+.desktop-file-info:focus-visible {
+  outline: 1px dotted #000;
+  outline-offset: -4px;
+}
+.window-taskbar button:focus-visible { outline-offset: -5px; }
+/* The equipment card draws the reticle for its link, so the link itself shows no second indicator. */
+.equipment-card a:focus-visible { outline: 2px solid transparent; }
+/* Menu and list items: navy bar, white text. */
+.project-app-nav a:hover,
+.project-app-nav a:focus-visible,
+.art-viewer-tab:not(.is-active) > button:first-child:hover,
+.art-viewer-tab:not(.is-active) > button:first-child:focus-visible,
+.system-apps a:hover,
+.system-apps a:focus-visible,
+.system-apps button:hover,
+.system-apps button:focus-visible,
+.desktop-file-info:hover {
+  background: #000080;
+  color: #fff;
+}
+.project-app-nav a:focus-visible,
+.system-apps a:focus-visible,
+.system-apps button:focus-visible { outline-color: #fff; }
+/* With a real pointer, toolbar buttons sit flat and raise on hover; touch keeps the raised buttons so they still read as
+   buttons. Window controls and taskbar buttons stay raised, as in Win95. Every Win95 button presses in on click. */
+@media (hover: hover) {
+  .art-viewer-toolbar button:not([aria-pressed="true"]),
+  .comic-reader-navigation button,
+  .art-viewer-thumbs button:not(.is-active) {
+    border: 1px solid transparent;
+    background: transparent;
+  }
+  .art-viewer-toolbar button:hover:not(:disabled),
+  .comic-reader-navigation button:hover:not(:disabled),
+  .art-viewer-thumbs button:hover {
+    border: 1px solid;
+    border-color: #fff #404040 #404040 #fff;
+  }
+}
+.art-viewer-toolbar button:active:not(:disabled),
+.comic-reader-navigation button:active:not(:disabled),
+.art-viewer-thumbs button:active,
+.retro-window-controls button:active,
+.window-controls button:active,
+.window-taskbar button:active,
+.pixel-monitor-header button:active,
+.desktop-file-info:active {
+  border-style: solid;
+  border-color: #404040 #fff #fff #404040;
+}
+.desktop-file-open:active { border-style: inset; }
+
+@media (forced-colors: active) {
+  :focus-visible { outline: 2px solid CanvasText !important; }
 }

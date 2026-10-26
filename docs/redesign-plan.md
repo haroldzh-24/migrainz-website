@@ -53,6 +53,8 @@ See "Rework phases" below. One branch per phase. Each phase: plan in plan mode f
 
 ## Current state (2026-10-25 16:24 CT)
 
+- 2026-10-25 evening: phase 1 (interaction polish) built on local branch `feature/interaction-polish` (not pushed, not merged); waiting for Harold's review on the review server. Reticle, Win95 hover, readable names, SYSTEM menu, amber mode and the boot checklist. All checks simulated. Code only: no schema, migration, Blob or env change.
+
 - 2026-10-25 19:07 CT: `feature/crt-readability` was merged into local `main` (`--no-ff`) and `main` (`10b1ddf`) was pushed to `origin/main` with Harold's approval. Production served the new build about 36 s later (`<html data-crt="on">`). It shipped the restyle, the laptop fit (`3611c0e` / `46b5caf`) and the docs; no schema, migration, Blob or env change. Post-deploy GET checks: docs/deploy-checklist-crt.md. Restricted-media 404 check: not run (no known restricted test file). Visual checks on real devices: not done.
 - Tests before the push (all simulated, headless Chrome): `test:regression`, `verify-equipment-navigation.mjs`, `verify-equipment-browser.mjs`, typecheck and build pass; output in `test-results/crt-regression-20261025c.txt`.
 - Review server: `node scripts/serve-fixture.mjs` (dev mode over LAN, fail-closed env check); stop with `--stop`. Production builds can't run on SQLite by design (`payload.config.ts` guard + `scripts/verify-production-guard.mjs`); do not weaken that guard.
@@ -94,6 +96,24 @@ See "Rework phases" below. One branch per phase. Each phase: plan in plan mode f
 - Win95 windows: chrome stays grey/navy/Arial; `--crt-*` only for dark terminal content inside.
 - If the glow feels faint, raise opacity (.35 → .5) before blur.
 
+**Amber phosphor** (phase 1; `html[data-phosphor="amber"]`, saved as localStorage `crt-phosphor`, applied before first paint; green stays the default):
+
+| Token | Amber value | Contrast on bg |
+|---|---|---|
+| `--crt-bg` | `#0e0a06` | — |
+| `--crt-panel` | `#15100a` | — |
+| `--crt-text` | `#ebc48c` | 12.03:1 |
+| `--crt-mid` | `#c69a60` | 7.69:1 |
+| `--crt-bright` | `#ffe0b0` | 15.54:1 |
+| `--crt-dim` | `#a07a48` | 5.05:1 |
+| `--crt-border` | `rgba(235,180,110,.18)` | — |
+| `--crt-accent` | `#fff1d6` (links underlined) | 17.66:1 |
+| `--crt-glow` | `0 0 4px rgba(255,210,150,.35)` | — |
+
+- `#crt-tune-amber` maps black → bg, then dim, text, white → bright (R `0.055 0.627 0.922 1`, G `0.039 0.478 0.769 0.878`, B `0.024 0.282 0.549 0.690`); CSS uses `var(--crt-tune-filter)`.
+- Watcher: `watcher-{base,eyes}.amber.png` and `crt-noise.amber.png` from `node scripts/bake-watcher-crt.mjs --phosphor amber`. The face and grain are CSS backgrounds (only the active set downloads); both 10 KB eye layers download, the inactive one is hidden.
+- Near-black tints are tokens too (`--crt-deep`, `--crt-deep-hi`, `--crt-deep-lo`). Win95 chrome and the monitor hardware keep their fixed colours.
+
 ---
 
 ## Decided: terminal ↔ desktop mode switch (phase 2)
@@ -115,6 +135,15 @@ Why: artwork looks wrong on the green terminal; it needs a neutral background.
 - **Desktop mode: authentic Win95.** Navy `#000080` bar with white text on menu and list items; flat toolbar buttons raise on hover (bevel `#fff #404040 #404040 #fff`) and press in on click; desktop icons get a navy label with a dotted border; dotted focus rectangle.
 - **Rules.** Same graphic on `:focus-visible`; on touch, shown while pressed; drawn as an overlay (no layout shift); reduced motion = appears without scaling; one shared style applied to every link, button, card, tab and window control; optional soft tick when sound is on.
 
+## Decided: phase 1 scope
+
+Decided 2026-10-25 (Harold), when the phase 1 plan was approved.
+
+- **Menu bar.** Phase 1 builds only a `SYSTEM` dropdown at the right of the existing header (CRT effects, sound, phosphor colour). The header keeps an empty nav slot so phase 2 adds `Projects · Comics · Archive · Tracker` and Search to the same bar. No File / Archive menus.
+- **Boot.** The checklist replaces the BIOS/WORM.EXE lines and the eye blinks. The same window then becomes the existing announcement (`data/announcement.ts`), with ENTER, Esc and × dismissal unchanged. Skipping jumps to the announcement.
+- **Amber.** Everything recoloured today goes amber too: tokens, the Watcher (a second baked PNG set) and schematics (an amber twin of `#crt-tune`). Concept art, comics and galleries stay unfiltered. Green stays the default.
+- **Amber accent.** Default warm cream `#fff1d6`, underlined for links (green mode's accent is already amber). Pale cyan is the alternative if Harold prefers it.
+
 ---
 
 ## Decided: main menu and homepage (phase 2)
@@ -129,6 +158,7 @@ Decided 2026-10-25 (Harold). Replaces the current homepage, where the first scre
 - **Navigation appears once.** Remove the launcher row (`[ LATEST ]` / `[ SYSTEM ]`) and the duplicate panel links.
 - **Fit:** the menu and the Watcher must both be reachable without scrolling at 1366x768.
 - **Phone:** slim top bar (`MIGRAINZ`, search, CRT), Watcher first, then content, bottom tab bar. The mobile control pad (arrow keys + Enter, from the 2026-10-15 notes) stays in the backlog.
+- Since phase 1, SND and CRT (and phosphor colour) live in the header's `SYSTEM` menu; the phase 2 plan decides whether they stay there or move back onto the bar.
 - Search and Ctrl+K belong to the backlog's "terminal commands + Ctrl+K palette"; the phase 2 plan decides whether a minimal search ships first.
 
 ---
@@ -155,7 +185,7 @@ Layout direction: one frame (top bar + clickable file path as breadcrumbs); thre
 
 ## Rework phases
 
-1. **Interaction polish:** reticle + Win95 hover highlights (one shared style); readable name large / file name small (menu tiles like `01 / projects.db` → Project database; equipment cards); boot checklist upgrade of the transmission splash (~3s, built from real data, e.g. `[ OK ] watcher.sys … awake`, `[ !! ] blushland_ch1 … 5% rendered`, `clearance … PUBLIC`; once per session; any key / Esc skips; S = sound); amber phosphor mode (alternate token set); menu bar (File / Archive / System, with CRT effects, sound and phosphor color under System).
+1. **Interaction polish** (branch `feature/interaction-polish`; scope in "Decided: phase 1 scope"): reticle + Win95 hover highlights (one shared style); readable name large / file name small (menu tiles like `01 / projects.db` → Project database; equipment cards); boot checklist replacing the BIOS/WORM.EXE lines of the transmission splash (~3s, built from real data, e.g. `[ OK ] watcher.sys … awake`, `[ !! ] blushland_chapter_02 … 73% rendered`, `[ OK ] clearance … PUBLIC`; once per session; any key / Esc skips; S = sound); amber phosphor mode (alternate token set); a `SYSTEM` menu in the header (CRT effects, sound, phosphor colour).
 2. **Mode switch and layout:** the terminal ↔ desktop switch; window-vs-page rule; page templates; homepage first screen and main menu (see "Decided: main menu and homepage (phase 2)": menu bar, directory-listing menu, Watcher with orbiting windows, Transmissions and clearance panels, one navigation, hide empty sections, 1366x768 fit, phone tab bar); comic reader sizing. May split into two branches.
 3. **System files:** locked content shown redacted with a clearance tag and a link to the tier that unlocks it, with a reveal animation for people who have access (reuse existing Patreon tier access); Patreon perks and the Requisitions shop as unlockable files; hidden files in the archive, with a wallpaper kit for finding them. If rewards are stored in Blob, uploads are production work (approval); repo static assets are not.
 

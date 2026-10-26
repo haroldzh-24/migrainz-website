@@ -2,9 +2,10 @@
 // every frame. Applies the same mapping as the #crt-tune SVG filter in app/(frontend)/layout.tsx (saturate 0, then
 // the R/G/B tables) and the soft glow drop-shadow(0 0 4px rgba(180,245,195,.35)) to the head silhouette.
 //
-//   node scripts/bake-watcher-crt.mjs
+//   node scripts/bake-watcher-crt.mjs                     green phosphor (#crt-tune)       -> watcher-{base,eyes}.crt.png
+//   node scripts/bake-watcher-crt.mjs --phosphor amber    amber phosphor (#crt-tune-amber) -> watcher-{base,eyes}.amber.png
 //
-// Reads public/images/watcher/watcher-{base,eyes}.png (kept as the originals) and writes watcher-{base,eyes}.crt.png.
+// Reads public/images/watcher/watcher-{base,eyes}.png (kept as the originals).
 // Both outputs share one canvas, PAD px larger on every side, so the glow is not clipped; WatcherArt.tsx offsets by
 // the same amount so the geometry is unchanged. Run it again only if the originals or the mapping change.
 import sharp from 'sharp';
@@ -16,8 +17,15 @@ export const PAD = 24;
 const OUT = SIZE + PAD * 2;
 // The CSS drop-shadow blur radius is 4px (sigma 2px) on a ~507px wide art box (1440px desktop); the source is 1200px.
 const GLOW_SIGMA = 2 * (SIZE / 507);
-const GLOW = { r: 180, g: 245, b: 195, a: 0.35 };
-const TABLE = { r: [0.039, 0.373, 0.659, 0.831], g: [0.055, 0.541, 0.847, 0.961], b: [0.043, 0.420, 0.690, 0.855] };
+// Tables map black to --crt-bg, then --crt-dim, --crt-text, white to --crt-bright; the glow matches --crt-glow-filter.
+const PHOSPHORS = {
+  green: { suffix: 'crt', glow: { r: 180, g: 245, b: 195, a: 0.35 }, table: { r: [0.039, 0.373, 0.659, 0.831], g: [0.055, 0.541, 0.847, 0.961], b: [0.043, 0.420, 0.690, 0.855] } },
+  amber: { suffix: 'amber', glow: { r: 255, g: 210, b: 150, a: 0.35 }, table: { r: [0.055, 0.627, 0.922, 1], g: [0.039, 0.478, 0.769, 0.878], b: [0.024, 0.282, 0.549, 0.690] } },
+};
+const flag = process.argv.indexOf('--phosphor');
+const phosphor = PHOSPHORS[flag === -1 ? 'green' : process.argv[flag + 1]];
+if (!phosphor) throw new Error('--phosphor must be one of: ' + Object.keys(PHOSPHORS).join(', '));
+const { glow: GLOW, table: TABLE, suffix } = phosphor;
 
 const table = (values, c) => {
   const scaled = c * (values.length - 1), k = Math.min(values.length - 2, Math.floor(scaled));
@@ -60,6 +68,18 @@ for (let p = 0; p < union.length; p++) {
   base[o + 2] = Math.round((base[o + 2] * a + GLOW.b * s * (1 - a)) / outA);
   base[o + 3] = Math.round(outA * 255);
 }
-await save(base, 'watcher-base.crt.png');
-await save(eyes, 'watcher-eyes.crt.png');
-console.log(`wrote watcher-base.crt.png and watcher-eyes.crt.png (${OUT}x${OUT}, pad ${PAD}, glow sigma ${GLOW_SIGMA.toFixed(2)}px)`);
+await save(base, `watcher-base.${suffix}.png`);
+await save(eyes, `watcher-eyes.${suffix}.png`);
+console.log(`wrote watcher-base.${suffix}.png and watcher-eyes.${suffix}.png (${OUT}x${OUT}, pad ${PAD}, glow sigma ${GLOW_SIGMA.toFixed(2)}px)`);
+
+// The grain tile (crt-noise.png, green-tinted by crt-noise.svg's 0.8/1/0.75 matrix) gets a matching tint per phosphor.
+if (suffix !== 'crt') {
+  const { data: noise, info: tile } = await sharp(path.join(dir, 'crt-noise.png')).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const tint = [GLOW.r / 255, GLOW.g / 255, GLOW.b / 255];
+  for (let o = 0; o < noise.length; o += 4) {
+    const gray = noise[o + 1]; // the green channel carries the untinted value
+    for (let c = 0; c < 3; c++) noise[o + c] = Math.round(gray * tint[c]);
+  }
+  await sharp(noise, { raw: { width: tile.width, height: tile.height, channels: 4 } }).png({ compressionLevel: 9 }).toFile(path.join(dir, `crt-noise.${suffix}.png`));
+  console.log(`wrote crt-noise.${suffix}.png`);
+}

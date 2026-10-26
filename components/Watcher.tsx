@@ -6,8 +6,12 @@ import WatcherArt from "./WatcherArt";
 // Full deflection distance, and the eye sockets' centre as a fraction of the 1200px source canvas.
 const FULL_DEFLECTION = 180;
 const EYE_CENTER = { x: 560 / 1200, y: 610 / 1200 };
-// How long a touch gaze holds after the finger lifts.
+// How long a touch gaze holds after the finger lifts, and a keyboard glance holds on its target.
 const TOUCH_HOLD_MS = 1200;
+
+// Dispatched by HighlightEffects when keyboard focus lands on a control: the Watcher glances at that point.
+export type WatcherGlanceDetail = { x: number; y: number };
+export const WATCHER_GLANCE_EVENT = "migrainz:watcher-glance";
 
 export default function Watcher() {
   const root = useRef<HTMLDivElement>(null);
@@ -16,7 +20,7 @@ export default function Watcher() {
     const readoutX = container.querySelector<HTMLElement>("#readout-x")!;
     const readoutY = container.querySelector<HTMLElement>("#readout-y")!;
     const head = container.querySelector<HTMLElement>(".watcher-art")!;
-    const eyes = container.querySelector<SVGImageElement>(".watcher-eyes")!;
+    const eyes = container.querySelector<SVGGElement>(".watcher-eyes")!;
     const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
     let position: { x: number; y: number } | null = null;
     let target = { x: 0, y: 0 };
@@ -95,6 +99,14 @@ export default function Watcher() {
       hold = window.setTimeout(reset, TOUCH_HOLD_MS);
     };
     const leave = (event: PointerEvent) => { if (event.pointerType === "mouse") reset(); };
+    // Keyboard focus: look at the focused control for a moment, then recentre.
+    const glance = (event: Event) => {
+      const detail = (event as CustomEvent<WatcherGlanceDetail>).detail;
+      if (!detail || preference.matches || document.hidden) return;
+      clearTimeout(hold);
+      position = { x: detail.x, y: detail.y }; dirty = true; wake();
+      hold = window.setTimeout(reset, TOUCH_HOLD_MS);
+    };
     // Scrolling moves the watcher under a still pointer.
     const rescroll = () => { if (position) { dirty = true; wake(); } };
     const root_ = document.documentElement;
@@ -103,6 +115,7 @@ export default function Watcher() {
     window.addEventListener("pointerup", release);
     window.addEventListener("pointercancel", release);
     window.addEventListener("scroll", rescroll, { passive: true });
+    window.addEventListener(WATCHER_GLANCE_EVENT, glance);
     root_.addEventListener("pointerleave", leave);
     preference.addEventListener("change", reset);
     window.addEventListener("blur", reset);
@@ -115,6 +128,7 @@ export default function Watcher() {
       window.removeEventListener("pointerup", release);
       window.removeEventListener("pointercancel", release);
       window.removeEventListener("scroll", rescroll);
+      window.removeEventListener(WATCHER_GLANCE_EVENT, glance);
       root_.removeEventListener("pointerleave", leave);
       preference.removeEventListener("change", reset);
       window.removeEventListener("blur", reset);

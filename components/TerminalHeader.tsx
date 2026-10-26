@@ -2,12 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useSound } from "@/components/SoundProvider";
-import CrtToggle from "@/components/CrtToggle";
+import SystemMenu from "@/components/SystemMenu";
 
 export default function TerminalHeader() {
   const [clock, setClock] = useState("--:--:--");
-  const { enabled, setEnabled, playSound } = useSound();
   useEffect(() => {
     const update = () =>
       setClock(new Date().toLocaleTimeString([], { hour12: false }));
@@ -20,6 +18,8 @@ export default function TerminalHeader() {
       <Link className="brand" href="/#top" aria-label="Home">
         MIGRAINZ<span className="brand-full"> // PUBLIC ACCESS TERMINAL</span>
       </Link>
+      {/* Phase 2 puts the menu-bar navigation here. */}
+      <div className="topbar-nav" />
       <div className="topbar-meta">
         <span>NODE 01</span>
         <span id="clock">{clock}</span>
@@ -27,20 +27,7 @@ export default function TerminalHeader() {
           <i aria-hidden="true" />
           ONLINE
         </span>
-        <button
-          className="sound-toggle"
-          type="button"
-          data-sound-toggle
-          aria-pressed={enabled}
-          onClick={() => {
-            const next = !enabled;
-            setEnabled(next);
-            if (next) playSound("toggle");
-          }}
-        >
-          SND: {enabled ? "ON" : "OFF"}
-        </button>
-        <CrtToggle />
+        <SystemMenu />
       </div>
     </header>
   );

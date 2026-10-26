@@ -57,15 +57,23 @@ const { chromium } = require(
     await page.locator('.startup-sequence').waitFor({ state: 'visible' });
     const frame = await page.locator('.startup-window').elementHandle();
     const bootBounds = await frame.boundingBox();
-    await page.locator('.startup-compromised').waitFor();
+    // Boot checklist from real data: driver lines, fixture tracker phases, the newest chapter, clearance.
+    await page.locator('.boot-line').first().waitFor();
     assert.equal(await page.locator('#top').isVisible(), false);
     assert.equal(await page.locator('#top').evaluate(el => !!el.closest('[inert]')), true);
-    await page.keyboard.press('Escape');
-    await page.keyboard.press('Enter');
+    // S toggles sound without skipping; the snd.drv line follows. Toggle back so the sound test below starts off.
+    await page.keyboard.press('s');
+    await page.locator('.boot-line', { hasText: 'snd.drv' }).filter({ hasText: 'on' }).waitFor();
     assert.equal(await page.locator('.startup-sequence').getAttribute('data-phase'), 'boot');
-    await page.waitForFunction(() => document.querySelector('.startup-art-viewport')?.dataset.eyeState === 'closed');
-    await page.waitForFunction(() => document.querySelector('.startup-art-viewport')?.dataset.eyeState === 'open');
-    await page.getByRole('button', { name: 'ENTER', exact: true }).waitFor();
+    await page.keyboard.press('s');
+    assert.equal(await page.evaluate(() => localStorage.getItem('migrainz-sound-enabled')), 'false');
+    await page.locator('.boot-line', { hasText: 'clearance' }).filter({ hasText: 'PUBLIC' }).waitFor();
+    assert.equal(await page.locator('.boot-line', { hasText: 'watcher.sys' }).filter({ hasText: 'awake' }).count(), 1);
+    const phase = page.locator('.boot-line', { hasText: 'blushland_chapter_02' });
+    assert.equal(await phase.getAttribute('data-status'), 'warn');
+    assert.ok((await phase.textContent()).includes('[ !! ]') && (await phase.textContent()).includes('73% rendered'));
+    // Without a key it moves on to the announcement by itself (~3s).
+    await page.getByRole('button', { name: 'ENTER', exact: true }).waitFor({ timeout: 6000 });
     assert.equal(await frame.evaluate(el => el === document.querySelector('.startup-window')), true);
     const adBounds = await frame.boundingBox();
     assert.equal(adBounds.width, bootBounds.width);
@@ -77,7 +85,7 @@ const { chromium } = require(
     await page.getByRole('link', { name: 'Home', exact: true }).click();
     assert.equal(await page.locator('.startup-announcement').isVisible(), true);
     // The shop ad cannot be opened (hover or click) while the splash is showing.
-    const splashShop = page.getByRole('button', { name: '03 REQUISITIONS / SHOP' });
+    const splashShop = page.getByRole('button', { name: 'Requisitions / shop 03 / requisitions.exe' });
     await splashShop.hover();
     await splashShop.click();
     assert.equal(await splashShop.getAttribute('aria-expanded'), 'false');
@@ -90,6 +98,24 @@ const { chromium } = require(
     // Focus lands on main#top after the splash, without a visible ring around the whole page.
     assert.equal(await page.evaluate(() => document.activeElement?.id), 'top');
     assert.equal(await page.locator('#top').evaluate(el => getComputedStyle(el).outlineStyle), 'none');
+    // Skipping: Esc, any key or a click jumps to the announcement; the key release can't also press ENTER.
+    for (const skip of ['Escape', ' ', 'x', 'click']) {
+      await page.evaluate(() => sessionStorage.clear());
+      await page.reload();
+      await page.locator('.boot-line').first().waitFor();
+      const started = Date.now();
+      if (skip === 'click') await page.locator('.startup-window').click();
+      else await page.keyboard.press(skip);
+      await page.locator('.startup-sequence[data-phase="announcement"]').waitFor({ timeout: 1000 });
+      assert.ok(Date.now() - started < 1000, `${skip} skips the checklist`);
+      await page.waitForTimeout(200);
+      assert.equal(await page.locator('.startup-sequence').getAttribute('data-phase'), 'announcement', `${skip} does not dismiss the ad`);
+      assert.equal(await page.evaluate(() => document.activeElement?.textContent), 'ENTER');
+    }
+    // Once per session: a reload before dismissing the ad goes straight to the ad.
+    await page.reload();
+    await page.locator('.startup-sequence[data-phase="announcement"]').waitFor();
+    assert.equal(await page.locator('.boot-line').count(), 0);
     for (const key of ['Enter', 'Escape', 'click']) {
       await page.evaluate(() => sessionStorage.clear());
       await page.reload();
@@ -118,10 +144,10 @@ const { chromium } = require(
       const mobileGate = await browser.newContext({ viewport: { width: 320, height: 740 }, isMobile: true, hasTouch: true, reducedMotion: 'reduce', baseURL });
       const gatePage = await mobileGate.newPage();
       await gatePage.goto('/');
-      await gatePage.locator('.startup-compromised').waitFor();
-      await gatePage.waitForTimeout(1000);
-      assert.equal(await gatePage.locator('.startup-art-viewport').getAttribute('data-eye-state'), 'open');
-      await gatePage.getByRole('button', { name: 'ENTER', exact: true }).waitFor();
+      // Reduced motion: every checklist line at once, then the ad.
+      await gatePage.locator('.boot-line', { hasText: 'clearance' }).waitFor();
+      assert.ok(await gatePage.locator('.boot-line').count() >= 4);
+      await gatePage.getByRole('button', { name: 'ENTER', exact: true }).waitFor({ timeout: 4000 });
       assert.equal(await gatePage.locator('#top').isVisible(), true);
       const bounds = await gatePage.locator('.startup-window').boundingBox();
       assert.ok(bounds.x >= 0 && bounds.x + bounds.width <= 320);
@@ -130,19 +156,24 @@ const { chromium } = require(
       await gatePage.locator('.startup-sequence').waitFor({ state: 'hidden' });
       await mobileGate.close();
       assert.deepEqual(errors, []);
-      console.log('Boot gate checks passed: initial HTML, persistent frame, dismissal, session, mobile and reduced motion.');
+      console.log('Boot gate checks passed: initial HTML, checklist, skip keys, persistent frame, dismissal, session, mobile and reduced motion.');
       return;
     }
     await page.getByRole("heading", { level: 1 }).waitFor();
     assert.equal(await page.locator('.crt').evaluate(el => getComputedStyle(el).pointerEvents), 'none');
     assert.equal(await page.locator('.crt').evaluate(el => getComputedStyle(el).animationName), 'none', 'no continuous flicker');
     assert.equal(await page.locator('.crt').evaluate(el => getComputedStyle(el, '::before').animationIterationCount), '1', 'power-on sweep runs once');
+    // SND, CRT and phosphor live in the header's SYSTEM menu (a disclosure button; the panel stays mounted).
+    const systemMenu = page.getByRole('button', { name: 'SYSTEM', exact: true });
     const sound = page.locator('.sound-toggle');
     assert.equal(await sound.getAttribute('aria-pressed'), 'false');
+    await systemMenu.click();
+    assert.equal(await systemMenu.getAttribute('aria-expanded'), 'true');
     await sound.click();
     assert.equal(await sound.getAttribute('aria-pressed'), 'true');
     await page.reload();
     await page.waitForFunction(() => document.querySelector('.sound-toggle')?.getAttribute('aria-pressed') === 'true');
+    await systemMenu.click();
     await sound.click();
     assert.equal(await page.evaluate(() => localStorage.getItem('migrainz-sound-enabled')), 'false');
     await page.waitForFunction(
@@ -156,7 +187,8 @@ const { chromium } = require(
     // The old `.head path` outline check targeted markup removed with the image watcher. The recolour is baked into
     // the watcher layers (scripts/bake-watcher-crt.mjs), so the moving container must not carry a runtime filter.
     assert.equal(await page.locator('.watcher').evaluate((el) => getComputedStyle(el).filter), 'none', 'watcher has no runtime filter');
-    assert.match(await page.locator('.watcher-art > img').getAttribute('src'), /watcher-base.crt.png/);
+    // The face layer is a CSS background picked by html[data-phosphor]; green is the default.
+    assert.match(await page.locator('.watcher-art > .watcher-base').evaluate((el) => getComputedStyle(el).backgroundImage), /watcher-base\.crt\.png/);
     await page.screenshot({
       path: "test-results/home-desktop.png",
       fullPage: true,
@@ -165,11 +197,11 @@ const { chromium } = require(
     assert.equal(await page.locator('main > .hero').count(), 1);
     assert.equal(await page.locator('main .section-block').count(), 0);
     for (const [name, route] of [
-      ['01 PROJECT DATABASE', '/projects'],
-      ['02 CURRENT OPERATIONS', '/tracker'],
-      ['04 ARCHIVE', '/archive'],
-      ['05 INFORMATION', '/about'],
-      ['07 COMICS / READER', '/comics'],
+      ['Project database 01 / projects.db', '/projects'],
+      ['Current operations 02 / operations.log', '/tracker'],
+      ['Archive 04 / archive/', '/archive'],
+      ['Information 05 / info.txt', '/about'],
+      ['Comics / reader 07 / comics/', '/comics'],
     ]) {
       const link = page.getByRole('link', { name, exact: true });
       assert.equal(await link.getAttribute('href'), route);
@@ -184,7 +216,7 @@ const { chromium } = require(
     await page.mouse.move(5, 5);
     await page.waitForFunction(() => /translate\(-/.test(document.querySelector('.watcher-eyes').style.transform));
     await page.waitForFunction(() => document.querySelector("#readout-x")?.textContent !== "000");
-    const patronTrigger = page.getByRole('button', { name: '06 PATREON ACCESS' });
+    const patronTrigger = page.getByRole('button', { name: 'Patreon access 06 / patreon.key' });
     await patronTrigger.hover();
     const patronPopup = page.getByRole('region', { name: 'PATREON promotional window' });
     const triggerBox = await patronTrigger.boundingBox();
@@ -198,7 +230,7 @@ const { chromium } = require(
     assert.equal(await patronTrigger.getAttribute('aria-expanded'), 'true');
     await page.screenshot({ path: 'test-results/patreon-desktop.png' });
     await page.keyboard.press('Escape');
-    const shop = page.getByRole("button", { name: "03 REQUISITIONS / SHOP" });
+    const shop = page.getByRole("button", { name: "Requisitions / shop 03 / requisitions.exe" });
     // The shop ad hover-opens once per visit: start from a fresh visit.
     await page.evaluate(() => sessionStorage.removeItem("migrainz-shop-promo-seen"));
     await shop.hover();
@@ -219,7 +251,7 @@ const { chromium } = require(
       "https://example.com/studio-migrainz-store",
     );
     await page.keyboard.press("Escape");
-    await page.getByRole("link", { name: "01 PROJECT DATABASE" }).click();
+    await page.getByRole("link", { name: "Project database 01 / projects.db" }).click();
     await page.getByRole("link", { name: "BLUSHLAND/", exact: true }).hover();
     await page.getByRole('tooltip').waitFor();
     assert.match(await page.getByRole('tooltip').innerText(), /PAGE COUNT\s+3/);
@@ -359,7 +391,7 @@ const { chromium } = require(
     assert.equal(await touch.locator('.startup-blink').first().evaluate(el => getComputedStyle(el).animationName), 'none');
     await touch.getByRole('button', { name: 'ENTER', exact: true }).tap();
     await touch.locator('.startup-sequence').waitFor({ state: 'hidden' });
-    const patreon = touch.getByRole("button", { name: "06 PATREON ACCESS" });
+    const patreon = touch.getByRole("button", { name: "Patreon access 06 / patreon.key" });
     await patreon.tap();
     assert.equal(await patreon.getAttribute("aria-expanded"), "true");
     const touchPopup = await touch.locator('#patreon-promo').boundingBox();
@@ -395,16 +427,16 @@ const { chromium } = require(
       .getByRole("button", { name: "PATREON SIGN-IN UNAVAILABLE" })
       .waitFor();
     await touch.goto("/");
-    await touch.getByRole("button", { name: "03 REQUISITIONS / SHOP" }).tap();
+    await touch.getByRole("button", { name: "Requisitions / shop 03 / requisitions.exe" }).tap();
     assert.equal(await touch.locator('#shop-promo').evaluate(el => getComputedStyle(el).position), 'static');
     assert.equal(await touch.locator('#shop-promo small').isVisible(), true, 'Placeholder-store note stays visible on phones');
     await touch.keyboard.press("Escape");
-    assert.equal(await touch.getByRole("button", { name: "03 REQUISITIONS / SHOP" }).getAttribute("aria-expanded"), "false");
-    await touch.getByRole("button", { name: "03 REQUISITIONS / SHOP" }).tap();
+    assert.equal(await touch.getByRole("button", { name: "Requisitions / shop 03 / requisitions.exe" }).getAttribute("aria-expanded"), "false");
+    await touch.getByRole("button", { name: "Requisitions / shop 03 / requisitions.exe" }).tap();
     await touch.locator(".lede").first().tap();
     assert.equal(
       await touch
-        .getByRole("button", { name: "03 REQUISITIONS / SHOP" })
+        .getByRole("button", { name: "Requisitions / shop 03 / requisitions.exe" })
         .getAttribute("aria-expanded"),
       "false",
     );
