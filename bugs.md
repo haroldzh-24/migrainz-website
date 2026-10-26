@@ -67,7 +67,16 @@
 
 - Found while planning phase 1: the header button called `setEnabled(true)` and then `playSound("toggle")` in the same handler, and `playSound` still saw the old `enabled = false`, so turning sound on was silent. Each tone also created a new AudioContext.
 - Fix (feature/interaction-polish): `setEnabled(true)` plays the toggle tone itself; `playSound` reads a ref; one shared AudioContext, resumed on the first pointer or key gesture.
-- Status: Resolved in code; audible output checked by ear only on a real device (headless tests cannot hear it).
+- Status: Resolved in code. Not yet heard on a real device (headless tests cannot check audio).
+
+### 2026-10-25 - Boot checklist: a skipped boot rewrote its session key seconds later (found and fixed before review)
+
+- verify.cjs (skip loop) timed out waiting for the checklist after clearing the session and reloading. Cause: skipping did not cancel the end-of-boot timer, which fired ~3s after the boot started and set `migrainz-boot-seen` again while the slow dev reload was still in flight, so the reloaded page went straight to the ad.
+- Fix: skipping clears every pending boot timer. Status: Resolved; regression rerun.
+
+### 2026-10-25 - Reticle widened pages (found and fixed before review)
+
+- At 390px the invisible reticle (then resting at scale 1.3) widened the homepage to 438px; later the -3px reticle on full-width equipment cards overflowed a margin-less page by 3px (verify-equipment-browser.mjs). Fix: no scale at rest; full-width cards and rows draw the reticle at inset 0. Status: Resolved.
 
 ### 2026-09-29 - Public comic media denied by hidden listing metadata
 
