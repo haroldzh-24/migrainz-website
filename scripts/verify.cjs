@@ -31,6 +31,12 @@ const { chromium } = require(
       errors.push(message.text());
   });
   fs.mkdirSync("test-results", { recursive: true });
+  // The checklist closes ~0.5s (reduced motion ~1.2s) after its last line, so read every line in one step the
+  // moment the clearance line exists, instead of waiting and then querying again.
+  const bootSnapshot = (target) => target.waitForFunction(() => {
+    const lines = [...document.querySelectorAll('.boot-line')].map((li) => ({ status: li.dataset.status, text: li.textContent }));
+    return lines.some((line) => line.text.includes('clearance')) ? lines : null;
+  }).then((handle) => handle.jsonValue());
   try {
     if (process.env.BOOT_ONLY !== '1') {
       const fixtureResponse = await context.request.get('/api/chapters?where[slug][equals]=chapter-01&depth=0');
@@ -67,11 +73,12 @@ const { chromium } = require(
     assert.equal(await page.locator('.startup-sequence').getAttribute('data-phase'), 'boot');
     await page.keyboard.press('s');
     assert.equal(await page.evaluate(() => localStorage.getItem('migrainz-sound-enabled')), 'false');
-    await page.locator('.boot-line', { hasText: 'clearance' }).filter({ hasText: 'PUBLIC' }).waitFor();
-    assert.equal(await page.locator('.boot-line', { hasText: 'watcher.sys' }).filter({ hasText: 'awake' }).count(), 1);
-    const phase = page.locator('.boot-line', { hasText: 'blushland_chapter_02' });
-    assert.equal(await phase.getAttribute('data-status'), 'warn');
-    assert.ok((await phase.textContent()).includes('[ !! ]') && (await phase.textContent()).includes('73% rendered'));
+    const bootLines = await bootSnapshot(page);
+    assert.ok(bootLines.some((line) => line.text.includes('clearance') && line.text.includes('PUBLIC')));
+    assert.equal(bootLines.filter((line) => line.text.includes('watcher.sys') && line.text.includes('awake')).length, 1);
+    const phase = bootLines.find((line) => line.text.includes('blushland_chapter_02'));
+    assert.equal(phase?.status, 'warn');
+    assert.ok(phase.text.includes('[ !! ]') && phase.text.includes('73% rendered'));
     // Without a key it moves on to the announcement by itself (~3s).
     await page.getByRole('button', { name: 'ENTER', exact: true }).waitFor({ timeout: 6000 });
     assert.equal(await frame.evaluate(el => el === document.querySelector('.startup-window')), true);
@@ -145,8 +152,7 @@ const { chromium } = require(
       const gatePage = await mobileGate.newPage();
       await gatePage.goto('/');
       // Reduced motion: every checklist line at once, then the ad.
-      await gatePage.locator('.boot-line', { hasText: 'clearance' }).waitFor();
-      assert.ok(await gatePage.locator('.boot-line').count() >= 4);
+      assert.ok((await bootSnapshot(gatePage)).length >= 4);
       await gatePage.getByRole('button', { name: 'ENTER', exact: true }).waitFor({ timeout: 4000 });
       assert.equal(await gatePage.locator('#top').isVisible(), true);
       const bounds = await gatePage.locator('.startup-window').boundingBox();
