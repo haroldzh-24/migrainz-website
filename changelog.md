@@ -6,6 +6,7 @@
 - `.claude/settings.json`: denies `git push`, `payload migrate` and `migrate:*`, `vercel`, `neonctl`, the Blob recovery script, the `cms:*` scripts that load `.env.local`, and reading `.env*`; allows the check scripts and basic git; asks before history rewrites.
 - `.claude/agents/reviewer.md` (fresh-context, read-only reviewer) and `.claude/commands/check-everything.md`.
 - docs/preview-isolation.md: step-by-step Preview isolation, each step needing approval; nothing run. No app code, database, Blob or env change.
+- Push rule change: `git push origin main` (exactly, no flags) now asks every time instead of being denied. A PreToolUse hook (`.claude/hooks/guard-git-push.mjs`, test in the same folder) denies every other push (force, other branches, deletes, refspecs, bare push, chained forms) and fails closed. The four blanket push denies were removed from settings.json (deny beats ask) and replaced by an ask rule plus narrow denies that cannot match the exact command.
 
 ## Changed - 2026-10-25 / CRT review fixes after approval
 
