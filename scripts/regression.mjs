@@ -45,6 +45,7 @@ for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => { stop();
 
 try {
   console.log(`Regression fixture: ${fixture}`);
+  await completed(launch(['--import', 'tsx', 'scripts/verify-boot-labels.ts']));
   await completed(launch(['--import', 'tsx', 'scripts/migrate-legacy-content.ts', '--apply']));
   await completed(launch(['--import', 'tsx', 'scripts/verify-content-migration.ts']));
   await completed(launch(['--import', 'tsx', 'scripts/seed-desktop-fixture.ts']));

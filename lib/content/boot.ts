@@ -4,17 +4,17 @@ import { getPayload } from 'payload';
 import config from '@payload-config';
 import type { ViewerAccess } from '@/lib/patreon/types';
 import { findListing } from './listings';
+import { fileName, phaseLabel } from './boot-labels';
 
 /** One line of the boot checklist: `[ OK ] label … value` or `[ !! ] label … value`. */
 export type BootLine = { status: 'ok' | 'warn'; label: string; value: string };
 
 const publicWhere = { listingVisibility: { equals: 'public' as const } };
-const fileName = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 28) || 'file';
 const relationID = (value: unknown) => typeof value === 'number' ? value : (value as { id?: number } | null)?.id;
 
 // Per request only (React cache, no shared cache): findListing reads with this visitor's own access, so a shared
 // cache could hand one visitor's patron titles to the next. Classified records print only their safe label.
-// The layout calls this on every route, so it never throws: an error just leaves the data lines out.
+// Only /boot-status calls this (when the checklist shows). It never throws: an error just leaves the data lines out.
 export const getBootStatus = cache(async (): Promise<BootLine[]> => {
   try {
     const cms = await getPayload({ config });
@@ -32,7 +32,7 @@ export const getBootStatus = cache(async (): Promise<BootLine[]> => {
       if (item.classification) return { status: 'warn', label: fileName(item.safeLabel || 'classified_file'), value: 'CLASSIFIED' };
       const percent = Math.round(item.percentage ?? 0);
       const project = projectSlug.get(relationID(item.project) ?? -1);
-      return { status: percent >= 100 ? 'ok' : 'warn', label: fileName(project ? `${project}_${item.title}` : item.title),
+      return { status: percent >= 100 ? 'ok' : 'warn', label: phaseLabel(project, item.title),
         value: percent >= 100 ? '100%' : `${percent}% rendered` };
     });
     const chapter = chapters.docs[0];
