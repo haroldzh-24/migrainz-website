@@ -2,7 +2,12 @@
 
 ## Open Bugs
 
-### 2026-10-26 - CRT vignette contrast (fix/crt-glow, decision for Harold)
+### 2026-10-26 - CRT vignette contrast (fix/crt-glow)
+
+- As a fixed overlay above the text, the spec's radial vignette (up to .55 black) dropped `--crt-dim` text from 4.94:1 to ~3.2:1 (menu file label 02), ~2.6:1 (label 03) and ~2.4:1 (footer) at 1366x768 (calculated).
+- Fix (Harold's decision, 2026-10-26): the vignette moved, values unchanged, into the fixed background layer under all content (`body::before`); the scanlines stay the overlay. Measured from screenshot pixels (brightest text pixel vs local background, 1366x768, CRT on, animations frozen): green 4.68 / 4.84 / 4.72:1 (labels 02, 03, footer), amber 4.49 / 4.82 / 4.51:1. The 4.94:1 nominal contrast is reduced a little by the scanlines; amber label 02 and the footer sit right at the 4.5 line. Rough method (subpixel text antialiasing), not a formal audit.
+- Status: Resolved; recheck on a real screen.
+ vignette contrast (fix/crt-glow, decision for Harold)
 
 - The radial overlay vignette from the glow spec darkens the corners by up to .55 black. Calculated (alpha compositing over text and background, not measured from pixels; 1366x768): `--crt-dim` text (4.94:1 normally) falls to ~3.2:1 on menu file label 02, ~2.6:1 on label 03 and ~2.4:1 in the footer; 12px labels need 4.5:1 (AA). At 390x844 the footer text is ~2.2:1. The brand stays ~6.2:1. Green and amber behave the same.
 - Options (footer figure): keep the spec values (2.4:1); end alpha .35 (3.2:1); start at 65% (2.6:1); start 65% with end .45 (3.0:1). None reaches 4.5:1; that would need a brighter `--crt-dim` or no vignette (`CRT: REDUCED` already has none).

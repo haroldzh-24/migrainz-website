@@ -198,7 +198,7 @@ try {
     const first = await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => resolve(getComputedStyle(document.body).color))));
     assert.equal(first, 'rgb(235, 196, 140)', 'amber on the first frame after reload');
     await page.locator('.watcher-base').waitFor();
-    assert.match(await page.locator('.watcher-base').evaluate(el => getComputedStyle(el).backgroundImage), /watcher-base\.amber\.png/);
+    assert.match(await page.locator('.watcher-base').evaluate(el => getComputedStyle(el).backgroundImage), /watcher-base\.amber\.webp/);
     await context.close();
     pass('amber persists and applies before first paint');
   }
@@ -209,7 +209,7 @@ try {
       const style = (selector, prop, pseudo) => { const el = document.querySelector(selector); return el ? getComputedStyle(el, pseudo)[prop] : null; };
       return {
         body: style('.hero .lede', 'textShadow'), head: style('.hero h1', 'textShadow'), ui: style('.menu-name', 'textShadow'),
-        lede: style('.hero .lede', 'color'), vignette: style('.crt', 'backgroundImage', '::after'),
+        lede: style('.hero .lede', 'color'), vignette: /at 50% 45%/.test(style('body', 'backgroundImage', '::before')),
         scanlines: Number(getComputedStyle(document.documentElement).getPropertyValue('--crt-scanline-alpha')),
         bezel: style('.crt-bezel', 'display'), bezelEvents: style('.crt-bezel', 'pointerEvents'), flicker: style('.watcher-flicker', 'animationName'), flickerTiming: style('.watcher-flicker', 'animationTimingFunction'), flickerDuration: style('.watcher-flicker', 'animationDuration'),
       };
@@ -231,7 +231,7 @@ try {
     assert.match(on.head, /18px/, 'heading glow in "on"');
     assert.match(on.ui, /6px/, 'menu-name glow in "on"');
     assert.equal(on.lede, 'rgb(168, 216, 176)', 'hero description uses --crt-text');
-    assert.match(on.vignette, /radial-gradient/, 'radial overlay vignette in "on"');
+    assert.equal(on.vignette, true, 'the screen vignette (a radial gradient on the fixed background layer) is on in "on"');
     assert.equal(on.scanlines, 0.07);
     assert.deepEqual([on.bezel, on.bezelEvents], ['block', 'none'], 'bezel shown in "on" on a wide screen and never takes clicks');
     assert.equal(on.flicker, 'watcher-flicker');
@@ -239,8 +239,8 @@ try {
     assert.equal(on.flickerDuration, '1.3s');
     assert.equal(reduced.body, 'none', 'no body glow in "reduced"');
     assert.match(reduced.head, /18px/, '"reduced" keeps heading glow');
-    assert.deepEqual([reduced.vignette, reduced.scanlines, reduced.bezel, reduced.flicker], ['none', 0.03, 'none', 'none']);
-    assert.deepEqual([off.body, off.head, off.ui, off.vignette, off.scanlines, off.bezel, off.flicker], ['none', 'none', 'none', 'none', 0, 'none', 'none']);
+    assert.deepEqual([reduced.vignette, reduced.scanlines, reduced.bezel, reduced.flicker], [false, 0.03, 'none', 'none']);
+    assert.deepEqual([off.body, off.head, off.ui, off.vignette, off.scanlines, off.bezel, off.flicker], ['none', 'none', 'none', false, 0, 'none', 'none']);
     assert.match(seen['amber-on'].head, /rgba\(255, 224, 176, 0\.8\)/, 'amber heading glow uses amber colours');
     assert.match(seen['amber-on'].body, /rgba\(235, 196, 140, 0\.24\)/, 'amber body glow uses amber colours');
     assert.deepEqual([seen['amber-off'].head, seen['amber-off'].body], ['none', 'none'], 'amber never turns glow back on in "off"');

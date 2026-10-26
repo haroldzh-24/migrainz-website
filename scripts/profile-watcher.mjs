@@ -17,7 +17,7 @@ const server = createServer(async(req,res)=>{try {
  const url = new URL(req.url,'http://localhost').pathname;
  if(url === '/') {res.setHeader('Content-Type','text/html');res.end(`<!doctype html><html data-crt="${process.env.CRT || 'on'}" data-phosphor="green"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/style.css"><div id="root"></div><script src="/bundle.js"></script>`);}
  else if(url === '/bundle.js'){res.setHeader('Content-Type','text/javascript');res.end(bundle.outputFiles[0].contents);}
- else {const file=url === '/style.css'?path.join(root,'app/(frontend)/globals.css'):path.join(root,'public',url);res.setHeader('Content-Type',url.endsWith('.png')?'image/png':url.endsWith('.svg')?'image/svg+xml':'text/css');res.end(await readFile(file));}
+ else {const file=url === '/style.css'?path.join(root,'app/(frontend)/globals.css'):path.join(root,'public',url);res.setHeader('Content-Type',url.endsWith('.png')?'image/png':url.endsWith('.webp')?'image/webp':url.endsWith('.svg')?'image/svg+xml':'text/css');res.end(await readFile(file));}
 }catch{res.statusCode=404;res.end();}});
 await new Promise(r=>server.listen(0,'127.0.0.1',r));
 const browser=await chromium.launch({executablePath:process.env.BROWSER_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});

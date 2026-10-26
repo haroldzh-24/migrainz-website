@@ -22,7 +22,7 @@ const { chromium } = await import(pathToFileURL(process.env.PLAYWRIGHT_MODULE).h
 let html = '';
 const server = http.createServer((q, r) => {
   if (q.url === '/') { r.setHeader('content-type', 'text/html'); return r.end(html); }
-  try { r.setHeader('content-type', 'image/png'); r.end(readFileSync(path.join(root, 'public/images/watcher', path.basename(q.url)))); } catch { r.statusCode = 404; r.end(); }
+  try { r.setHeader('content-type', q.url.endsWith('.webp') ? 'image/webp' : 'image/png'); r.end(readFileSync(path.join(root, 'public/images/watcher', path.basename(q.url)))); } catch { r.statusCode = 404; r.end(); }
 }).listen(0);
 const base = 'http://127.0.0.1:' + server.address().port + '/';
 const img = f => base + f;
@@ -34,7 +34,7 @@ const box = (id, inner, extra = '') => `<div id="${id}" style="position:relative
 const layer = (inset, size) => `position:absolute;inset:${inset};width:${size};height:${size}`;
 const inset = `${(-100 * PAD / SIZE).toFixed(4)}%`, size = `${(100 * OUT / SIZE).toFixed(4)}%`;
 const runtime = box('runtime', `<svg viewBox="0 0 1200 1200" style="${layer('0', '100%')}"><defs>${clip('a')}</defs><g clip-path="url(#a)"><image href="${img('watcher-eyes.png')}" width="1200" height="1200"/></g></svg><img src="${img('watcher-base.png')}" style="${layer('0', '100%')}">`, `filter:url(#tune) ${phosphor.glow}`);
-const baked = box('baked', `<svg viewBox="${-PAD} ${-PAD} ${OUT} ${OUT}" style="${layer(inset, size)}"><defs>${clip('b')}</defs><g clip-path="url(#b)"><image href="${img(`watcher-eyes.${phosphor.suffix}.png`)}" x="${-PAD}" y="${-PAD}" width="${OUT}" height="${OUT}"/></g></svg><img src="${img(`watcher-base.${phosphor.suffix}.png`)}" style="${layer(inset, size)}">`);
+const baked = box('baked', `<svg viewBox="${-PAD} ${-PAD} ${OUT} ${OUT}" style="${layer(inset, size)}"><defs>${clip('b')}</defs><g clip-path="url(#b)"><image href="${img(`watcher-eyes.${phosphor.suffix}.webp`)}" x="${-PAD}" y="${-PAD}" width="${OUT}" height="${OUT}"/></g></svg><img src="${img(`watcher-base.${phosphor.suffix}.webp`)}" style="${layer(inset, size)}">`);
 html = `<body style="margin:10px;background:${phosphor.bg};display:flex;gap:20px">${filter}${runtime}${baked}</body>`;
 const browser = await chromium.launch({ channel: 'chrome', headless: true });
 const page = await browser.newPage({ viewport: { width: 1240, height: 620 } });

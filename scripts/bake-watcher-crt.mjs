@@ -4,8 +4,10 @@
 // drop-shadow(0 0 4px rgba(180,245,195,.7)) drop-shadow(0 0 16px rgba(120,220,150,.45)) (amber: the amber colours),
 // chained the way CSS chains filters: each layer blurs the alpha of the art plus the layers before it.
 //
-//   node scripts/bake-watcher-crt.mjs                     green phosphor -> watcher-{base,eyes}.crt.png
-//   node scripts/bake-watcher-crt.mjs --phosphor amber    amber phosphor -> watcher-{base,eyes}.amber.png, crt-noise.amber.png
+//   node scripts/bake-watcher-crt.mjs                     green phosphor -> watcher-{base,eyes}.crt.webp
+//   node scripts/bake-watcher-crt.mjs --phosphor amber    amber phosphor -> watcher-{base,eyes}.amber.webp, crt-noise.amber.png
+//
+// The layers are lossless WebP (the soft 16px halo makes a PNG about 475KB; lossless WebP is about 55% of that).
 //
 // Reads public/images/watcher/watcher-{base,eyes}.png (kept as the originals). Both outputs share one canvas, PAD px
 // larger on every side, so the glow is never clipped (checked below). WatcherArt.tsx and the .watcher-art CSS offset by
@@ -62,7 +64,7 @@ function recolour(source) {
   }
   return out;
 }
-const save = (pixels, name) => sharp(pixels, { raw: { width: OUT, height: OUT, channels: 4 } }).png({ compressionLevel: 9 }).toFile(path.join(dir, name));
+const save = (pixels, name) => sharp(pixels, { raw: { width: OUT, height: OUT, channels: 4 } }).webp({ lossless: true, effort: 6 }).toFile(path.join(dir, name));
 
 const base = recolour(await read('watcher-base.png'));
 const eyes = recolour(await read('watcher-eyes.png'));
@@ -99,9 +101,9 @@ for (let y = 0; y < OUT; y++) for (let x = 0; x < OUT; x++) {
   ringMax = Math.max(ringMax, base[o + 3], eyes[o + 3]);
 }
 if (ringMax > 2) throw new Error(`the glow reaches the canvas edge (alpha ${ringMax}/255): raise PAD`);
-await save(base, `watcher-base.${suffix}.png`);
-await save(eyes, `watcher-eyes.${suffix}.png`);
-console.log(`wrote watcher-base.${suffix}.png and watcher-eyes.${suffix}.png (${OUT}x${OUT}, pad ${PAD}, glow sigmas ${GLOW.map(l => sigmaFor(l.radius).toFixed(2)).join(' + ')}px, edge ring alpha ${ringMax}/255)`);
+await save(base, `watcher-base.${suffix}.webp`);
+await save(eyes, `watcher-eyes.${suffix}.webp`);
+console.log(`wrote watcher-base.${suffix}.webp and watcher-eyes.${suffix}.webp (${OUT}x${OUT}, pad ${PAD}, glow sigmas ${GLOW.map(l => sigmaFor(l.radius).toFixed(2)).join(' + ')}px, edge ring alpha ${ringMax}/255)`);
 
 // The grain tile (crt-noise.png, green-tinted by crt-noise.svg's 0.8/1/0.75 matrix) gets a matching tint per phosphor.
 if (suffix !== 'crt') {

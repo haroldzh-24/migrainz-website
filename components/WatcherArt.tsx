@@ -18,8 +18,8 @@ export default function WatcherArt() {
         <g clipPath={`url(#${socketId})`}>
           {/* Watcher.tsx moves this one group; the inactive phosphor layer is display: none. */}
           <g className="watcher-eyes">
-            <image className="watcher-eyes-green" href="/images/watcher/watcher-eyes.crt.png" x="-80" y="-80" width="1360" height="1360" />
-            <image className="watcher-eyes-amber" href="/images/watcher/watcher-eyes.amber.png" x="-80" y="-80" width="1360" height="1360" />
+            <image className="watcher-eyes-green" href="/images/watcher/watcher-eyes.crt.webp" x="-80" y="-80" width="1360" height="1360" />
+            <image className="watcher-eyes-amber" href="/images/watcher/watcher-eyes.amber.webp" x="-80" y="-80" width="1360" height="1360" />
           </g>
         </g>
       </svg>

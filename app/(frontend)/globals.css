@@ -114,11 +114,11 @@
   --crt-glow-filter: 0 0 4px rgba(180, 245, 195, 0.35);
   /* Phosphor-matched recolour (layout.tsx SVG filters) and baked Watcher layers (scripts/bake-watcher-crt.mjs). */
   --crt-tune-filter: url(#crt-tune);
-  --watcher-base: url("/images/watcher/watcher-base.crt.png");
+  --watcher-base: url("/images/watcher/watcher-base.crt.webp");
   --watcher-noise: url("/images/watcher/crt-noise.png");
   /* CRT effect strengths; html[data-crt] switches them (on / reduced / off). */
   --crt-scanline-alpha: 0.07;
-  /* Panels keep the inset vignette; the fixed screen overlay (.crt) uses the radial one. */
+  /* Panels keep the inset vignette; the screen vignette is the radial one on the fixed background layer (body::before). */
   --crt-vignette: inset 0 0 60px rgba(0, 0, 0, 0.5);
   --crt-overlay-vignette: radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(0, 0, 0, 0.55) 100%);
   --crt-font: var(--font-plex-mono, "IBM Plex Mono"), "Courier New", Courier, monospace;
@@ -188,7 +188,7 @@ html[data-phosphor="amber"] {
   --crt-glow-body-value: 0 0 2.8px rgba(235, 196, 140, 0.24);
   --crt-glow-filter: 0 0 4px rgba(255, 210, 150, 0.35);
   --crt-tune-filter: url(#crt-tune-amber);
-  --watcher-base: url("/images/watcher/watcher-base.amber.png");
+  --watcher-base: url("/images/watcher/watcher-base.amber.webp");
   --watcher-noise: url("/images/watcher/crt-noise.amber.png");
 }
 html[data-phosphor="amber"] .equipment-panel a { text-decoration: underline; text-underline-offset: 3px; }
@@ -302,13 +302,6 @@ button {
   inset: -100% 0;
   background: linear-gradient(to bottom, transparent 49.8%, rgba(var(--crt-text-rgb), 0.08) 50%, transparent 50.2%);
   animation: crt-sweep 1.6s ease-out 1 both;
-}
-
-.crt::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: var(--crt-overlay-vignette);
 }
 
 /* Screen bezel (CRT "on", wider than 480px): rounded corners, a faint inner edge and a thin dark frame over the page
@@ -1401,7 +1394,10 @@ body::before {
   pointer-events: none;
   z-index: -1;
 
+  /* The screen vignette lives here, in the fixed layer under all content: it darkens the page background toward the
+     corners but never the text above it (the scanline overlay .crt stays on top). */
   background:
+    var(--crt-overlay-vignette),
     radial-gradient(circle at 50% 0%, rgba(var(--crt-border-rgb), 0.05), transparent 38%),
     var(--crt-bg);
 }

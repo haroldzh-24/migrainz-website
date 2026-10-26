@@ -23,6 +23,7 @@ Studio Migrainz is a Next.js App Router + React + TypeScript website for explori
 ## UI expectations
 
 - Preserve near-black/phosphor-green colors, monospace text, directory structure, timestamps, subtle CRT and face/scanner/clock details.
+- The CRT glow pass (Harold, 2026-10-26: stronger glow, vignette, screen bezel, Watcher flicker and jitter in CRT "on") is deliberate; its values are in docs/redesign-plan.md "Theme". Do not tone it back toward "subtle" without Harold's approval.
 - Reuse CSS custom properties and established styles. Avoid generic portfolios, SaaS dashboards, excessive neon and hacker styling.
 - SHOP and Patreon intentionally use cheap Windows 95/98 promotional windows. Triggers open windows; inner actions navigate.
 - Preserve homepage IDs: top, projects, tracker, archive, shop, about.
