@@ -1,5 +1,10 @@
 # Changelog
 
+## Changed - 2026-10-26 / Security updates without the Payload set (chore/dependency-updates)
+
+- next 16.3.4 -> 16.4.3 and sharp 0.35.4 -> 0.35.5; overrides dompurify -> 3.4.17 and zod under `@vercel/cli-config` -> 4.6.7; fast-uri, source-map-js and Blob's undici patched within their ranges. npm audit 26 -> 17; the rest needs the Payload upgrade, which needs a database migration (see bugs.md).
+- Boot checklist phase labels no longer double the project name (`blushland_ch1`, not `blushland_blushland_ch1`).
+
 ## Changed - 2026-10-25 / Phase 1 interaction polish (feature/interaction-polish)
 
 - One shared hover/focus highlight: a reticle (four corner brackets, ~120ms lock-on, instant out) on terminal links, buttons, tabs and cards; Win95 navy bars, raised/pressed bevels and a dotted focus rectangle inside windows, the monitor, promo windows and desktop icons. No layout shift (hover nudges removed); hover only with a real pointer; shown while pressed (`:active`; checked with a held mouse press in a no-hover phone context, not with a real finger); transparent focus outline that High Contrast turns visible; reduced motion drops the animation. Window title-bar controls and locked placeholders keep their Win95 / own focus styles.

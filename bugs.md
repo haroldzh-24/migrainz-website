@@ -5,7 +5,7 @@
 ### 2026-10-25 - Boot checklist doubles the project name on live data (cosmetic)
 
 - Live `/boot-status` after the phase 1 deploy: the tracker phase titled with the project name prints as `blushland_blushland_ch1`. lib/content/boot.ts always prefixes the project slug.
-- Fix (not yet made): skip the prefix when the slugified title already starts with the project slug. Status: Open, cosmetic.
+- Fix (chore/dependency-updates, not yet deployed): phase labels skip the prefix when the title already starts with the project name as a whole word (lib/content/boot-labels.ts; scripts/verify-boot-labels.ts). Status: Fixed in code, waiting to ship.
 
 ### 2026-10-22 - Art Viewer Escape only closes the viewer while it is the focused window (minor, logging only)
 
@@ -57,6 +57,9 @@
 - Evidence: `npm audit`; ignored detailed report in test-results/npm-audit.json. Root advisories concern Payload default account-unlock access and older esbuild development-server tooling.
 - Mitigation: account unlock is explicitly restricted to CMS staff; this site does not run an esbuild development server. Do not apply npm audit fix --force, which suggests incompatible old Payload packages.
 - Status: Open for upstream package updates and production security review. Plan (2026-10-25, Harold): a small dependency-update branch after phase 1 ships.
+- Update 2026-10-26 (chore/dependency-updates): the audit had grown to 26 entries (3 critical, 12 high, 11 moderate), including remote-code-execution advisories in Next (image optimization with SVG; `use cache`) and Payload (first-register), plus Payload access-control bypasses. The live site runs the affected versions. Report: test-results/npm-audit-before.json.
+- Fixed on the branch with patch/minor updates only: next 16.4.3, sharp 0.35.5, dompurify 3.4.17 (the old override pinned a vulnerable version), zod 4.6.7 under `@vercel/cli-config` (override; that package pins zod exactly), fast-uri 3.1.9, source-map-js 1.2.2, undici 6.29.1 under `@vercel/blob`. Audit 26 -> 17 (test-results/npm-audit-after.json).
+- Remaining 17 all need the Payload set upgrade: payload and every `@payloadcms/*` package, Payload's exactly pinned undici 7.29.0, happy-dom under lexical (its fix is a major bump), drizzle-kit/esbuild dev tooling, and the unused `@payloadcms/storage-s3`. Payload fixes its advisories in 3.90.x, but 3.90 needs a database migration (new `resetPasswordRequestedAt` on users, `_objectKey` on upload collections) and changes upload storage paths (`<prefix>/<_objectKey>/<filename>`), so it is production-lane work behind the CLAUDE.md schema blockers. 3.92 also needs Node >=24.22.1 (local is 24.20.0); 3.90.2 supports Node >=20.9. Waiting for Harold's decision.
 
 
 ### Bug Entry Template
