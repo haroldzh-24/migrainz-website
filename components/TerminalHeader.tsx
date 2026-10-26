@@ -7,7 +7,7 @@ import CrtToggle from "@/components/CrtToggle";
 
 export default function TerminalHeader() {
   const [clock, setClock] = useState("--:--:--");
-  const { enabled, setEnabled, playSound } = useSound();
+  const { enabled, setEnabled } = useSound();
   useEffect(() => {
     const update = () =>
       setClock(new Date().toLocaleTimeString([], { hour12: false }));
@@ -32,11 +32,7 @@ export default function TerminalHeader() {
           type="button"
           data-sound-toggle
           aria-pressed={enabled}
-          onClick={() => {
-            const next = !enabled;
-            setEnabled(next);
-            if (next) playSound("toggle");
-          }}
+          onClick={() => setEnabled(!enabled)}
         >
           SND: {enabled ? "ON" : "OFF"}
         </button>

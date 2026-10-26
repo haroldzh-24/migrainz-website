@@ -63,6 +63,12 @@
 
 ## Resolved Bugs
 
+### 2026-10-25 - SND toggle never played its confirmation tone
+
+- Found while planning phase 1: the header button called `setEnabled(true)` and then `playSound("toggle")` in the same handler, and `playSound` still saw the old `enabled = false`, so turning sound on was silent. Each tone also created a new AudioContext.
+- Fix (feature/interaction-polish): `setEnabled(true)` plays the toggle tone itself; `playSound` reads a ref; one shared AudioContext, resumed on the first pointer or key gesture.
+- Status: Resolved in code; audible output checked by ear only on a real device (headless tests cannot hear it).
+
 ### 2026-09-29 - Public comic media denied by hidden listing metadata
 
 - Local `rcb-001` chapter retains three published PUBLIC Media references (5, 6, 7); all original and thumbnail files exist. HIDDEN listing visibility incorrectly denied their file access and mapper output.
