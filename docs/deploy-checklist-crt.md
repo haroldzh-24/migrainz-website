@@ -17,23 +17,25 @@ Prepared before asking for approval to push `main`. Nothing here has been run ag
 
 ## After deploy: pages return 200
 
-Use GET. Replace `<project>` with a real public project slug from the live site.
+Use GET against https://migrainzxxl.com.
 
 - [ ] `/`
 - [ ] `/projects`
 - [ ] `/comics`
 - [ ] `/archive`
 - [ ] `/tracker`
-- [ ] `/projects/<project>`
-- [ ] `/projects/<project>/equipment` and one equipment item page
+- [ ] `/projects/blushland`
+- [ ] `/projects/blushland/equipment`
+- [ ] `/projects/blushland/equipment/mp510mmcc`
+- [ ] `/comics/rat-city-blues-one-shot/oneshot`
 - [ ] `mp510mmcc` (the MP5 10mm item; confirm the exact path from the live equipment list)
 
 ## After deploy: media
 
 Use GET, never HEAD: HEAD returns 404 on this route even for files that exist. If everything returns 404, the check has failed (wrong URL or a real problem); do not read it as "restricted files are protected".
 
-- [ ] A public media file, with a Range header, returns 206: `curl -s -o /dev/null -w "%{http_code}\n" -H "Range: bytes=0-99" "https://migrainzxxl.com/api/media/file/<public-file-name>"`. Take `<public-file-name>` from a public page (browser network tab).
-- [ ] A restricted file returns 404 (take a known restricted file's path; expect 404, not 200 or 206).
+- [ ] A public media file, with a Range header, returns 206: `curl -s -o /dev/null -w "%{http_code}\n" -H "Range: bytes=0-99" "https://migrainzxxl.com/api/media/file/colt9mm-poster-400x200.webp"`.
+- [ ] A restricted file returns 404. NOT RUN: there is no known restricted test file yet, and no path is guessed.
 - [ ] No Blob URL (`*.blob.vercel-storage.com`) appears in any page source or network request.
 
 ## After deploy: visual (simulated checks do not cover these)
