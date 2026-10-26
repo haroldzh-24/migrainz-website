@@ -213,21 +213,38 @@ button {
   justify-content: flex-end;
 }
 
-.sound-toggle,
-.crt-toggle {
+.topbar-nav { flex: 1; min-width: 0; }
+
+/* SYSTEM menu: display settings in a dropdown under the header. */
+.system-menu { position: relative; }
+.system-menu-button,
+.system-menu-panel button {
   border: 0;
   padding: 0;
   color: var(--green);
   background: transparent;
   cursor: pointer;
   font: inherit;
+  white-space: nowrap;
 }
-
-.sound-toggle:hover,
-.crt-toggle:hover,
-.sound-toggle[aria-pressed="true"] {
-  color: var(--hot);
+.system-menu[data-open] .system-menu-button,
+.sound-toggle[aria-pressed="true"] { color: var(--hot); }
+.system-menu-panel {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  z-index: 1;
+  display: grid;
+  min-width: 190px;
+  padding: 6px 0;
+  border: 1px solid var(--line);
+  background: var(--crt-panel);
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.6), var(--crt-vignette);
 }
+.system-menu-panel[hidden] { display: none; }
+.system-menu-panel button { padding: 9px 14px; text-align: left; font-size: 14px; }
+/* While open, the header sits above windows, the dock and promo windows. */
+.topbar:has(.system-menu[data-open]) { z-index: 45; }
 
 .online {
   display: flex;
@@ -1369,7 +1386,7 @@ footer {
   }
   .art-viewer-canvas { padding: 10px; }
 
-  .topbar-meta span:first-child {
+  .topbar-meta > span:first-child {
     display: none;
   }
 }
@@ -1932,7 +1949,7 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
 @media (max-width: 480px) { .equipment-panel { padding: .7rem .75rem .8rem; } .equipment-panel .equipment-specifications > div { grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); gap: .6rem; } }
 @media (max-width: 480px) { .equipment-card { flex-direction: column; } .equipment-card > img { width: 100%; height: 140px; } }
 
-/* Phone header: brand only, SND and CRT stay on the first line. */
+/* Phone header: MIGRAINZ, the clock and SYSTEM on one line. */
 @media (max-width: 480px) {
   .topbar { gap: 10px; }
   .brand-full, .topbar-meta .online { display: none; }
@@ -1968,9 +1985,10 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
     linear-gradient(var(--reticle), var(--reticle)) right bottom / 2px 10px;
   background-repeat: no-repeat;
   opacity: 0;
-  transform: scale(1.3);
 }
-/* In: ~120ms lock-on. Out: instant (the transition only exists in the shown state). */
+/* In: ~120ms lock-on, the corners closing in from further out. Out: instant. Nothing is scaled at rest: an invisible
+   scaled overlay still counts as overflow and widened the page on phones. */
+@keyframes reticle-lock { from { inset: -9px; opacity: 0; } }
 :where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .desktop-file) *):not(:where(.skip-link, .equipment-card a, p a, dd a, .content-writing a)):is(:focus-visible, :active),
 .equipment-card:has(a:focus-visible, a:active) {
   color: var(--hot);
@@ -1982,8 +2000,7 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
 :where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .desktop-file) *):not(:where(.skip-link, .equipment-card a, p a, dd a, .content-writing a)):is(:focus-visible, :active)::after,
 .equipment-card:has(a:focus-visible, a:active)::after {
   opacity: 1;
-  transform: none;
-  transition: opacity 120ms ease-out, transform 120ms ease-out;
+  animation: reticle-lock 120ms ease-out;
 }
 /* Hover only where a real pointer hovers, so a tap on a phone doesn't leave the reticle stuck. */
 @media (hover: hover) {
@@ -1993,8 +2010,7 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
   }
   :where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .desktop-file) *):not(:where(.skip-link, .equipment-card a, p a, dd a, .content-writing a)):hover::after {
     opacity: 1;
-    transform: none;
-    transition: opacity 120ms ease-out, transform 120ms ease-out;
+    animation: reticle-lock 120ms ease-out;
   }
 }
 /* Links inside running text: colour and glow only; brackets around wrapped text read as broken. */
@@ -2007,10 +2023,6 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
     color: var(--hot);
     text-shadow: var(--crt-glow);
   }
-}
-@media (prefers-reduced-motion: reduce) {
-  /* The global rule drops transitions; the resting scale must go too so the reticle simply appears. */
-  :where(a, button, [role="tab"], summary, .equipment-card)::after { transform: none !important; }
 }
 
 /* Win95: dotted focus rectangle on every control inside Win95 chrome. */

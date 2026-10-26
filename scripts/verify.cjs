@@ -137,12 +137,17 @@ const { chromium } = require(
     assert.equal(await page.locator('.crt').evaluate(el => getComputedStyle(el).pointerEvents), 'none');
     assert.equal(await page.locator('.crt').evaluate(el => getComputedStyle(el).animationName), 'none', 'no continuous flicker');
     assert.equal(await page.locator('.crt').evaluate(el => getComputedStyle(el, '::before').animationIterationCount), '1', 'power-on sweep runs once');
+    // SND, CRT and phosphor live in the header's SYSTEM menu (a disclosure button; the panel stays mounted).
+    const systemMenu = page.getByRole('button', { name: 'SYSTEM', exact: true });
     const sound = page.locator('.sound-toggle');
     assert.equal(await sound.getAttribute('aria-pressed'), 'false');
+    await systemMenu.click();
+    assert.equal(await systemMenu.getAttribute('aria-expanded'), 'true');
     await sound.click();
     assert.equal(await sound.getAttribute('aria-pressed'), 'true');
     await page.reload();
     await page.waitForFunction(() => document.querySelector('.sound-toggle')?.getAttribute('aria-pressed') === 'true');
+    await systemMenu.click();
     await sound.click();
     assert.equal(await page.evaluate(() => localStorage.getItem('migrainz-sound-enabled')), 'false');
     await page.waitForFunction(
