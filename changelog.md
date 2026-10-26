@@ -1,5 +1,12 @@
 # Changelog
 
+## Changed - 2026-10-25 / Workflow setup (chore/workflow-setup)
+
+- CLAUDE.md: two lanes (code-only vs production), batching of questions, model choice, reviewer and `/check-everything` pointers, and what `.claude/settings.json` does and does not block.
+- `.claude/settings.json`: denies `git push`, `payload migrate` and `migrate:*`, `vercel`, `neonctl`, the Blob recovery script, the `cms:*` scripts that load `.env.local`, and reading `.env*`; allows the check scripts and basic git; asks before history rewrites.
+- `.claude/agents/reviewer.md` (fresh-context, read-only reviewer) and `.claude/commands/check-everything.md`.
+- docs/preview-isolation.md: step-by-step Preview isolation, each step needing approval; nothing run. No app code, database, Blob or env change.
+
 ## Changed - 2026-10-25 / CRT review fixes after approval
 
 - No focus ring on containers focused by script (`main#top` after the splash, windows); buttons, links and form controls keep theirs.

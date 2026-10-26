@@ -167,6 +167,8 @@ Watcher moods (blink, flinch at fast movement, glance at hovered links, doze whe
 
 ## Workflow setup
 
+Status (branch `chore/workflow-setup`, 2026-10-25): items 1 to 6 and 8 are done in the repo: CLAUDE.md "Two lanes", batching and model lines; `.claude/settings.json`; `.claude/agents/reviewer.md`; `.claude/commands/check-everything.md`. Item 7 is written up step by step in docs/preview-isolation.md and NOT started (each step needs Harold's approval). Not yet merged to `main`. The permission rules have not been exercised against real denied commands; see the CLAUDE.md note on what they do and do not block.
+
 1. **Two lanes in CLAUDE.md.** Code-only work (UI, styling, components, docs): one plan review, then work and report at the end. Production work (database, Blob, Vercel, Neon, pushes, env vars): keep stop-and-approve.
 2. **Hard rules in project Claude Code settings.** Deny `git push`, `payload migrate` and `migrate:*`, `vercel`, `neonctl`, and reading `.env*`. Allow typecheck, build, the test and verify scripts, `serve-fixture`, and git status/diff/log/add/commit. Code-only work can then run in accept-edits mode.
 3. **Reviewer subagent** in `.claude/agents/`: fresh context; reviews plans, diffs and screenshots against CLAUDE.md and this file; reports problems only; never edits.
