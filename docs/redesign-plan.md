@@ -117,6 +117,22 @@ Why: artwork looks wrong on the green terminal; it needs a neutral background.
 
 ---
 
+## Decided: main menu and homepage (phase 2)
+
+Decided 2026-10-25 (Harold). Replaces the current homepage, where the first screen is title + menu + a large Watcher and navigation appears three times.
+
+- **Top bar = menu bar (desktop).** `MIGRAINZ · Projects · Comics · Archive · Tracker` on the left; `Search (Ctrl+K) · SND · CRT` on the right. The clickable file path (breadcrumbs) sits directly below it.
+- **Left column: the main menu as a directory listing.** Number and file name small, readable name large (`01 / projects.db` over "Project database"), reticle on hover. Shop and Patreon at the bottom as locked system files (phase 3 for the unlock behaviour).
+- **Centre: the Watcher.** The latest comic page, the newest schematic and a Patreon file orbit it as small clickable windows. Hover or tap activates the Watcher.
+- **Right column: Transmissions** (real updates from the CMS) and a **clearance panel** (PUBLIC, or the visitor's Patreon tier).
+- **Below the first screen:** a strip of recent files, then the tracker and comics panels. Hide empty sections (no "AWAITING FILES").
+- **Navigation appears once.** Remove the launcher row (`[ LATEST ]` / `[ SYSTEM ]`) and the duplicate panel links.
+- **Fit:** the menu and the Watcher must both be reachable without scrolling at 1366x768.
+- **Phone:** slim top bar (`MIGRAINZ`, search, CRT), Watcher first, then content, bottom tab bar. The mobile control pad (arrow keys + Enter, from the 2026-10-15 notes) stays in the backlog.
+- Search and Ctrl+K belong to the backlog's "terminal commands + Ctrl+K palette"; the phase 2 plan decides whether a minimal search ships first.
+
+---
+
 ## Live site review (2026-10-22, migrainzxxl.com, before the restyle)
 
 Working: strong fiction (paths, `.EQP` names, one-time transmission splash, spec panel); schematic posters; no sideways overflow on phones; usable phone comic reader; every page has a URL.
@@ -140,7 +156,7 @@ Layout direction: one frame (top bar + clickable file path as breadcrumbs); thre
 ## Rework phases
 
 1. **Interaction polish:** reticle + Win95 hover highlights (one shared style); readable name large / file name small (menu tiles like `01 / projects.db` → Project database; equipment cards); boot checklist upgrade of the transmission splash (~3s, built from real data, e.g. `[ OK ] watcher.sys … awake`, `[ !! ] blushland_ch1 … 5% rendered`, `clearance … PUBLIC`; once per session; any key / Esc skips; S = sound); amber phosphor mode (alternate token set); menu bar (File / Archive / System, with CRT effects, sound and phosphor color under System).
-2. **Mode switch and layout:** the terminal ↔ desktop switch; window-vs-page rule; page templates; homepage first screen (Watcher centerpiece with the latest comic page, newest schematic and a Patreon file orbiting it as clickable windows; hover/tap to activate the Watcher; one navigation; hide empty sections); comic reader sizing. May split into two branches.
+2. **Mode switch and layout:** the terminal ↔ desktop switch; window-vs-page rule; page templates; homepage first screen and main menu (see "Decided: main menu and homepage (phase 2)": menu bar, directory-listing menu, Watcher with orbiting windows, Transmissions and clearance panels, one navigation, hide empty sections, 1366x768 fit, phone tab bar); comic reader sizing. May split into two branches.
 3. **System files:** locked content shown redacted with a clearance tag and a link to the tier that unlocks it, with a reveal animation for people who have access (reuse existing Patreon tier access); Patreon perks and the Requisitions shop as unlockable files; hidden files in the archive, with a wallpaper kit for finding them. If rewards are stored in Blob, uploads are production work (approval); repo static assets are not.
 
 ## Backlog
