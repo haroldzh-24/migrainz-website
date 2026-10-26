@@ -36,6 +36,9 @@ const open = async (options = {}, { boot = false, phosphor } = {}) => {
 };
 const afterStyle = (locator, property) => locator.evaluate((el, prop) => getComputedStyle(el, '::after')[prop], property);
 const pass = message => console.log('PASS ' + message);
+// The server renders the opaque boot gate; a dismissed session only drops it after hydration. Wait for that before
+// interacting, or a press can land on the gate (seen on the slower regression server).
+const visit = async (page, url) => { await page.goto(url); await page.locator('.startup-sequence').waitFor({ state: 'hidden' }); };
 
 try {
   // 1. Classified records: safe labels in the checklist, titles nowhere in HTML or RSC.
@@ -61,7 +64,7 @@ try {
   // 2. Reticle on hover and keyboard focus, no layout shift; Win95 styles inside windows.
   {
     const { context, page } = await open();
-    await page.goto(base + '/');
+    await visit(page, base + '/');
     await page.locator('.terminal-nav a').first().waitFor();
     const nav = page.locator('.terminal-nav a').first();
     const before = await nav.boundingBox();
@@ -79,7 +82,7 @@ try {
     assert.equal(await afterStyle(focused, 'opacity'), '1', 'reticle shows on keyboard focus');
     assert.equal(await focused.evaluate(el => getComputedStyle(el).outlineColor), 'rgba(0, 0, 0, 0)', 'one indicator: the outline is transparent outside High Contrast');
     await page.screenshot({ path: path.join(out, 'reticle-focus-1366.png'), clip: { x: 60, y: 520, width: 620, height: 240 } });
-    await page.goto(base + '/projects/blushland/equipment');
+    await visit(page, base + '/projects/blushland/equipment');
     const tab = page.locator('.project-app-nav a:not([aria-current])').first();
     await tab.hover();
     assert.equal(await tab.evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(0, 0, 128)', 'Win95 menu item gets the navy bar');
@@ -105,7 +108,7 @@ try {
   // 3. Touch: no sticky reticle after a tap. Forced colours: a real outline. Reduced motion: no animation.
   {
     const { context, page } = await open({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-    await page.goto(base + '/');
+    await visit(page, base + '/');
     const trigger = page.getByRole('button', { name: '03 / requisitions.exe Requisitions / shop', exact: true });
     // Press state: in this no-hover phone context only :active can show the reticle (headless Chrome does not turn raw
     // DevTools touch events into a press, so a held mouse button stands in for the finger; real touch is unverified).
@@ -121,13 +124,13 @@ try {
     await page.waitForTimeout(300);
     assert.equal(await afterStyle(trigger, 'opacity'), '0', 'no sticky reticle after a tap');
     for (const route of ['/', '/projects/blushland/equipment/fixture-scanner']) {
-      await page.goto(base + route);
+      await visit(page, base + route);
       await page.waitForTimeout(500);
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= 390), `no sideways overflow at 390px on ${route}`);
     }
     await context.close();
     const forced = await open({ forcedColors: 'active' });
-    await forced.page.goto(base + '/');
+    await visit(forced.page, base + '/');
     await forced.page.locator('.terminal-nav a').first().waitFor();
     await forced.page.locator('#top').focus();
     for (let i = 0; i < 40 && !(await forced.page.evaluate(() => document.activeElement?.closest('.terminal-nav'))); i++) await forced.page.keyboard.press('Tab');
@@ -136,7 +139,7 @@ try {
     await forced.context.close();
     const reduced = await open({ reducedMotion: 'reduce' });
     const nav = reduced.page.locator('.terminal-nav a').first();
-    await reduced.page.goto(base + '/');
+    await visit(reduced.page, base + '/');
     await nav.hover();
     assert.equal(await afterStyle(nav, 'animationName'), 'none', 'reduced motion: the reticle just appears');
     assert.equal(await afterStyle(nav, 'transform'), 'none');
@@ -168,7 +171,7 @@ try {
   // 5. Amber: chosen in the menu, persists across reload and applies before first paint.
   {
     const { context, page } = await open();
-    await page.goto(base + '/');
+    await visit(page, base + '/');
     await page.getByRole('button', { name: 'SYSTEM', exact: true }).click();
     await page.locator('.phosphor-toggle').click();
     assert.equal(await page.evaluate(() => localStorage.getItem('crt-phosphor')), 'amber');
@@ -185,7 +188,7 @@ try {
   for (const [size, width, height] of [['1366', 1366, 768], ['1440', 1440, 900], ['390', 390, 844], ['320', 320, 640]]) for (const phosphor of ['green', 'amber']) {
     const { context, page } = await open({ viewport: { width, height }, isMobile: width < 700, hasTouch: width < 700 }, { phosphor });
     for (const [label, route] of [['home', '/'], ['scanner', '/projects/blushland/equipment/fixture-scanner']]) {
-      await page.goto(base + route);
+      await visit(page, base + route);
       await page.waitForTimeout(600);
       for (const crt of ['on', 'off']) {
         await page.evaluate(value => { document.documentElement.dataset.crt = value; }, crt);
