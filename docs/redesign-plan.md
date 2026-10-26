@@ -53,8 +53,8 @@ See "Rework phases" below. One branch per phase. Each phase: plan in plan mode f
 
 ## Current state (2026-10-25 16:24 CT)
 
-- Branch `feature/crt-readability`, based on local `main` (`46b5caf`). Local `main` is 2 commits ahead of `origin/main` (`88913ea`): `3611c0e` laptop fit + faction poster cards, `46b5caf` merge. Nothing pushed.
-- Restyle commits through `24fb63a` (fixture server env isolation). Text-size floor `00e74f0`. Last test run (2026-10-25): all three scripts pass, output in `test-results/crt-regression-20261025.txt`.
+- 2026-10-25 19:07 CT: `feature/crt-readability` was merged into local `main` (`--no-ff`) and `main` (`10b1ddf`) was pushed to `origin/main` with Harold's approval. Production served the new build about 36 s later (`<html data-crt="on">`). It shipped the restyle, the laptop fit (`3611c0e` / `46b5caf`) and the docs; no schema, migration, Blob or env change. Post-deploy GET checks: docs/deploy-checklist-crt.md. Restricted-media 404 check: not run (no known restricted test file). Visual checks on real devices: not done.
+- Tests before the push (all simulated, headless Chrome): `test:regression`, `verify-equipment-navigation.mjs`, `verify-equipment-browser.mjs`, typecheck and build pass; output in `test-results/crt-regression-20261025c.txt`.
 - Review server: `node scripts/serve-fixture.mjs` (dev mode over LAN, fail-closed env check); stop with `--stop`. Production builds can't run on SQLite by design (`payload.config.ts` guard + `scripts/verify-production-guard.mjs`); do not weaken that guard.
 - `payload-types.ts` gets line-ending-only changes while the dev server runs; safe to `git checkout` it.
 - `stash@{0}` "pre-revert local work" (2026-09-28): keep, don't drop.
