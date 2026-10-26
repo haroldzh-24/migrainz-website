@@ -4,7 +4,8 @@ export default function WatcherArt() {
   const socketId = useId();
   return (
     <div className="watcher-art" role="img" aria-label="Studio Migrainz watcher wearing night-vision goggles">
-      {/* Layers are the pre-tuned scripts/bake-watcher-crt.mjs output: 1248px canvases, 24px of glow padding around the 1200px art. */}
+      {/* Layers are the pre-tuned scripts/bake-watcher-crt.mjs output: 1248px canvases, 24px of glow padding around the 1200px art.
+          Each phosphor has its own baked set; html[data-phosphor] picks one in CSS, so the saved choice never flashes. */}
       <svg viewBox="-24 -24 1248 1248" aria-hidden="true">
         <defs>
           {/* Fixed socket apertures in original image coordinates. */}
@@ -14,12 +15,15 @@ export default function WatcherArt() {
           </clipPath>
         </defs>
         <g clipPath={`url(#${socketId})`}>
-          <image className="watcher-eyes" href="/images/watcher/watcher-eyes.crt.png" x="-24" y="-24" width="1248" height="1248" />
+          {/* Watcher.tsx moves this one group; the inactive phosphor layer is display: none. */}
+          <g className="watcher-eyes">
+            <image className="watcher-eyes-green" href="/images/watcher/watcher-eyes.crt.png" x="-24" y="-24" width="1248" height="1248" />
+            <image className="watcher-eyes-amber" href="/images/watcher/watcher-eyes.amber.png" x="-24" y="-24" width="1248" height="1248" />
+          </g>
         </g>
       </svg>
-      {/* Keep the static face out of the SVG that repaints as eyes move. */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/images/watcher/watcher-base.crt.png" width="1248" height="1248" alt="" draggable={false} />
+      {/* Keep the static face out of the SVG that repaints as eyes move; its image comes from --watcher-base. */}
+      <span className="watcher-base" aria-hidden="true" />
     </div>
   );
 }

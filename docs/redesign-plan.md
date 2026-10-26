@@ -94,6 +94,24 @@ See "Rework phases" below. One branch per phase. Each phase: plan in plan mode f
 - Win95 windows: chrome stays grey/navy/Arial; `--crt-*` only for dark terminal content inside.
 - If the glow feels faint, raise opacity (.35 → .5) before blur.
 
+**Amber phosphor** (phase 1; `html[data-phosphor="amber"]`, saved as localStorage `crt-phosphor`, applied before first paint; green stays the default):
+
+| Token | Amber value | Contrast on bg |
+|---|---|---|
+| `--crt-bg` | `#0e0a06` | — |
+| `--crt-panel` | `#15100a` | — |
+| `--crt-text` | `#ebc48c` | 12.03:1 |
+| `--crt-mid` | `#c69a60` | 7.69:1 |
+| `--crt-bright` | `#ffe0b0` | 15.54:1 |
+| `--crt-dim` | `#a07a48` | 5.05:1 |
+| `--crt-border` | `rgba(235,180,110,.18)` | — |
+| `--crt-accent` | `#fff1d6` (links underlined) | 17.66:1 |
+| `--crt-glow` | `0 0 4px rgba(255,210,150,.35)` | — |
+
+- `#crt-tune-amber` maps black → bg, then dim, text, white → bright (R `0.055 0.627 0.922 1`, G `0.039 0.478 0.769 0.878`, B `0.024 0.282 0.549 0.690`); CSS uses `var(--crt-tune-filter)`.
+- Watcher: `watcher-{base,eyes}.amber.png` and `crt-noise.amber.png` from `node scripts/bake-watcher-crt.mjs --phosphor amber`. The face and grain are CSS backgrounds (only the active set downloads); both 10 KB eye layers download, the inactive one is hidden.
+- Near-black tints are tokens too (`--crt-deep`, `--crt-deep-hi`, `--crt-deep-lo`). Win95 chrome and the monitor hardware keep their fixed colours.
+
 ---
 
 ## Decided: terminal ↔ desktop mode switch (phase 2)

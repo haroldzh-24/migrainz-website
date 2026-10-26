@@ -156,7 +156,8 @@ const { chromium } = require(
     // The old `.head path` outline check targeted markup removed with the image watcher. The recolour is baked into
     // the watcher layers (scripts/bake-watcher-crt.mjs), so the moving container must not carry a runtime filter.
     assert.equal(await page.locator('.watcher').evaluate((el) => getComputedStyle(el).filter), 'none', 'watcher has no runtime filter');
-    assert.match(await page.locator('.watcher-art > img').getAttribute('src'), /watcher-base.crt.png/);
+    // The face layer is a CSS background picked by html[data-phosphor]; green is the default.
+    assert.match(await page.locator('.watcher-art > .watcher-base').evaluate((el) => getComputedStyle(el).backgroundImage), /watcher-base\.crt\.png/);
     await page.screenshot({
       path: "test-results/home-desktop.png",
       fullPage: true,

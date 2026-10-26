@@ -95,9 +95,18 @@
   --crt-border: rgba(140, 220, 160, 0.18);
   --crt-accent: #e8b45a;
   --crt-text-rgb: 168, 216, 176;
+  --crt-bright-rgb: 212, 245, 218;
   --crt-border-rgb: 140, 220, 160;
+  /* Near-black tints for the Watcher frame, record cards and placeholder art. */
+  --crt-deep: #060a06;
+  --crt-deep-hi: #071007;
+  --crt-deep-lo: #030503;
   --crt-glow: 0 0 4px rgba(180, 245, 195, 0.35);
   --crt-glow-filter: 0 0 4px rgba(180, 245, 195, 0.35);
+  /* Phosphor-matched recolour (layout.tsx SVG filters) and baked Watcher layers (scripts/bake-watcher-crt.mjs). */
+  --crt-tune-filter: url(#crt-tune);
+  --watcher-base: url("/images/watcher/watcher-base.crt.png");
+  --watcher-noise: url("/images/watcher/crt-noise.png");
   /* CRT effect strengths; html[data-crt] switches them (on / reduced / off). */
   --crt-scanline-alpha: 0.06;
   --crt-vignette: inset 0 0 60px rgba(0, 0, 0, 0.5);
@@ -139,6 +148,30 @@ body {
 /* Headings and the brand glow; body text does not. Win95 and light project windows turn the glow off. */
 :where(h1, h2, h3, .brand) { color: var(--crt-bright); text-shadow: var(--crt-glow); }
 .retro-window, .project-application { --crt-glow: none; }
+/* Amber phosphor (SYSTEM menu, saved as crt-phosphor). Same contrast targets as green: text 12.0:1, bright 15.5:1,
+   mid 7.7:1, dim 5.1:1 on --crt-bg. The accent can't be amber here, so links are warm cream and underlined. */
+html[data-phosphor="amber"] {
+  --crt-bg: #0e0a06;
+  --crt-panel: #15100a;
+  --crt-text: #ebc48c;
+  --crt-bright: #ffe0b0;
+  --crt-mid: #c69a60;
+  --crt-dim: #a07a48;
+  --crt-border: rgba(235, 180, 110, 0.18);
+  --crt-accent: #fff1d6;
+  --crt-text-rgb: 235, 196, 140;
+  --crt-bright-rgb: 255, 224, 176;
+  --crt-border-rgb: 235, 180, 110;
+  --crt-deep: #0a0704;
+  --crt-deep-hi: #110b05;
+  --crt-deep-lo: #050302;
+  --crt-glow: 0 0 4px rgba(255, 210, 150, 0.35);
+  --crt-glow-filter: 0 0 4px rgba(255, 210, 150, 0.35);
+  --crt-tune-filter: url(#crt-tune-amber);
+  --watcher-base: url("/images/watcher/watcher-base.amber.png");
+  --watcher-noise: url("/images/watcher/crt-noise.amber.png");
+}
+html[data-phosphor="amber"] .equipment-panel a { text-decoration: underline; text-underline-offset: 3px; }
 html[data-crt="reduced"] { --crt-scanline-alpha: 0.03; --crt-vignette: none; }
 html[data-crt="off"] { --crt-scanline-alpha: 0; --crt-vignette: none; --crt-glow: none; --crt-glow-filter: 0 0 0 transparent; }
 
@@ -703,7 +736,7 @@ button {
 
   background:
     linear-gradient(145deg, rgba(var(--crt-text-rgb), 0.035), transparent 45%),
-    #060a06;
+    var(--crt-deep);
 
   overflow: hidden;
 }
@@ -733,13 +766,21 @@ button {
 
 /* The tuned layers carry 24px of glow padding on a 1200px canvas (2%), so the art keeps its original size and position. */
 .watcher-art > svg,
-.watcher-art > img {
+.watcher-art > .watcher-base {
   position: absolute;
   inset: -2%;
   width: 104%;
   height: 104%;
   pointer-events: none;
 }
+
+.watcher-art > .watcher-base {
+  background: var(--watcher-base) center / 100% 100% no-repeat;
+}
+
+.watcher-eyes-amber,
+html[data-phosphor="amber"] .watcher-eyes-green { display: none; }
+html[data-phosphor="amber"] .watcher-eyes-amber { display: inline; }
 
 .watcher-eyes {
   /* SVG user units preserve these limits on the 1200px source canvas. */
@@ -767,7 +808,7 @@ button {
 
 .watcher-static::before {
   inset: 0;
-  background: url("/images/watcher/crt-noise.png") repeat;
+  background: var(--watcher-noise) repeat;
   background-size: var(--watcher-grain-size) var(--watcher-grain-size);
   opacity: var(--watcher-grain-opacity);
 }
@@ -1067,7 +1108,7 @@ button {
 
 .record-card {
   border: 1px solid var(--line);
-  background: #060a06;
+  background: var(--crt-deep);
 }
 
 .record-image {
@@ -1091,7 +1132,7 @@ button {
   background:
     radial-gradient(
       circle at 32% 38%,
-      rgba(213, 255, 189, 0.18),
+      rgba(var(--crt-bright-rgb), 0.18),
       transparent 8%
     ),
     linear-gradient(
@@ -1100,7 +1141,7 @@ button {
       rgba(var(--crt-text-rgb), 0.14) 41% 42%,
       transparent 43%
     ),
-    linear-gradient(45deg, #081208, #030503);
+    linear-gradient(45deg, var(--crt-deep-hi), var(--crt-deep-lo));
 }
 
 .art-a::before {
@@ -1119,7 +1160,7 @@ button {
       transparent 0 22px,
       rgba(var(--crt-text-rgb), 0.06) 23px 24px
     ),
-    linear-gradient(#071007, #020402);
+    linear-gradient(var(--crt-deep-hi), var(--crt-deep-lo));
 }
 
 .art-b::before {
@@ -1134,10 +1175,10 @@ button {
 .art-c {
   background: linear-gradient(
     135deg,
-    #071007 25%,
-    #030503 25% 50%,
-    #071007 50% 75%,
-    #030503 75%
+    var(--crt-deep-hi) 25%,
+    var(--crt-deep-lo) 25% 50%,
+    var(--crt-deep-hi) 50% 75%,
+    var(--crt-deep-lo) 75%
   );
 }
 
@@ -1475,7 +1516,7 @@ footer {
 }
 .terminal-button:hover:not(:disabled) {
   color: var(--hot);
-  background: #102010;
+  background: rgba(var(--crt-text-rgb), 0.08);
 }
 button:disabled {
   opacity: 0.5;
@@ -1824,7 +1865,7 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
 
 /* Optional Equipment records: specifications, assignments and native schematics. */
 .equipment-specifications { margin: 1rem 0; font-size: .875rem; }
-.equipment-specifications > div { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 1rem; border-bottom: 1px solid var(--line, #234b2f); padding: .4rem 0; overflow-wrap: anywhere; }
+.equipment-specifications > div { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 1rem; border-bottom: 1px solid var(--line); padding: .4rem 0; overflow-wrap: anywhere; }
 .equipment-specifications dt { opacity: .7; }
 .equipment-specifications dd { margin: 0; white-space: pre-wrap; }
 .equipment-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 1rem; }
@@ -1840,10 +1881,10 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
   .directory-compact .equipment-module { margin-top: .5rem; }
 }
 .project-app-content .directory-compact h1 { font-size: clamp(20px, 2.6vw, 30px); margin: 2px 0 6px; line-height: 1.1; }
-.equipment-card { display: flex; align-items: flex-start; gap: 1rem; border: 1px solid var(--line, #234b2f); padding: 1rem; min-width: 0; overflow-wrap: anywhere; }
+.equipment-card { display: flex; align-items: flex-start; gap: 1rem; border: 1px solid var(--line); padding: 1rem; min-width: 0; overflow-wrap: anywhere; }
 .equipment-card > img { width: 80px; height: 100px; object-fit: contain; background: var(--crt-bg); flex-shrink: 0; }
 /* Schematic posters (no concept art on file) get the terminal recolour; concept art never does. */
-.equipment-card > img[data-schematic], .directory-thumbnail img[data-schematic], .art-viewer-canvas img[data-schematic] { filter: url(#crt-tune) drop-shadow(var(--crt-glow-filter)); }
+.equipment-card > img[data-schematic], .directory-thumbnail img[data-schematic], .art-viewer-canvas img[data-schematic] { filter: var(--crt-tune-filter) drop-shadow(var(--crt-glow-filter)); }
 .equipment-card > div { min-width: 0; flex: 1; }
 .equipment-card h3 { margin: 0; }
 .equipment-card .equipment-card-file { margin: 2px 0 6px; color: var(--dim); font-size: 12px; overflow-wrap: anywhere; }
@@ -1856,7 +1897,7 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
   /* Width follows the video, whose height is capped by --video-max-h (set from the visible window height). */
   width: min(100%, calc(var(--video-max-h, 100000px) * var(--schematic-ratio, 2))); }
 .equipment-schematic-display { position: relative; overflow: hidden; background: var(--schematic-bg); line-height: 0; user-select: none; -webkit-user-select: none; }
-.equipment-schematic-display > img, .equipment-schematic-display > video { filter: url(#crt-tune) drop-shadow(var(--crt-glow-filter)); position: absolute; inset: 0; width: 100%; height: 100%; display: block; object-fit: contain; -webkit-touch-callout: none; }
+.equipment-schematic-display > img, .equipment-schematic-display > video { filter: var(--crt-tune-filter) drop-shadow(var(--crt-glow-filter)); position: absolute; inset: 0; width: 100%; height: 100%; display: block; object-fit: contain; -webkit-touch-callout: none; }
 /* The video takes no pointer input, so hover/tap/right-click never reach a media UI. */
 .equipment-schematic-display > video { pointer-events: none; opacity: 0; }
 .equipment-schematic-display[data-playing] > video { opacity: 1; }

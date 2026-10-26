@@ -20,7 +20,7 @@ export default function Watcher() {
     const readoutX = container.querySelector<HTMLElement>("#readout-x")!;
     const readoutY = container.querySelector<HTMLElement>("#readout-y")!;
     const head = container.querySelector<HTMLElement>(".watcher-art")!;
-    const eyes = container.querySelector<SVGImageElement>(".watcher-eyes")!;
+    const eyes = container.querySelector<SVGGElement>(".watcher-eyes")!;
     const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
     let position: { x: number; y: number } | null = null;
     let target = { x: 0, y: 0 };
