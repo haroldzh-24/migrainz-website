@@ -115,6 +115,15 @@ Why: artwork looks wrong on the green terminal; it needs a neutral background.
 - **Desktop mode: authentic Win95.** Navy `#000080` bar with white text on menu and list items; flat toolbar buttons raise on hover (bevel `#fff #404040 #404040 #fff`) and press in on click; desktop icons get a navy label with a dotted border; dotted focus rectangle.
 - **Rules.** Same graphic on `:focus-visible`; on touch, shown while pressed; drawn as an overlay (no layout shift); reduced motion = appears without scaling; one shared style applied to every link, button, card, tab and window control; optional soft tick when sound is on.
 
+## Decided: phase 1 scope
+
+Decided 2026-10-25 (Harold), when the phase 1 plan was approved.
+
+- **Menu bar.** Phase 1 builds only a `SYSTEM` dropdown at the right of the existing header (CRT effects, sound, phosphor colour). The header keeps an empty nav slot so phase 2 adds `Projects · Comics · Archive · Tracker` and Search to the same bar. No File / Archive menus.
+- **Boot.** The checklist replaces the BIOS/WORM.EXE lines and the eye blinks. The same window then becomes the existing announcement (`data/announcement.ts`), with ENTER, Esc and × dismissal unchanged. Skipping jumps to the announcement.
+- **Amber.** Everything recoloured today goes amber too: tokens, the Watcher (a second baked PNG set) and schematics (an amber twin of `#crt-tune`). Concept art, comics and galleries stay unfiltered. Green stays the default.
+- **Amber accent.** Default warm cream `#fff1d6`, underlined for links (green mode's accent is already amber). Pale cyan is the alternative if Harold prefers it.
+
 ---
 
 ## Decided: main menu and homepage (phase 2)
@@ -129,6 +138,7 @@ Decided 2026-10-25 (Harold). Replaces the current homepage, where the first scre
 - **Navigation appears once.** Remove the launcher row (`[ LATEST ]` / `[ SYSTEM ]`) and the duplicate panel links.
 - **Fit:** the menu and the Watcher must both be reachable without scrolling at 1366x768.
 - **Phone:** slim top bar (`MIGRAINZ`, search, CRT), Watcher first, then content, bottom tab bar. The mobile control pad (arrow keys + Enter, from the 2026-10-15 notes) stays in the backlog.
+- Since phase 1, SND and CRT (and phosphor colour) live in the header's `SYSTEM` menu; the phase 2 plan decides whether they stay there or move back onto the bar.
 - Search and Ctrl+K belong to the backlog's "terminal commands + Ctrl+K palette"; the phase 2 plan decides whether a minimal search ships first.
 
 ---
@@ -155,7 +165,7 @@ Layout direction: one frame (top bar + clickable file path as breadcrumbs); thre
 
 ## Rework phases
 
-1. **Interaction polish:** reticle + Win95 hover highlights (one shared style); readable name large / file name small (menu tiles like `01 / projects.db` → Project database; equipment cards); boot checklist upgrade of the transmission splash (~3s, built from real data, e.g. `[ OK ] watcher.sys … awake`, `[ !! ] blushland_ch1 … 5% rendered`, `clearance … PUBLIC`; once per session; any key / Esc skips; S = sound); amber phosphor mode (alternate token set); menu bar (File / Archive / System, with CRT effects, sound and phosphor color under System).
+1. **Interaction polish** (branch `feature/interaction-polish`; scope in "Decided: phase 1 scope"): reticle + Win95 hover highlights (one shared style); readable name large / file name small (menu tiles like `01 / projects.db` → Project database; equipment cards); boot checklist replacing the BIOS/WORM.EXE lines of the transmission splash (~3s, built from real data, e.g. `[ OK ] watcher.sys … awake`, `[ !! ] blushland_chapter_02 … 73% rendered`, `[ OK ] clearance … PUBLIC`; once per session; any key / Esc skips; S = sound); amber phosphor mode (alternate token set); a `SYSTEM` menu in the header (CRT effects, sound, phosphor colour).
 2. **Mode switch and layout:** the terminal ↔ desktop switch; window-vs-page rule; page templates; homepage first screen and main menu (see "Decided: main menu and homepage (phase 2)": menu bar, directory-listing menu, Watcher with orbiting windows, Transmissions and clearance panels, one navigation, hide empty sections, 1366x768 fit, phone tab bar); comic reader sizing. May split into two branches.
 3. **System files:** locked content shown redacted with a clearance tag and a link to the tier that unlocks it, with a reveal animation for people who have access (reuse existing Patreon tier access); Patreon perks and the Requisitions shop as unlockable files; hidden files in the archive, with a wallpaper kit for finding them. If rewards are stored in Blob, uploads are production work (approval); repo static assets are not.
 
