@@ -13,4 +13,7 @@ assert.equal(phaseLabel('rat-city-blues', 'Rat City Blues ch 1'), 'rat_city_blue
 assert.equal(phaseLabel(undefined, 'Script'), 'script');
 assert.equal(fileName('!!!'), 'file');
 assert.equal(fileName('A very long phase title that keeps going').length, 28);
-console.log('PASS: boot checklist labels (no doubled project name, whole-word match, fallbacks, 28-character cap).');
+// A cut that lands right after a separator must not leave a trailing underscore.
+assert.equal(phaseLabel('blushland', 'Blushland chapter two final cut'), 'blushland_chapter_two_final');
+assert.ok(!/^_|_$/.test(fileName('Twenty eight characters ok! and more')));
+console.log('PASS: boot checklist labels (no doubled project slug, whole-word match, fallbacks, 28-character cap, no trailing separator).');
