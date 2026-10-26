@@ -69,6 +69,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
             SKIP TO CONTENT
           </a>
           <div className="crt" aria-hidden="true" />
+          <div className="crt-bezel" aria-hidden="true" />
           <TerminalHeader />
           <main className="shell" id="top" tabIndex={-1}>
             {children}

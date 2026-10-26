@@ -70,7 +70,7 @@ See "Rework phases" below. One branch per phase. Each phase: plan in plan mode f
 - Art Viewer: Escape stops working once another window has focus (logged 2026-10-22).
 - Art Viewer close button at ~669px: not reproduced; all checks simulated. Recheck on a real phone.
 - `mp510mmcc` poster missing in the viewer.
-- Watcher: recheck on the Macs from the earlier stutter report (now baked PNGs, no runtime filter).
+- Watcher: recheck on the Macs from the earlier stutter report (baked PNGs, no runtime filter), with CRT on (flicker and jitter run) and with CRT off.
 - Not yet checked: Firefox, Safari, iOS, real schematic media, real comic pages (fixture comics show LOADING).
 - On phones, project windows stop ~185px short of the screen bottom (fixed by the mode switch in phase 2).
 - Regression `verify.cjs` still has stale assertions → separate cleanup.
@@ -89,15 +89,18 @@ See "Rework phases" below. One branch per phase. Each phase: plan in plan mode f
 | `--crt-dim` | `#5f8a6b` | meta, dates, labels | 4.94:1 |
 | `--crt-border` | `rgba(140,220,160,.18)` | borders only, never text | — |
 | `--crt-accent` | `#e8b45a` | links and buttons | 10.28:1 |
-| `--crt-glow` | `0 0 4px rgba(180,245,195,.35)` | headings/active only | — |
+| `--crt-glow-head` | `0 0 3px rgba(212,245,218,.8), 0 0 18px rgba(140,230,165,.5)` | headings, hero title | — |
+| `--crt-glow-ui` | `0 0 6px rgba(180,245,195,.55)` | menu names, brand, active items | — |
+| `--crt-glow-link` | `0 0 6px rgba(232,180,90,.55)` | amber links (none on the site yet) | — |
+| `--crt-glow-body` | `0 0 2.8px rgba(168,216,176,.24)` | paragraphs, CRT "on" only | — |
 
 - Old names alias the tokens (`--bg`, `--panel`, `--green`, `--green2`, `--hot`, `--dim`, `--line`); `.project-application` keeps its light overrides. `--term-*` removed.
-- Static scanlines `repeating-linear-gradient(0deg, rgba(0,0,0,.06) 0 2px, transparent 2px 4px)`; vignette `inset 0 0 60px rgba(0,0,0,.5)`; no continuous flicker; power-on sweep plays once; Watcher grain static, jitter and interference removed. The window layer sits above the overlay, so comics and artwork are never scanlined.
-- Effects toggle `CRT: ON / REDUCED / OFF` (default on): reduced = scanlines .03, no vignette; off = no scanlines, glow or vignette. Palette and recolor stay in every mode.
+- **CRT glow pass (Harold, 2026-10-26, `fix/crt-glow`).** This deliberately reverses the earlier notes "no continuous flicker", "Watcher jitter removed" and "body text does not glow", and is stronger than AGENTS.md's "subtle CRT" by Harold's explicit choice. Static scanlines `repeating-linear-gradient(0deg, rgba(0,0,0,.07) 0 2px, transparent 2px 4px)`; the screen vignette is `radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(0,0,0,.55) 100%)` on the fixed background layer under all content (`body::before`), so it darkens the page background toward the corners and never the text; the scanlines stay a fixed overlay above everything (panels keep `inset 0 0 60px rgba(0,0,0,.5)`); power-on sweep plays once. In CRT "on" only: a rounded screen bezel above 480px (22px corners, 1px `rgba(140,220,160,.14)` inner edge, thin dark frame; never takes clicks) and Watcher-only motion: a stepped opacity flicker (1.3s loop: 97% at 14%, 98.2% at 47%, 97.5% at 78%, each dip held ~26ms) and a 2px jitter for 90ms every 3.5-9s at random, on their own wrappers apart from eye tracking. Reduced motion stops both. No other CRT motion (the announcement cursor blink and the promo ad wobble are older and unchanged). The Watcher glow `drop-shadow(0 0 4px rgba(180,245,195,.7)) drop-shadow(0 0 16px rgba(120,220,150,.45))` is baked into the Watcher layers (lossless WebP; fixed in every CRT mode, so CRT "off" keeps the halo, Harold 2026-10-26). Because the vignette sits under the text, `--crt-dim` text keeps ~4.5-4.8:1 measured from pixels at 1366x768 (green; amber ~4.5-4.8:1), the gap from 4.94:1 being the scanlines (see bugs.md "CRT vignette contrast"; as an overlay it had dropped to ~2.4-3.2:1). The window layer sits above the overlay, so comics and artwork are never scanlined.
+- Effects toggle `CRT: ON / REDUCED / OFF` (default on): reduced = scanlines .03, no vignette, no body glow, no bezel, no Watcher motion (head, menu and link glow stay); off = no scanlines, text glow, vignette, bezel or motion (the Watcher's baked halo stays). Palette and recolor stay in every mode.
 - IBM Plex Mono (400, 700) via `next/font/local`; body 16px / 1.6; long-form text max ~70ch; nothing below 12px. Arial stays in Win95 windows.
 - Recolor filter `#crt-tune` (grayscale, then R `0.039 0.373 0.659 0.831`, G `0.055 0.541 0.847 0.961`, B `0.043 0.420 0.690 0.855`, sRGB) on schematic video, posters and poster fallbacks. Never on concept art, comics or galleries. The Watcher uses baked `*.crt.png` copies (`scripts/bake-watcher-crt.mjs`). Display-time only; Blob untouched.
 - Win95 windows: chrome stays grey/navy/Arial; `--crt-*` only for dark terminal content inside.
-- If the glow feels faint, raise opacity (.35 → .5) before blur.
+- Glow tokens: phosphor-specific `--crt-glow-*-value` tokens follow `html[data-crt]`; rules use `--crt-glow-head|ui|link|body`, which Win95 and light contexts (windows, project applications, promo ads, the monitor, desktop icons) set to none; the dark equipment panel re-enables body and link glow. Amber mode uses the same strengths in amber colours (amber links are cream).
 
 **Amber phosphor** (phase 1; `html[data-phosphor="amber"]`, saved as localStorage `crt-phosphor`, applied before first paint; green stays the default):
 
@@ -111,10 +114,14 @@ See "Rework phases" below. One branch per phase. Each phase: plan in plan mode f
 | `--crt-dim` | `#a07a48` | 5.05:1 |
 | `--crt-border` | `rgba(235,180,110,.18)` | — |
 | `--crt-accent` | `#fff1d6` (links underlined) | 17.66:1 |
-| `--crt-glow` | `0 0 4px rgba(255,210,150,.35)` | — |
+| `--crt-glow-head` | `0 0 3px rgba(255,224,176,.8), 0 0 18px rgba(240,175,90,.5)` | — |
+| `--crt-glow-ui` | `0 0 6px rgba(255,210,150,.55)` | — |
+| `--crt-glow-link` | `0 0 6px rgba(255,241,214,.55)` (cream: amber mode's link colour) | — |
+| `--crt-glow-body` | `0 0 2.8px rgba(235,196,140,.24)` | — |
+| Watcher glow (baked) | `drop-shadow(0 0 4px rgba(255,210,150,.7)) drop-shadow(0 0 16px rgba(235,165,75,.45))` | — |
 
 - `#crt-tune-amber` maps black → bg, then dim, text, white → bright (R `0.055 0.627 0.922 1`, G `0.039 0.478 0.769 0.878`, B `0.024 0.282 0.549 0.690`); CSS uses `var(--crt-tune-filter)`.
-- Watcher: `watcher-{base,eyes}.amber.png` and `crt-noise.amber.png` from `node scripts/bake-watcher-crt.mjs --phosphor amber`. The face and grain are CSS backgrounds (only the active set downloads); both 10 KB eye layers download, the inactive one is hidden.
+- Watcher: `watcher-{base,eyes}.amber.webp` and `crt-noise.amber.png` from `node scripts/bake-watcher-crt.mjs --phosphor amber`. The face and grain are CSS backgrounds (only the active set downloads); both 10 KB eye layers download, the inactive one is hidden.
 - Near-black tints are tokens too (`--crt-deep`, `--crt-deep-hi`, `--crt-deep-lo`). Win95 chrome and the monitor hardware keep their fixed colours.
 
 ---
@@ -134,7 +141,7 @@ Why: artwork looks wrong on the green terminal; it needs a neutral background.
 
 ## Decided: hover highlights (phase 1)
 
-- **Terminal mode: reticle.** Four corner brackets (10×2 and 2×10px, `--crt-bright`, inset −3px) scale in 1.3 → 1 with opacity, ~120ms in, instant out; text brightens to `--crt-bright` with `--crt-glow`. Cards and posters: the reticle wraps the whole card. Story: the Watcher locking on; pair with the Watcher's eyes glancing toward the hovered item.
+- **Terminal mode: reticle.** Four corner brackets (10×2 and 2×10px, `--crt-bright`, inset −3px) scale in 1.3 → 1 with opacity, ~120ms in, instant out; text brightens to `--crt-bright` with `--crt-glow-ui`. Cards and posters: the reticle wraps the whole card. Story: the Watcher locking on; pair with the Watcher's eyes glancing toward the hovered item.
 - **Desktop mode: authentic Win95.** Navy `#000080` bar with white text on menu and list items; flat toolbar buttons raise on hover (bevel `#fff #404040 #404040 #fff`) and press in on click; desktop icons get a navy label with a dotted border; dotted focus rectangle.
 - **Rules.** Same graphic on `:focus-visible`; on touch, shown while pressed; drawn as an overlay (no layout shift); reduced motion = appears without scaling; one shared style applied to every link, button, card, tab and window control; optional soft tick when sound is on.
 

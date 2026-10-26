@@ -9,12 +9,41 @@ const EYE_CENTER = { x: 560 / 1200, y: 610 / 1200 };
 // How long a touch gaze holds after the finger lifts, and a keyboard glance holds on its target.
 const TOUCH_HOLD_MS = 1200;
 
+// CRT jitter (CRT "on" only, never under reduced motion): at a random moment every 3.5-9s the art shifts 2px for 90ms.
+const JITTER_MIN_MS = 3500;
+const JITTER_MAX_MS = 9000;
+const JITTER_MS = 90;
+
 // Dispatched by HighlightEffects when keyboard focus lands on a control: the Watcher glances at that point.
 export type WatcherGlanceDetail = { x: number; y: number };
 export const WATCHER_GLANCE_EVENT = "migrainz:watcher-glance";
 
 export default function Watcher() {
   const root = useRef<HTMLDivElement>(null);
+  const jitter = useRef<HTMLDivElement>(null);
+  // Jitter: written straight to the wrapper's data-jitter (no React state, so the Watcher still never re-renders).
+  // The checks run at each tick, so switching CRT mode or reduced motion takes effect without a reload.
+  useEffect(() => {
+    const element = jitter.current!;
+    const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let next = 0, back = 0;
+    const schedule = () => { next = window.setTimeout(jolt, JITTER_MIN_MS + Math.random() * (JITTER_MAX_MS - JITTER_MIN_MS)); };
+    const jolt = () => {
+      if (document.documentElement.dataset.crt === "on" && !motion.matches && !document.hidden) {
+        element.dataset.jitter = Math.random() < 0.5 ? "left" : "right";
+        back = window.setTimeout(() => { delete element.dataset.jitter; }, JITTER_MS);
+      }
+      schedule();
+    };
+    schedule();
+    // The flicker loop pauses (CSS) while the Watcher is scrolled out of view; written straight to the DOM, no state.
+    const watcher = element.closest<HTMLElement>(".watcher");
+    const visibility = watcher && "IntersectionObserver" in window
+      ? new IntersectionObserver(([entry]) => { if (entry.isIntersecting) delete watcher.dataset.offscreen; else watcher.dataset.offscreen = ""; })
+      : null;
+    if (watcher) visibility?.observe(watcher);
+    return () => { clearTimeout(next); clearTimeout(back); visibility?.disconnect(); delete element.dataset.jitter; };
+  }, []);
   useEffect(() => {
     const container = root.current!;
     const readoutX = container.querySelector<HTMLElement>("#readout-x")!;
@@ -138,7 +167,12 @@ export default function Watcher() {
   return (
     <div ref={root} className="watcher" id="watcher" aria-label="Cursor-reactive watcher artwork">
       <div className="watcher-label">VISUAL NODE / CURSOR TEST</div>
-      <WatcherArt />
+      {/* Motion wrappers (CRT "on" only): jitter outermost, flicker inside, the eye-tracked art inside both. */}
+      <div ref={jitter} className="watcher-jitter">
+        <div className="watcher-flicker">
+          <WatcherArt />
+        </div>
+      </div>
       <div className="watcher-static" aria-hidden="true" />
       <div className="scan-readout">
         <span>X <b id="readout-x">000</b></span>

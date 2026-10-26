@@ -57,7 +57,7 @@ const { chromium } = require(
     assert.equal(adminResponse.status(), 200);
     assert.equal(await admin.locator('.startup-sequence').count(), 0);
     assert.equal(await admin.locator('[inert]').count(), 0);
-    assert.equal(await admin.locator('.desktop-file, .desktop-inspector, .crt, .art-viewer-window, .window-taskbar').count(), 0);
+    assert.equal(await admin.locator('.desktop-file, .desktop-inspector, .crt, .crt-bezel, .art-viewer-window, .window-taskbar').count(), 0);
     await adminContext.close();
     await page.goto("/");
     await page.locator('.startup-sequence').waitFor({ state: 'visible' });
@@ -194,7 +194,7 @@ const { chromium } = require(
     // the watcher layers (scripts/bake-watcher-crt.mjs), so the moving container must not carry a runtime filter.
     assert.equal(await page.locator('.watcher').evaluate((el) => getComputedStyle(el).filter), 'none', 'watcher has no runtime filter');
     // The face layer is a CSS background picked by html[data-phosphor]; green is the default.
-    assert.match(await page.locator('.watcher-art > .watcher-base').evaluate((el) => getComputedStyle(el).backgroundImage), /watcher-base\.crt\.png/);
+    assert.match(await page.locator('.watcher-art > .watcher-base').evaluate((el) => getComputedStyle(el).backgroundImage), /watcher-base\.crt\.webp/);
     await page.screenshot({
       path: "test-results/home-desktop.png",
       fullPage: true,

@@ -101,15 +101,26 @@
   --crt-deep: #060a06;
   --crt-deep-hi: #071007;
   --crt-deep-lo: #030503;
-  --crt-glow: 0 0 4px rgba(180, 245, 195, 0.35);
+  /* Glow (Harold, 2026-10-26). The *-value tokens hold the phosphor colours and follow html[data-crt] (off: none;
+     reduced: no body glow). Rules use the public tokens below; Win95 and light contexts set those to none. */
+  --crt-glow-head-value: 0 0 3px rgba(212, 245, 218, 0.8), 0 0 18px rgba(140, 230, 165, 0.5);
+  --crt-glow-ui-value: 0 0 6px rgba(180, 245, 195, 0.55);
+  --crt-glow-link-value: 0 0 6px rgba(232, 180, 90, 0.55);
+  --crt-glow-body-value: 0 0 2.8px rgba(168, 216, 176, 0.24);
+  --crt-glow-head: var(--crt-glow-head-value);
+  --crt-glow-ui: var(--crt-glow-ui-value);
+  --crt-glow-link: var(--crt-glow-link-value);
+  --crt-glow-body: var(--crt-glow-body-value);
   --crt-glow-filter: 0 0 4px rgba(180, 245, 195, 0.35);
   /* Phosphor-matched recolour (layout.tsx SVG filters) and baked Watcher layers (scripts/bake-watcher-crt.mjs). */
   --crt-tune-filter: url(#crt-tune);
-  --watcher-base: url("/images/watcher/watcher-base.crt.png");
+  --watcher-base: url("/images/watcher/watcher-base.crt.webp");
   --watcher-noise: url("/images/watcher/crt-noise.png");
   /* CRT effect strengths; html[data-crt] switches them (on / reduced / off). */
-  --crt-scanline-alpha: 0.06;
+  --crt-scanline-alpha: 0.07;
+  /* Panels keep the inset vignette; the screen vignette is the radial one on the fixed background layer (body::before). */
   --crt-vignette: inset 0 0 60px rgba(0, 0, 0, 0.5);
+  --crt-overlay-vignette: radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(0, 0, 0, 0.55) 100%);
   --crt-font: var(--font-plex-mono, "IBM Plex Mono"), "Courier New", Courier, monospace;
 
   --bg: var(--crt-bg);
@@ -145,9 +156,15 @@ body {
   letter-spacing: 0.01em;
 }
 
-/* Headings and the brand glow; body text does not. Win95 and light project windows turn the glow off. */
-:where(h1, h2, h3, .brand) { color: var(--crt-bright); text-shadow: var(--crt-glow); }
-.retro-window, .project-application { --crt-glow: none; }
+/* Glow: headings (head), brand, menu names and active items (ui), amber links (link), paragraphs (body, CRT "on" only).
+   Win95 chrome and light windows get none; the equipment panel is a dark terminal island inside a light window. */
+:where(h1, h2, h3) { color: var(--crt-bright); text-shadow: var(--crt-glow-head); }
+.brand { text-shadow: var(--crt-glow-ui); }
+:where(p) { text-shadow: var(--crt-glow-body); }
+.retro-window, .project-application, .promo-window, .pixel-monitor, .desktop-file, .desktop-inspector {
+  --crt-glow-head: none; --crt-glow-ui: none; --crt-glow-link: none; --crt-glow-body: none;
+}
+.equipment-panel { --crt-glow-body: var(--crt-glow-body-value); --crt-glow-link: var(--crt-glow-link-value); }
 /* Amber phosphor (SYSTEM menu, saved as crt-phosphor). Same contrast targets as green: text 12.0:1, bright 15.5:1,
    mid 7.7:1, dim 5.1:1 on --crt-bg. The accent can't be amber here, so links are warm cream and underlined. */
 html[data-phosphor="amber"] {
@@ -165,15 +182,21 @@ html[data-phosphor="amber"] {
   --crt-deep: #0a0704;
   --crt-deep-hi: #110b05;
   --crt-deep-lo: #050302;
-  --crt-glow: 0 0 4px rgba(255, 210, 150, 0.35);
+  --crt-glow-head-value: 0 0 3px rgba(255, 224, 176, 0.8), 0 0 18px rgba(240, 175, 90, 0.5);
+  --crt-glow-ui-value: 0 0 6px rgba(255, 210, 150, 0.55);
+  --crt-glow-link-value: 0 0 6px rgba(255, 241, 214, 0.55);
+  --crt-glow-body-value: 0 0 2.8px rgba(235, 196, 140, 0.24);
   --crt-glow-filter: 0 0 4px rgba(255, 210, 150, 0.35);
   --crt-tune-filter: url(#crt-tune-amber);
-  --watcher-base: url("/images/watcher/watcher-base.amber.png");
+  --watcher-base: url("/images/watcher/watcher-base.amber.webp");
   --watcher-noise: url("/images/watcher/crt-noise.amber.png");
 }
 html[data-phosphor="amber"] .equipment-panel a { text-decoration: underline; text-underline-offset: 3px; }
-html[data-crt="reduced"] { --crt-scanline-alpha: 0.03; --crt-vignette: none; }
-html[data-crt="off"] { --crt-scanline-alpha: 0; --crt-vignette: none; --crt-glow: none; --crt-glow-filter: 0 0 0 transparent; }
+html[data-crt="reduced"] { --crt-scanline-alpha: 0.03; --crt-vignette: none; --crt-overlay-vignette: none; --crt-glow-body-value: none; }
+html[data-crt="off"] {
+  --crt-scanline-alpha: 0; --crt-vignette: none; --crt-overlay-vignette: none; --crt-glow-filter: 0 0 0 transparent;
+  --crt-glow-head-value: none; --crt-glow-ui-value: none; --crt-glow-link-value: none; --crt-glow-body-value: none;
+}
 
 a {
   color: inherit;
@@ -228,7 +251,7 @@ button {
   white-space: nowrap;
 }
 .system-menu[data-open] .system-menu-button,
-.sound-toggle[aria-pressed="true"] { color: var(--hot); }
+.sound-toggle[aria-pressed="true"] { color: var(--hot); text-shadow: var(--crt-glow-ui); }
 .system-menu-panel {
   position: absolute;
   top: calc(100% + 12px);
@@ -281,11 +304,22 @@ button {
   animation: crt-sweep 1.6s ease-out 1 both;
 }
 
-.crt::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  box-shadow: var(--crt-vignette);
+/* Screen bezel (CRT "on", wider than 480px): rounded corners, a faint inner edge and a thin dark frame over the page
+   edge. Never takes clicks; above the scanline overlay, below every window, popup, menu and the boot gate. Content keeps
+   at least an 11px side margin at these widths, so the 6px frame and the corner wedges stay clear of it. */
+.crt-bezel { display: none; }
+@media (min-width: 481px) {
+  /* Keyboard focus scrolls controls at least 16px in from the frame, so the focus ring never sits under it. */
+  html[data-crt="on"] { scroll-padding: 16px; }
+  html[data-crt="on"] .crt-bezel {
+    display: block;
+    position: fixed;
+    inset: 6px;
+    z-index: 21;
+    pointer-events: none;
+    border-radius: 22px;
+    box-shadow: inset 0 0 0 1px rgba(var(--crt-border-rgb), 0.14), 0 0 0 64px var(--crt-deep-lo);
+  }
 }
 
 @keyframes crt-sweep {
@@ -319,7 +353,7 @@ button {
   color: var(--hot);
   letter-spacing: -0.07em;
 
-  text-shadow: 0 0 14px rgba(var(--crt-text-rgb), 0.13);
+  text-shadow: var(--crt-glow-head);
 }
 
 /* Long-form prose: ~70ch measure, body colour and size. Grids, tables and terminal panels keep their own widths. */
@@ -328,6 +362,9 @@ button {
   color: var(--green);
   font-size: 16px;
 }
+
+/* The hero description reads the terminal token directly (in light project windows --green is dark grey). */
+.hero .lede { color: var(--crt-text); }
 
 /* HOMEPAGE TERMINAL */
 
@@ -737,6 +774,7 @@ button {
 .menu-name {
   font-size: 16px;
   font-weight: 400;
+  text-shadow: var(--crt-glow-ui);
 }
 
 .terminal-nav a:hover,
@@ -782,13 +820,14 @@ button {
   will-change: transform;
 }
 
-/* The tuned layers carry 24px of glow padding on a 1200px canvas (2%), so the art keeps its original size and position. */
+/* The tuned layers carry 80px of glow padding around the 1200px art (1360px canvas), so the art keeps its original size
+   and position. */
 .watcher-art > svg,
 .watcher-art > .watcher-base {
   position: absolute;
-  inset: -2%;
-  width: 104%;
-  height: 104%;
+  inset: calc(-100% * 80 / 1200);
+  width: calc(100% * 1360 / 1200);
+  height: calc(100% * 1360 / 1200);
   pointer-events: none;
 }
 
@@ -803,6 +842,36 @@ html[data-phosphor="amber"] .watcher-eyes-amber { display: inline; }
 .watcher-eyes {
   /* SVG user units preserve these limits on the 1200px source canvas. */
   transform: translate(calc(var(--mx, 0) * 10px), calc(var(--my, 0) * 5px));
+}
+
+/* Watcher-only motion, CRT "on" only (Harold, 2026-10-26): a stepped opacity flicker on .watcher-flicker and a rare
+   2px jitter on .watcher-jitter (Watcher.tsx sets data-jitter). Both wrap the art, apart from the eye-tracking
+   transforms on .watcher-art and .watcher-eyes, and sit under the static grain and the labels. */
+.watcher-jitter,
+.watcher-flicker {
+  position: absolute;
+  inset: 0;
+}
+
+html[data-crt="on"] .watcher-jitter[data-jitter="left"] { transform: translateX(-2px); }
+html[data-crt="on"] .watcher-jitter[data-jitter="right"] { transform: translateX(2px); }
+html[data-crt="on"] .watcher-flicker { animation: watcher-flicker 1.3s step-end infinite; }
+/* Watcher.tsx sets data-offscreen while the Watcher is scrolled out of view: the loop pauses, so the page can idle. */
+html[data-crt="on"] .watcher[data-offscreen] .watcher-flicker { animation-play-state: paused; }
+@media (prefers-reduced-motion: no-preference) {
+  html[data-crt="on"] .watcher-jitter { will-change: transform; }
+  html[data-crt="on"] .watcher-flicker { will-change: opacity; }
+}
+
+/* Dips of 3% or less, each held for 2% of the loop (~26ms, at least one frame at 60Hz), then back to full. */
+@keyframes watcher-flicker {
+  0% { opacity: 1; }
+  14% { opacity: 0.97; }
+  16% { opacity: 1; }
+  47% { opacity: 0.982; }
+  49% { opacity: 1; }
+  78% { opacity: 0.975; }
+  80% { opacity: 1; }
 }
 
 .watcher-static {
@@ -1325,7 +1394,10 @@ body::before {
   pointer-events: none;
   z-index: -1;
 
+  /* The screen vignette lives here, in the fixed layer under all content: it darkens the page background toward the
+     corners but never the text above it (the scanline overlay .crt stays on top). */
   background:
+    var(--crt-overlay-vignette),
     radial-gradient(circle at 50% 0%, rgba(var(--crt-border-rgb), 0.05), transparent 38%),
     var(--crt-bg);
 }
@@ -1484,7 +1556,9 @@ footer {
   }
 
   .watcher-art,
-  .watcher-eyes {
+  .watcher-eyes,
+  .watcher-jitter,
+  .watcher-flicker {
     will-change: auto;
     transition: none !important;
     transform: none !important;
@@ -1954,7 +2028,7 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
 .equipment-panel .equipment-specifications > div { border-bottom: 1px dotted rgba(var(--crt-border-rgb), .22); }
 .equipment-panel .equipment-specifications dt { color: var(--crt-dim); opacity: 1; }
 .equipment-panel .equipment-specifications dd { color: var(--crt-bright); }
-.equipment-panel a { color: var(--crt-accent); }
+.equipment-panel a { color: var(--crt-accent); text-shadow: var(--crt-glow-link); }
 /* Wide modules: specs in two columns, the description below them (it may extend past the fold). */
 @container (min-width: 420px) {
   .equipment-panel { display: flex; flex-direction: column; padding: .65rem 1rem .8rem; }
@@ -2016,7 +2090,7 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
 :where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .retro-window-titlebar, .desktop-file) *):not(:where(.skip-link, .equipment-card a, .patron-locked-trigger, p a, dd a, .content-writing a)):is(:focus-visible, :active),
 .equipment-card:has(a:focus-visible, a:active) {
   color: var(--hot);
-  text-shadow: var(--crt-glow);
+  text-shadow: var(--crt-glow-ui);
   /* Transparent normally; Windows High Contrast turns it into a real outline. */
   outline: 2px solid transparent;
   outline-offset: 2px;
@@ -2030,7 +2104,7 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
 @media (hover: hover) {
   :where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .retro-window-titlebar, .desktop-file) *):not(:where(.skip-link, .equipment-card a, .patron-locked-trigger, p a, dd a, .content-writing a)):hover {
     color: var(--hot);
-    text-shadow: var(--crt-glow);
+    text-shadow: var(--crt-glow-ui);
   }
   :where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .retro-window-titlebar, .desktop-file) *):not(:where(.skip-link, .equipment-card a, .patron-locked-trigger, p a, dd a, .content-writing a)):hover::after {
     opacity: 1;
@@ -2040,12 +2114,12 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
 /* Links inside running text: colour and glow only; brackets around wrapped text read as broken. */
 :where(p a, dd a, .content-writing a):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence) *):is(:focus-visible, :active) {
   color: var(--hot);
-  text-shadow: var(--crt-glow);
+  text-shadow: var(--crt-glow-ui);
 }
 @media (hover: hover) {
   :where(p a, dd a, .content-writing a):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence) *):hover {
     color: var(--hot);
-    text-shadow: var(--crt-glow);
+    text-shadow: var(--crt-glow-ui);
   }
 }
 
