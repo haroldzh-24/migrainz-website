@@ -74,6 +74,7 @@ try {
   }
   await completed(launch(['scripts/verify-factions.cjs']));
   await completed(launch(['scripts/verify.cjs']));
+  await completed(launch(['scripts/verify-interaction-polish.mjs']));
 } catch (error) {
   console.error(error);
   process.exitCode = 1;

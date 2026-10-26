@@ -46,6 +46,15 @@ try {
   const satchel = await cms.create({ collection: 'equipment', data: { name: 'Fixture Satchel', slug: 'fixture-satchel', project: project.id, category: 'Carry', images: [{ media: media.id, caption: 'Synthetic satchel' }], ...pub } });
   await cms.create({ collection: 'characters', data: { name: 'Fixture Operative', slug: 'fixture-operative', project: project.id,
     equipmentAssignments: [{ equipment: scanner.id, designation: 'Unit 7', quantity: 1, notes: 'Synthetic assignment', order: 1 }, { equipment: satchel.id, order: 2 }], ...pub } });
+  // Classified sentinels for scripts/verify-interaction-polish.mjs: the newest tracker phase and the newest chapter are
+  // REDACTED, so the boot checklist must print their safe labels and never these titles or slugs.
+  const comic = (await cms.find({ collection: 'comics', depth: 0, where: { project: { equals: project.id } } })).docs[0];
+  assert.ok(comic);
+  const redacted = { _status: 'published' as const, accessLevel: 'redacted' as const, listingVisibility: 'public' as const };
+  await cms.create({ collection: 'tracker-items', data: { title: 'SENTINEL-PHASE-TITLE-7Q', project: project.id, kind: 'phase', percentage: 40, order: 99,
+    lastUpdated: '2099-01-01T00:00:00.000Z', listingSummary: 'sealed phase', ...redacted } });
+  await cms.create({ collection: 'chapters', data: { title: 'SENTINEL-CHAPTER-TITLE-7Q', slug: 'sentinel-chapter-7q', comic: comic.id, chapterNumber: 99,
+    pages: [{ media: media.id }], listingSummary: 'sealed chapter', ...redacted } });
   console.log('Review fixture equipment: /projects/blushland/equipment, /projects/blushland/equipment/fixture-scanner (schematic), /projects/blushland/equipment/fixture-satchel, /projects/blushland/characters/fixture-operative');
 } finally {
   await cms.destroy();
