@@ -2,8 +2,9 @@
 
 ## Changed - 2026-10-26 / Security updates without the Payload set (chore/dependency-updates)
 
-- next 16.3.4 -> 16.4.3 and sharp 0.35.4 -> 0.35.5; overrides dompurify -> 3.4.17 and zod under `@vercel/cli-config` -> 4.6.7; fast-uri, source-map-js and Blob's undici patched within their ranges. npm audit 26 -> 17; the rest needs the Payload upgrade, which needs a database migration (see bugs.md).
-- Boot checklist phase labels no longer double the project name (`blushland_ch1`, not `blushland_blushland_ch1`).
+- next 16.3.4 -> 16.4.3 and sharp 0.35.4 -> 0.35.5; fast-uri, source-map-js and Blob's undici patched within their ranges. npm audit 26 -> 21. The `dompurify` override moves to `^3.4.17` (audit hygiene only; the copy that runs is bundled in monaco). The zod chain under `@vercel/blob` is accepted (no fixed release). The other 17 need the Payload upgrade, which needs a database migration (see bugs.md).
+- `experimental.agentUpgrade: false` in next.config.mjs: Next 16.4 would otherwise stop the first agent-run `next dev` / `next build` after an advisory.
+- Boot checklist phase labels no longer double the project slug (`blushland_ch1`, not `blushland_blushland_ch1`), and a 28-character cut never leaves a trailing `_`.
 
 ## Changed - 2026-10-25 / Phase 1 interaction polish (feature/interaction-polish)
 
