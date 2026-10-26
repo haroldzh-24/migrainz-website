@@ -57,15 +57,23 @@ const { chromium } = require(
     await page.locator('.startup-sequence').waitFor({ state: 'visible' });
     const frame = await page.locator('.startup-window').elementHandle();
     const bootBounds = await frame.boundingBox();
-    await page.locator('.startup-compromised').waitFor();
+    // Boot checklist from real data: driver lines, fixture tracker phases, the newest chapter, clearance.
+    await page.locator('.boot-line').first().waitFor();
     assert.equal(await page.locator('#top').isVisible(), false);
     assert.equal(await page.locator('#top').evaluate(el => !!el.closest('[inert]')), true);
-    await page.keyboard.press('Escape');
-    await page.keyboard.press('Enter');
+    // S toggles sound without skipping; the snd.drv line follows. Toggle back so the sound test below starts off.
+    await page.keyboard.press('s');
+    await page.locator('.boot-line', { hasText: 'snd.drv' }).filter({ hasText: 'on' }).waitFor();
     assert.equal(await page.locator('.startup-sequence').getAttribute('data-phase'), 'boot');
-    await page.waitForFunction(() => document.querySelector('.startup-art-viewport')?.dataset.eyeState === 'closed');
-    await page.waitForFunction(() => document.querySelector('.startup-art-viewport')?.dataset.eyeState === 'open');
-    await page.getByRole('button', { name: 'ENTER', exact: true }).waitFor();
+    await page.keyboard.press('s');
+    assert.equal(await page.evaluate(() => localStorage.getItem('migrainz-sound-enabled')), 'false');
+    await page.locator('.boot-line', { hasText: 'clearance' }).filter({ hasText: 'PUBLIC' }).waitFor();
+    assert.equal(await page.locator('.boot-line', { hasText: 'watcher.sys' }).filter({ hasText: 'awake' }).count(), 1);
+    const phase = page.locator('.boot-line', { hasText: 'blushland_chapter_02' });
+    assert.equal(await phase.getAttribute('data-status'), 'warn');
+    assert.ok((await phase.textContent()).includes('[ !! ]') && (await phase.textContent()).includes('73% rendered'));
+    // Without a key it moves on to the announcement by itself (~3s).
+    await page.getByRole('button', { name: 'ENTER', exact: true }).waitFor({ timeout: 6000 });
     assert.equal(await frame.evaluate(el => el === document.querySelector('.startup-window')), true);
     const adBounds = await frame.boundingBox();
     assert.equal(adBounds.width, bootBounds.width);
@@ -90,6 +98,24 @@ const { chromium } = require(
     // Focus lands on main#top after the splash, without a visible ring around the whole page.
     assert.equal(await page.evaluate(() => document.activeElement?.id), 'top');
     assert.equal(await page.locator('#top').evaluate(el => getComputedStyle(el).outlineStyle), 'none');
+    // Skipping: Esc, any key or a click jumps to the announcement; the key release can't also press ENTER.
+    for (const skip of ['Escape', ' ', 'x', 'click']) {
+      await page.evaluate(() => sessionStorage.clear());
+      await page.reload();
+      await page.locator('.boot-line').first().waitFor();
+      const started = Date.now();
+      if (skip === 'click') await page.locator('.startup-window').click();
+      else await page.keyboard.press(skip);
+      await page.locator('.startup-sequence[data-phase="announcement"]').waitFor({ timeout: 1000 });
+      assert.ok(Date.now() - started < 1000, `${skip} skips the checklist`);
+      await page.waitForTimeout(200);
+      assert.equal(await page.locator('.startup-sequence').getAttribute('data-phase'), 'announcement', `${skip} does not dismiss the ad`);
+      assert.equal(await page.evaluate(() => document.activeElement?.textContent), 'ENTER');
+    }
+    // Once per session: a reload before dismissing the ad goes straight to the ad.
+    await page.reload();
+    await page.locator('.startup-sequence[data-phase="announcement"]').waitFor();
+    assert.equal(await page.locator('.boot-line').count(), 0);
     for (const key of ['Enter', 'Escape', 'click']) {
       await page.evaluate(() => sessionStorage.clear());
       await page.reload();
@@ -118,10 +144,10 @@ const { chromium } = require(
       const mobileGate = await browser.newContext({ viewport: { width: 320, height: 740 }, isMobile: true, hasTouch: true, reducedMotion: 'reduce', baseURL });
       const gatePage = await mobileGate.newPage();
       await gatePage.goto('/');
-      await gatePage.locator('.startup-compromised').waitFor();
-      await gatePage.waitForTimeout(1000);
-      assert.equal(await gatePage.locator('.startup-art-viewport').getAttribute('data-eye-state'), 'open');
-      await gatePage.getByRole('button', { name: 'ENTER', exact: true }).waitFor();
+      // Reduced motion: every checklist line at once, then the ad.
+      await gatePage.locator('.boot-line', { hasText: 'clearance' }).waitFor();
+      assert.ok(await gatePage.locator('.boot-line').count() >= 4);
+      await gatePage.getByRole('button', { name: 'ENTER', exact: true }).waitFor({ timeout: 4000 });
       assert.equal(await gatePage.locator('#top').isVisible(), true);
       const bounds = await gatePage.locator('.startup-window').boundingBox();
       assert.ok(bounds.x >= 0 && bounds.x + bounds.width <= 320);
@@ -130,7 +156,7 @@ const { chromium } = require(
       await gatePage.locator('.startup-sequence').waitFor({ state: 'hidden' });
       await mobileGate.close();
       assert.deepEqual(errors, []);
-      console.log('Boot gate checks passed: initial HTML, persistent frame, dismissal, session, mobile and reduced motion.');
+      console.log('Boot gate checks passed: initial HTML, checklist, skip keys, persistent frame, dismissal, session, mobile and reduced motion.');
       return;
     }
     await page.getByRole("heading", { level: 1 }).waitFor();

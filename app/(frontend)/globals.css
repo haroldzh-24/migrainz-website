@@ -1833,8 +1833,21 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
   .startup-sequence[data-phase="announcement"] .promo-title { cursor: grab; touch-action: none; user-select: none; }
   .startup-sequence[data-phase="announcement"] .promo-title:active { cursor: grabbing; }
 }
-.startup-compromised { border: 1px dashed var(--green); padding: 16px 8px; margin-top: 12px; }
-.startup-compromised p { font-size: 14px; text-align: center; margin-top: 12px; }
+/* Boot checklist: [ OK ] label ......... value, built from real data (lib/content/boot.ts). */
+.boot-checklist { display: grid; gap: 4px; margin: 12px 0 0; padding: 0; list-style: none; }
+.boot-line { display: grid; grid-template-columns: auto minmax(0, auto) minmax(16px, 1fr) auto; gap: 8px; align-items: baseline; font-size: 14px; }
+.boot-status { white-space: pre; color: var(--hot); }
+.boot-line[data-status="warn"] .boot-status { color: var(--crt-accent); }
+.boot-label { overflow-wrap: anywhere; }
+.boot-leader { border-bottom: 1px dotted var(--dim); }
+.boot-value { white-space: nowrap; color: var(--hot); }
+.boot-hint { margin: 16px 0 0; color: var(--dim); font-size: 12px; letter-spacing: 0.08em; }
+@media (max-width: 480px) {
+  /* Phones: the value sits under its label instead of squeezing the label into fragments. */
+  .boot-line { grid-template-columns: auto minmax(0, 1fr); gap: 0 8px; font-size: 13px; }
+  .boot-leader { display: none; }
+  .boot-value { grid-column: 2; }
+}
 @media (max-width: 700px) {
   .startup-window { height: min(540px, calc(100dvh - 100px)); }
   .startup-sequence[data-phase="announcement"] .startup-window { width: calc(100% - 40px); }

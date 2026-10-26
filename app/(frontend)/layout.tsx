@@ -8,6 +8,7 @@ import ArtViewer from "@/components/ArtViewer";
 import PixelMonitorDesktop from "@/components/PixelMonitorDesktop";
 import { AccessDeniedWindow, PatreonAccessProvider } from '@/components/PatreonAccess';
 import { viewerAccess } from '@/lib/patreon/viewer';
+import { bootClearance, getBootStatus } from '@/lib/content/boot';
 import { patreonConfig, patreonJoinURL } from '@/lib/patreon/server';
 import localFont from "next/font/local";
 import InlineScript from "@/components/InlineScript";
@@ -41,6 +42,7 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const viewer = await viewerAccess();
+  const bootLines = [...await getBootStatus(), bootClearance(viewer)];
   return (
     <html lang="en" data-scroll-behavior="smooth" data-crt="on" data-phosphor="green" className={plexMono.variable} suppressHydrationWarning>
       <head><InlineScript code={crtModeScript} /></head>
@@ -64,7 +66,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
               <feFuncB type="table" tableValues="0.024 0.282 0.549 0.690" />
             </feComponentTransfer>
           </filter>
-        </svg><PatreonAccessProvider viewer={viewer} enabled={Boolean(patreonConfig())} joinURL={patreonJoinURL()}><SoundProvider><HighlightEffects /><WindowManagerProvider><StartupSequence>
+        </svg><PatreonAccessProvider viewer={viewer} enabled={Boolean(patreonConfig())} joinURL={patreonJoinURL()}><SoundProvider><HighlightEffects /><WindowManagerProvider><StartupSequence lines={bootLines}>
           <a className="skip-link" href="#top">
             SKIP TO CONTENT
           </a>

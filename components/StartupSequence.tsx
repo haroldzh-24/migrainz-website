@@ -1,21 +1,28 @@
 "use client";
 import { useEffect, useRef, useState, type ReactNode, type PointerEvent } from "react";
-import StartupArt from "@/components/StartupArt";
 import { announcement } from "@/data/announcement";
+import { useSound } from "@/components/SoundProvider";
+import type { BootLine } from "@/lib/content/boot";
 
 const storageKey = `migrainz-announcement:${announcement.id}`;
-const messages = [
-  "MIGRAINZ SYSTEM BIOS v0.2", "MEMORY CHECK ... OK", "ARCHIVE NODE ... ONLINE",
-  "PROJECT DATABASE ... MOUNTED", "COMIC READER ... READY", "CHECKING REMOTE PACKAGE...",
-  "FOUND: MIGRAINZ_WORM.EXE", "INSTALLING ... 12%", "INSTALLING ... 47%",
-  "INSTALLING ... 93%", "INSTALLING ... 100%", "INSTALLATION COMPLETE.",
-  "VERIFYING PACKAGE.... ERROR", "UNAUTHORIZED PROCESS DETECTED", "SYSTEM COMPROMISED",
-];
+// Set once the checklist has run (or been skipped): a reload before dismissing the ad goes straight to the ad.
+const bootSeenKey = "migrainz-boot-seen";
+const LINE_MS = 250, FIRST_LINE_MS = 300, HOLD_MS = 500, REDUCED_HOLD_MS = 1200;
+// Keys that never skip the checklist (S toggles sound instead).
+const passiveKeys = new Set(["Tab", "Shift", "Control", "Alt", "Meta", "CapsLock", "s", "S"]);
 
-export default function StartupSequence({ children }: { children: ReactNode }) {
+export default function StartupSequence({ lines: dataLines, children }: { lines: BootLine[]; children: ReactNode }) {
   const [state, setState] = useState<"boot" | "announcement" | "closed">("boot");
-  const [blink, setBlink] = useState(false);
   const [stage, setStage] = useState(0);
+  const [phosphor, setPhosphor] = useState("green");
+  const { enabled: soundOn, setEnabled: setSound } = useSound();
+  // Fixed driver lines first, then the real data lines and clearance from the server.
+  const lines: BootLine[] = [
+    { status: "ok", label: "crt.drv", value: phosphor },
+    { status: "ok", label: "watcher.sys", value: "awake" },
+    { status: "ok", label: "snd.drv", value: soundOn ? "on" : "off" },
+    ...dataLines,
+  ];
   const windowRef = useRef<HTMLDivElement>(null);
   const enterRef = useRef<HTMLButtonElement>(null);
   const restoreFocus = useRef(false);
@@ -57,27 +64,51 @@ export default function StartupSequence({ children }: { children: ReactNode }) {
     window.addEventListener("resize", resize);
     return () => { window.removeEventListener("resize", resize); drag.current = null; };
   }, [state]);
+  const finishBoot = () => {
+    try { sessionStorage.setItem(bootSeenKey, "1"); } catch { /* Optional storage. */ }
+    setState(current => current === "boot" ? "announcement" : current);
+  };
   useEffect(() => {
-    let dismissed = false;
-    try { dismissed = sessionStorage.getItem(storageKey) === announcement.id; } catch { /* Optional storage. */ }
+    let dismissed = false, seen = false;
+    try {
+      dismissed = sessionStorage.getItem(storageKey) === announcement.id;
+      seen = sessionStorage.getItem(bootSeenKey) === "1";
+    } catch { /* Optional storage. */ }
     if (!announcement.enabled || dismissed) { setState("closed"); return; }
+    if (seen) { setState("announcement"); return; }
+    setPhosphor(document.documentElement.dataset.phosphor === "amber" ? "amber" : "green");
     windowRef.current?.focus();
-    const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const timers = messages.slice(1).map((_, index) =>
-      setTimeout(() => setStage(index + 1), (index + 1) * 180));
-    // Reuse the original three 120ms eye-frame swaps, spaced to avoid rapid flashing.
-    for (const at of [2950, 3750, 4550]) {
-      timers.push(setTimeout(() => { if (!motion.matches) setBlink(true); }, at));
-      timers.push(setTimeout(() => setBlink(false), at + 120));
+    const count = lines.length;
+    // Reduced motion: every line at once, then the ad.
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setStage(count);
+      const timer = setTimeout(finishBoot, REDUCED_HOLD_MS);
+      return () => clearTimeout(timer);
     }
-    timers.push(setTimeout(() => setState("announcement"), 5200));
-    const reduce = () => { if (motion.matches) setBlink(false); };
-    motion.addEventListener("change", reduce);
-    return () => {
-      timers.forEach(clearTimeout);
-      motion.removeEventListener("change", reduce);
-    };
+    const timers = Array.from({ length: count }, (_, index) => setTimeout(() => setStage(index + 1), FIRST_LINE_MS + index * LINE_MS));
+    timers.push(setTimeout(finishBoot, FIRST_LINE_MS + (count - 1) * LINE_MS + HOLD_MS));
+    return () => timers.forEach(clearTimeout);
+    // The line count is fixed for this page load.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // Boot keys: S toggles sound (without skipping); any other key skips on release, so the same press can't also
+  // activate ENTER once focus moves to it. Esc, Enter and Space skip too.
+  useEffect(() => {
+    if (state !== "boot") return;
+    const down = (event: KeyboardEvent) => {
+      if ((event.key === "s" || event.key === "S") && !event.repeat && !event.isComposing && !event.ctrlKey && !event.metaKey && !event.altKey) {
+        event.preventDefault();
+        setSound(!soundOn);
+      }
+    };
+    const up = (event: KeyboardEvent) => {
+      if (passiveKeys.has(event.key) || event.isComposing) return;
+      finishBoot();
+    };
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); };
+  }, [state, soundOn, setSound]);
   useEffect(() => {
     if (state === "announcement") enterRef.current?.focus();
     if (state === "closed" && restoreFocus.current) contentRef.current?.querySelector<HTMLElement>("#top")?.focus({ preventScroll: true });
@@ -102,7 +133,7 @@ export default function StartupSequence({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("keydown", dismiss);
   }, [state]);
   return <>
-    {state !== "closed" && <div className="startup-sequence" data-phase={state} style={{ position: "fixed", inset: 0, background: state === "boot" ? "#010301" : "transparent", zIndex: state === "boot" ? 10000 : foreground ? 42 : 40, pointerEvents: state === "boot" ? "auto" : "none" }}>
+    {state !== "closed" && <div className="startup-sequence" data-phase={state} onClick={state === "boot" ? finishBoot : undefined} style={{ position: "fixed", inset: 0, background: state === "boot" ? "var(--crt-deep-lo)" : "transparent", zIndex: state === "boot" ? 10000 : foreground ? 42 : 40, pointerEvents: state === "boot" ? "auto" : "none" }}>
       <div ref={windowRef} className="startup-takeover startup-window" role="dialog" aria-modal={state === "boot" ? true : undefined} aria-labelledby="startup-title" tabIndex={-1}
         style={state === "announcement" && position ? { left: position.x, top: position.y, right: "auto", bottom: "auto", transform: "none" } : undefined}
         onKeyDown={event => {
@@ -123,13 +154,16 @@ export default function StartupSequence({ children }: { children: ReactNode }) {
         </div>
         <div className="startup-takeover-body startup-window-body">
           {state === "boot" ? <div className="startup-log">
-            <p className="eyebrow">SYSTEM STARTUP / PLEASE WAIT</p>
-            {messages.slice(Math.max(0, stage - 7), stage + 1).map(message => <p key={message}>{message}</p>)}
-            {stage === messages.length - 1 && <div className="startup-compromised">
-              <StartupArt blink={blink} />
-              <p>YOUR TERMINAL IS MINE. enjoy the ad.</p>
-            </div>}
-            <span className="startup-blink" aria-hidden="true">_</span>
+            <p className="eyebrow">MIGRAINZ SYSTEM BIOS v0.3 / BOOT CHECK</p>
+            <ol className="boot-checklist" aria-live="polite">
+              {lines.slice(0, stage).map(line => <li key={line.label} className="boot-line" data-status={line.status}>
+                <span className="boot-status">{line.status === "ok" ? "[ OK ]" : "[ !! ]"}</span>
+                <span className="boot-label">{line.label}</span>
+                <span className="boot-leader" aria-hidden="true" />
+                <span className="boot-value">{line.value}</span>
+              </li>)}
+            </ol>
+            <p className="boot-hint">ANY KEY / CLICK TO SKIP &middot; S = SOUND</p>
           </div> : <div className="startup-announcement">
             <p className="eyebrow"><span className="startup-blink">[ NEW ]</span> / INCOMING STUDIO AD</p>
             {announcement.image ? <img className="startup-announcement-image" src={announcement.image} alt="" /> : <div className="startup-ad-placeholder" aria-hidden="true">MIGRAINZ<br />PUBLIC ACCESS<br />[ TRANSMISSION 001 ]</div>}
