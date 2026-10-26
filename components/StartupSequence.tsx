@@ -64,7 +64,11 @@ export default function StartupSequence({ lines: dataLines, children }: { lines:
     window.addEventListener("resize", resize);
     return () => { window.removeEventListener("resize", resize); drag.current = null; };
   }, [state]);
+  // Line and end-of-boot timers; a skip cancels them so nothing fires (or writes storage) after the boot is over.
+  const bootTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const finishBoot = () => {
+    bootTimers.current.forEach(clearTimeout);
+    bootTimers.current = [];
     try { sessionStorage.setItem(bootSeenKey, "1"); } catch { /* Optional storage. */ }
     setState(current => current === "boot" ? "announcement" : current);
   };
@@ -82,12 +86,12 @@ export default function StartupSequence({ lines: dataLines, children }: { lines:
     // Reduced motion: every line at once, then the ad.
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       setStage(count);
-      const timer = setTimeout(finishBoot, REDUCED_HOLD_MS);
-      return () => clearTimeout(timer);
+      bootTimers.current = [setTimeout(finishBoot, REDUCED_HOLD_MS)];
+    } else {
+      bootTimers.current = Array.from({ length: count }, (_, index) => setTimeout(() => setStage(index + 1), FIRST_LINE_MS + index * LINE_MS));
+      bootTimers.current.push(setTimeout(finishBoot, FIRST_LINE_MS + (count - 1) * LINE_MS + HOLD_MS));
     }
-    const timers = Array.from({ length: count }, (_, index) => setTimeout(() => setStage(index + 1), FIRST_LINE_MS + index * LINE_MS));
-    timers.push(setTimeout(finishBoot, FIRST_LINE_MS + (count - 1) * LINE_MS + HOLD_MS));
-    return () => timers.forEach(clearTimeout);
+    return () => { bootTimers.current.forEach(clearTimeout); bootTimers.current = []; };
     // The line count is fixed for this page load.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

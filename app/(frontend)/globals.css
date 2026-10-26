@@ -1985,7 +1985,7 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
   --reticle: var(--hot);
   content: "";
   position: absolute;
-  inset: -3px;
+  inset: var(--reticle-inset, -3px);
   pointer-events: none;
   background:
     linear-gradient(var(--reticle), var(--reticle)) left top / 10px 2px,
@@ -1999,9 +1999,15 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
   background-repeat: no-repeat;
   opacity: 0;
 }
+/* Full-width cards and rows draw the reticle on their own edge, never outside it, so it can't widen a page that has
+   no side margin (it only fades in there; even mid-animation nothing leaves the box). */
+:where(.equipment-card, .terminal-nav a, .nav-trigger, .home-feed-row, .home-project-row, .home-directory-row, a.directory-row, .archive-list button, .patron-locked-trigger, .system-menu-panel button)::after {
+  --reticle-inset: 0px;
+  --reticle-from: 0px;
+}
 /* In: ~120ms lock-on, the corners closing in from further out. Out: instant. Nothing is scaled at rest: an invisible
    scaled overlay still counts as overflow and widened the page on phones. */
-@keyframes reticle-lock { from { inset: -9px; opacity: 0; } }
+@keyframes reticle-lock { from { inset: var(--reticle-from, -9px); opacity: 0; } }
 :where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .desktop-file) *):not(:where(.skip-link, .equipment-card a, p a, dd a, .content-writing a)):is(:focus-visible, :active),
 .equipment-card:has(a:focus-visible, a:active) {
   color: var(--hot);
