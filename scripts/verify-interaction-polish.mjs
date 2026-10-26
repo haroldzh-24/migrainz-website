@@ -46,9 +46,13 @@ try {
     const { context, page } = await open({}, { boot: true });
     const html = await (await context.request.get(base + '/')).text();
     const rsc = await (await context.request.get(base + '/', { headers: { RSC: '1' } })).text();
+    const bootResponse = await context.request.get(base + '/boot-status');
+    assert.match(bootResponse.headers()['cache-control'] ?? '', /no-store/, 'boot data is never cached');
+    const bootJSON = await bootResponse.text();
     for (const sentinel of SENTINELS) {
       assert.ok(!html.includes(sentinel), `${sentinel} must not be in the HTML`);
       assert.ok(!rsc.includes(sentinel), `${sentinel} must not be in the RSC payload`);
+      assert.ok(!bootJSON.includes(sentinel), `${sentinel} must not be in /boot-status`);
     }
     await page.goto(base + '/');
     await page.locator('.boot-line', { hasText: 'clearance' }).waitFor();
@@ -64,6 +68,9 @@ try {
   // 2. Reticle on hover and keyboard focus, no layout shift; Win95 styles inside windows.
   {
     const { context, page } = await open();
+    // Once the boot has been seen, ordinary page loads never ask for boot data (no boot query per page).
+    const bootRequests = [];
+    page.on('request', request => { if (new URL(request.url()).pathname === '/boot-status') bootRequests.push(request.url()); });
     await visit(page, base + '/');
     await page.locator('.terminal-nav a').first().waitFor();
     const nav = page.locator('.terminal-nav a').first();
@@ -101,6 +108,7 @@ try {
     assert.equal(await control.evaluate(el => getComputedStyle(el).borderTopColor), 'rgb(64, 64, 64)', 'window control presses in');
     await page.mouse.move(2, 2);
     await page.mouse.up();
+    assert.deepEqual(bootRequests, [], 'no /boot-status request outside the boot checklist');
     await context.close();
     pass('reticle hover/focus without layout shift; Win95 bar, dotted focus, navy icon label, window controls');
   }
@@ -109,7 +117,7 @@ try {
   {
     const { context, page } = await open({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
     await visit(page, base + '/');
-    const trigger = page.getByRole('button', { name: '03 / requisitions.exe Requisitions / shop', exact: true });
+    const trigger = page.getByRole('button', { name: 'Requisitions / shop 03 / requisitions.exe', exact: true });
     // Press state: in this no-hover phone context only :active can show the reticle (headless Chrome does not turn raw
     // DevTools touch events into a press, so a held mouse button stands in for the finger; real touch is unverified).
     const box = await page.locator('.terminal-nav a').first().boundingBox();

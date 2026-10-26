@@ -8,20 +8,25 @@ const storageKey = `migrainz-announcement:${announcement.id}`;
 // Set once the checklist has run (or been skipped): a reload before dismissing the ad goes straight to the ad.
 const bootSeenKey = "migrainz-boot-seen";
 const LINE_MS = 250, FIRST_LINE_MS = 300, HOLD_MS = 500, REDUCED_HOLD_MS = 1200;
+// The data lines come from /boot-status, fetched only when the checklist shows; the boot never waits longer than this.
+const DATA_WAIT_MS = 2000;
 // Keys that never skip the checklist (S toggles sound instead).
 const passiveKeys = new Set(["Tab", "Shift", "Control", "Alt", "Meta", "CapsLock", "s", "S"]);
 
-export default function StartupSequence({ lines: dataLines, children }: { lines: BootLine[]; children: ReactNode }) {
+export default function StartupSequence({ children }: { children: ReactNode }) {
   const [state, setState] = useState<"boot" | "announcement" | "closed">("boot");
   const [stage, setStage] = useState(0);
   const [phosphor, setPhosphor] = useState("green");
+  // True once this page load actually runs the checklist; null data = still waiting for /boot-status.
+  const [running, setRunning] = useState(false);
+  const [dataLines, setDataLines] = useState<BootLine[] | null>(null);
   const { enabled: soundOn, setEnabled: setSound } = useSound();
   // Fixed driver lines first, then the real data lines and clearance from the server.
   const lines: BootLine[] = [
     { status: "ok", label: "crt.drv", value: phosphor },
     { status: "ok", label: "watcher.sys", value: "awake" },
     { status: "ok", label: "snd.drv", value: soundOn ? "on" : "off" },
-    ...dataLines,
+    ...(dataLines ?? []),
   ];
   const windowRef = useRef<HTMLDivElement>(null);
   const enterRef = useRef<HTMLButtonElement>(null);
@@ -82,19 +87,32 @@ export default function StartupSequence({ lines: dataLines, children }: { lines:
     if (seen) { setState("announcement"); return; }
     setPhosphor(document.documentElement.dataset.phosphor === "amber" ? "amber" : "green");
     windowRef.current?.focus();
-    const count = lines.length;
-    // Reduced motion: every line at once, then the ad.
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      setStage(count);
-      bootTimers.current = [setTimeout(finishBoot, REDUCED_HOLD_MS)];
-    } else {
-      bootTimers.current = Array.from({ length: count }, (_, index) => setTimeout(() => setStage(index + 1), FIRST_LINE_MS + index * LINE_MS));
-      bootTimers.current.push(setTimeout(finishBoot, FIRST_LINE_MS + (count - 1) * LINE_MS + HOLD_MS));
-    }
-    return () => { bootTimers.current.forEach(clearTimeout); bootTimers.current = []; };
-    // The line count is fixed for this page load.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setRunning(true);
+    // Only now, with the checklist about to show, ask for this visitor's boot data (never cached; once per session).
+    let cancelled = false;
+    const controller = new AbortController();
+    const giveUp = setTimeout(() => controller.abort(), DATA_WAIT_MS);
+    fetch("/boot-status", { cache: "no-store", signal: controller.signal })
+      .then(response => response.ok ? response.json() : { lines: [] })
+      .then((data: { lines?: unknown }) => { if (!cancelled) setDataLines(Array.isArray(data.lines) ? data.lines as BootLine[] : []); })
+      .catch(() => { if (!cancelled) setDataLines([]); })
+      .finally(() => clearTimeout(giveUp));
+    return () => { cancelled = true; controller.abort(); clearTimeout(giveUp); bootTimers.current.forEach(clearTimeout); bootTimers.current = []; };
   }, []);
+  // Reveal one line at a time; once every line is out and the data has arrived (or the wait ended), hold, then the ad.
+  // Reduced motion: every line at once.
+  useEffect(() => {
+    if (state !== "boot" || !running) return;
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    if (reduced && stage !== lines.length) setStage(lines.length);
+    else if (!reduced && stage < lines.length) timer = setTimeout(() => setStage(value => value + 1), stage === 0 ? FIRST_LINE_MS : LINE_MS);
+    else if (dataLines !== null) timer = setTimeout(finishBoot, reduced ? REDUCED_HOLD_MS : HOLD_MS);
+    bootTimers.current = timer ? [timer] : [];
+    return () => { if (timer) clearTimeout(timer); };
+    // finishBoot only touches refs and setters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, running, stage, lines.length, dataLines]);
   // Boot keys: S toggles sound (without skipping); any other key skips on release, so the same press can't also
   // activate ENTER once focus moves to it. Esc, Enter and Space skip too.
   useEffect(() => {
