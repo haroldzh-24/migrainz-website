@@ -23,7 +23,8 @@ export function CharacterViewerLink({ project, character }: { project: Pick<Proj
   if (character.classification) return <ClassifiedPlaceholder classification={character.classification} label={character.safeLabel} />;
   const tab = tabFor(project, character);
   return <DesktopFile
-    label={`${character.name.replace(/\s+/g, "_")}.CHR`}
+    label={character.name}
+    fileName={`${character.name.replace(/\s+/g, "_")}.CHR`}
     type="CHR"
     subtitle={character.role}
     href={tab.href}

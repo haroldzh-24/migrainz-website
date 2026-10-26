@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { site } from "@/data/site";
+import MenuLabel from "@/components/MenuLabel";
 
 const shopSeenKey = "migrainz-shop-promo-seen";
 const compactQuery = "(max-width: 480px)";
@@ -118,8 +119,9 @@ export default function PromoWindow({
           setOpen((value) => !value);
         }}
       >
-        <span>{number}</span>
-        {shop ? "REQUISITIONS / SHOP" : "PATREON ACCESS"}
+        {shop
+          ? <MenuLabel number={number} file="requisitions.exe" name="Requisitions / shop" />
+          : <MenuLabel number={number} file="patreon.key" name="Patreon access" />}
       </button>
       {open && (
         <div

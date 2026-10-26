@@ -11,6 +11,8 @@ import type { Classified } from '@/lib/content/types';
 
 type Props = Classified & {
   label: string;
+  /** File-style name shown small under the readable label, e.g. THE_OBSERVER.CHR. */
+  fileName?: string;
   type: string;
   href: string;
   subtitle?: string;
@@ -29,7 +31,7 @@ export default function DesktopFile(props: Props) {
   return <PublicDesktopFile {...props} />;
 }
 
-function PublicDesktopFile({ label, type, href, subtitle, viewerTab, opensPage, thumbnail, imagePreview, schematicThumbnail, metadata = [] }: Props) {
+function PublicDesktopFile({ label, fileName, type, href, subtitle, viewerTab, opensPage, thumbnail, imagePreview, schematicThumbnail, metadata = [] }: Props) {
   const { openViewerTab } = useWindowManager();
   const id = useId();
   const root = useRef<HTMLDivElement>(null);
@@ -83,12 +85,12 @@ function PublicDesktopFile({ label, type, href, subtitle, viewerTab, opensPage, 
         if (viewerTab && !opensPage) { event.preventDefault(); openViewerTab(viewerTab); }
       }}>
       {(viewerTab || imagePreview) ? <DirectoryThumbnail schematic={schematicThumbnail} eager={imagePreview} image={thumbnail ?? viewerTab?.images.find(image => image.src && !/\.pdf(?:\?|$)/i.test(image.src))} label={label} /> : <span className="desktop-file-icon" aria-hidden="true">{type}</span>}
-      <span className="desktop-file-copy"><strong>{label}</strong>{subtitle && <small>{subtitle}</small>}</span>
+      <span className="desktop-file-copy"><strong>{label}</strong>{fileName && <small className="desktop-file-name">{fileName}</small>}{subtitle && <small>{subtitle}</small>}</span>
     </Link>
-    <button className="desktop-file-info" type="button" aria-label={`Properties for ${label}`} aria-expanded={open} aria-describedby={open ? id : undefined} aria-controls={open ? id : undefined}
+    <button className="desktop-file-info" type="button" aria-label={`Properties for ${fileName ?? label}`} aria-expanded={open} aria-describedby={open ? id : undefined} aria-controls={open ? id : undefined}
       onClick={() => { cancel(); setOpen(!pinned); setPinned(!pinned); }}>i</button>
     {open && createPortal(<div ref={panel} id={id} role="tooltip" className={`desktop-inspector${pinned ? " is-pinned" : ""}`} style={position}>
-      <strong>{label}</strong>
+      <strong>{fileName ?? label}</strong>
       {metadata.filter(field => field.value !== "").map(field => <div key={field.label}><span>{field.label}</span><b>{field.value}</b></div>)}
     </div>, document.body)}
   </div>;

@@ -671,14 +671,21 @@ button {
 
 .terminal-nav a {
   font-size: 16px;
-  padding: 12px 8px;
+  padding: 10px 8px;
   border-bottom: 1px solid var(--line);
-  display: flex;
-  gap: 22px;
+  display: grid;
+  gap: 2px;
 }
 
-.terminal-nav a span {
+/* File name small over the readable name (main menu and the promo triggers). */
+.menu-file {
   color: var(--dim);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+}
+.menu-name {
+  font-size: 16px;
+  font-weight: 400;
 }
 
 .terminal-nav a:hover,
@@ -1020,6 +1027,8 @@ button {
 .desktop-file-copy { display: grid; min-width: 0; gap: 4px; }
 .desktop-file-copy strong { overflow-wrap: anywhere; font-weight: bold; }
 .desktop-file-copy small { color: #444; font-size: 12px; }
+.desktop-file-copy strong { font-size: 14px; }
+.desktop-file-copy .desktop-file-name { font-family: monospace; color: #333; overflow-wrap: anywhere; }
 .desktop-file-info {
   position: absolute;
   top: 7px;
@@ -1542,18 +1551,15 @@ a.directory-row:hover {
 .nav-trigger {
   width: 100%;
   font-size: 16px;
-  display: flex;
-  gap: 22px;
-  padding: 12px 8px;
+  display: grid;
+  gap: 2px;
+  padding: 10px 8px;
   border: 0;
   border-bottom: 1px solid var(--line);
   background: transparent;
   color: var(--green);
   text-align: left;
   cursor: pointer;
-}
-.nav-trigger > span {
-  color: var(--dim);
 }
 .nav-trigger:hover,
 .nav-trigger:focus-visible {
@@ -1840,6 +1846,7 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
 .equipment-card > img[data-schematic], .directory-thumbnail img[data-schematic], .art-viewer-canvas img[data-schematic] { filter: url(#crt-tune) drop-shadow(var(--crt-glow-filter)); }
 .equipment-card > div { min-width: 0; flex: 1; }
 .equipment-card h3 { margin: 0; }
+.equipment-card .equipment-card-file { margin: 2px 0 6px; color: var(--dim); font-size: 12px; overflow-wrap: anywhere; }
 /* Schematic video and specs read as one terminal module. --schematic-bg is the background the encoded
    video actually decodes to (sampled from rendered pixels); the faint grid continues into the panel. */
 /* The module reads --crt-* directly: .project-application redefines the legacy --green/--hot/--line names for the

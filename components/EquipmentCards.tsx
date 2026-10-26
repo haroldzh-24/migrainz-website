@@ -9,6 +9,7 @@ export default function EquipmentCards({ projectSlug, equipment }: { projectSlug
     {equipment.map((item, index) => { const art = item.images[0] ?? item.poster; return <article className="equipment-card" key={`${item.slug}-${index}`}>
       {art && <img data-schematic={!item.images[0] || undefined} src={art.thumbnailSrc ?? art.src} alt={art.alt} loading="lazy" />}
       <div><h3><Link href={`/projects/${projectSlug}/equipment/${item.slug}`}>{item.designation || item.name}</Link></h3>
+        <p className="equipment-card-file">{item.name.replace(/\s+/g, "_")}.EQP</p>
         {item.designation && <p>{item.name}</p>}
         {item.category && <p className="eyebrow">{item.category}</p>}
         {item.quantity != null && <p>QUANTITY: {item.quantity}</p>}
