@@ -324,7 +324,7 @@ button {
 .pixel-monitor[hidden] { display: none; }
 .pixel-monitor-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; padding: 0 0 5px; }
 .pixel-monitor-header button { min-height: 25px; padding: 3px 7px; border: 2px outset #e4e3d6; background: #c9c8ba; color: #20221f; font: inherit; cursor: pointer; }
-.pixel-monitor button:focus-visible { outline: 2px solid #000080; outline-offset: -2px; }
+.pixel-monitor button:focus-visible { outline: 1px dotted #000; outline-offset: -4px; }
 .pixel-monitor-screen {
   display: flex;
   flex: 1;
@@ -455,7 +455,7 @@ button {
 .art-viewer-toolbar button[aria-pressed="true"] { border-style: inset; }
 .art-viewer-toolbar button:disabled { color: #666; cursor: default; }
 .art-viewer-toolbar button:focus-visible,
-.art-viewer-canvas:focus-visible { outline: 2px solid #000080; outline-offset: -2px; }
+.art-viewer-canvas:focus-visible { outline: 1px dotted #000; outline-offset: -4px; }
 @media (max-width: 700px) {
   .art-viewer-maximize { display: none; }
   .comic-reader-title-context { font-size: 12px; }
@@ -645,7 +645,7 @@ button {
 .home-feed-row { grid-template-columns: 48px 1fr 24px; }
 .home-feed-row time, .home-feed-row em, .home-directory-row span, .home-directory-row em { color: var(--dim); font-style: normal; font-size: 14px; }
 .home-feed-row b, .home-project-row b, .home-directory-row b { color: var(--hot); font-weight: 400; font-size: 14px; }
-.home-feed-row:hover, .home-feed-row:focus-visible, .home-project-row:hover, .home-project-row:focus-visible, .home-directory-row:hover, .home-directory-row:focus-visible { color: var(--hot); outline: none; padding-left: 6px; }
+.home-feed-row:hover, .home-feed-row:focus-visible, .home-project-row:hover, .home-project-row:focus-visible, .home-directory-row:hover, .home-directory-row:focus-visible { color: var(--hot); }
 .home-project-row { grid-template-columns: 58px 1fr 14px; }
 .home-project-mark { display: grid; place-items: center; aspect-ratio: 1; border: 1px solid var(--line); color: var(--hot); font-size: 12px; }
 .home-project-row small { display: block; margin-top: 4px; color: var(--green2); font-size: 12px; }
@@ -675,7 +675,6 @@ button {
   border-bottom: 1px solid var(--line);
   display: flex;
   gap: 22px;
-  transition: 0.15s;
 }
 
 .terminal-nav a span {
@@ -684,10 +683,7 @@ button {
 
 .terminal-nav a:hover,
 .terminal-nav a:focus-visible {
-  background: rgba(var(--crt-text-rgb), 0.08);
   color: var(--hot);
-  padding-left: 16px;
-  outline: none;
 }
 
 /* INTERACTIVE FACE */
@@ -958,7 +954,6 @@ button {
 .classified-placeholder--card { min-height: 110px; }
 .classified-placeholder--media { justify-content: center; width: 100%; min-height: 200px; aspect-ratio: 4 / 3; background: #292929; }
 .patron-locked-trigger { width: 100%; text-align: left; cursor: pointer; font: inherit; }
-.patron-locked-trigger:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
 .classified-placeholder--patron { background: #959a90; color: #101510; }
 .classified-placeholder--patron .classified-placeholder-bars i { background: #000; }
 .classified-placeholder--patron.classified-placeholder--media { background: var(--crt-panel); color: var(--green); border: 4px solid var(--green); }
@@ -1000,12 +995,13 @@ button {
   font: 12px Arial, sans-serif;
   text-decoration: none;
 }
-.desktop-file-open:hover,
-.desktop-file-open:focus-visible {
-  background: #dcdcdc;
-  color: #000080;
-  outline: 2px solid #000080;
-  outline-offset: 1px;
+/* Win95 icon selection: navy label with a dotted border; the tile's dotted focus rectangle is in the shared Win95 rules. */
+.desktop-file-open:hover .desktop-file-copy strong,
+.desktop-file-open:focus-visible .desktop-file-copy strong {
+  background: #000080;
+  color: #fff;
+  outline: 1px dotted #fff;
+  outline-offset: -1px;
 }
 .desktop-file.is-disabled .desktop-file-open { opacity: .55; cursor: default; }
 .desktop-file-icon {
@@ -1185,7 +1181,6 @@ button {
 
 .archive-list button:hover {
   color: var(--hot);
-  padding-left: 8px;
 }
 
 .archive-list span,
@@ -1556,16 +1551,13 @@ a.directory-row:hover {
   color: var(--green);
   text-align: left;
   cursor: pointer;
-  transition: 0.15s;
 }
 .nav-trigger > span {
   color: var(--dim);
 }
 .nav-trigger:hover,
 .nav-trigger:focus-visible {
-  padding-left: 16px;
   color: var(--hot);
-  background: rgba(var(--crt-text-rgb), 0.08);
 }
 .promo-window {
   position: absolute;
@@ -1794,7 +1786,7 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
 .project-app-content .breadcrumbs { display: none; }
 .project-app-content h1 { font-size: clamp(22px, 4vw, 38px); margin: 8px 0 14px; }
 .project-app-content img { filter: none; }
-.project-app-content a:focus-visible, .project-app-nav a:focus-visible { outline: 2px solid #000080; outline-offset: -2px; }
+.project-app-nav a:focus-visible { outline: 1px dotted #000; outline-offset: -4px; }
 .application-desktop { min-height: 60vh; padding-top: 40px; display: flex; flex-direction: column; align-items: flex-start; gap: 16px; }
 .directory-thumbnail { display: flex; align-items: center; justify-content: center; background: #ddd; border: 1px solid #999; width: 100%; height: 170px; color: #555; }
 .directory-thumbnail img { display: block; width: 100%; height: 100%; object-fit: contain; }
@@ -1902,4 +1894,128 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
   .promo-body h2 { font-size: 15px; }
   .promo-body > p:not(.promo-slogan), .promo-new { display: none; }
   .promo-window .window-controls button { min-width: 32px; min-height: 28px; font-size: 16px; }
+}
+
+/* SHARED HIGHLIGHT (phase 1). One style for every link, button, card, tab and window control.
+   Terminal: the Watcher's reticle, four corner brackets drawn as an overlay (no layout shift).
+   Win95 (windows, monitor, promo/startup windows, taskbar, desktop icons): navy bars, bevels and a dotted focus rectangle.
+   Selectors stay inside :where() so they never outrank component rules; the state rules carry one pseudo-class. */
+:where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .desktop-file) *):not(:where(.skip-link, .equipment-card a, p a, dd a, .content-writing a)) {
+  position: relative;
+}
+:where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .desktop-file) *):not(:where(.skip-link, .equipment-card a, p a, dd a, .content-writing a))::after {
+  --reticle: var(--hot);
+  content: "";
+  position: absolute;
+  inset: -3px;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--reticle), var(--reticle)) left top / 10px 2px,
+    linear-gradient(var(--reticle), var(--reticle)) left top / 2px 10px,
+    linear-gradient(var(--reticle), var(--reticle)) right top / 10px 2px,
+    linear-gradient(var(--reticle), var(--reticle)) right top / 2px 10px,
+    linear-gradient(var(--reticle), var(--reticle)) left bottom / 10px 2px,
+    linear-gradient(var(--reticle), var(--reticle)) left bottom / 2px 10px,
+    linear-gradient(var(--reticle), var(--reticle)) right bottom / 10px 2px,
+    linear-gradient(var(--reticle), var(--reticle)) right bottom / 2px 10px;
+  background-repeat: no-repeat;
+  opacity: 0;
+  transform: scale(1.3);
+}
+/* In: ~120ms lock-on. Out: instant (the transition only exists in the shown state). */
+:where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .desktop-file) *):not(:where(.skip-link, .equipment-card a, p a, dd a, .content-writing a)):is(:focus-visible, :active),
+.equipment-card:has(a:focus-visible, a:active) {
+  color: var(--hot);
+  text-shadow: var(--crt-glow);
+  /* Transparent normally; Windows High Contrast turns it into a real outline. */
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+:where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .desktop-file) *):not(:where(.skip-link, .equipment-card a, p a, dd a, .content-writing a)):is(:focus-visible, :active)::after,
+.equipment-card:has(a:focus-visible, a:active)::after {
+  opacity: 1;
+  transform: none;
+  transition: opacity 120ms ease-out, transform 120ms ease-out;
+}
+/* Hover only where a real pointer hovers, so a tap on a phone doesn't leave the reticle stuck. */
+@media (hover: hover) {
+  :where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .desktop-file) *):not(:where(.skip-link, .equipment-card a, p a, dd a, .content-writing a)):hover {
+    color: var(--hot);
+    text-shadow: var(--crt-glow);
+  }
+  :where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .desktop-file) *):not(:where(.skip-link, .equipment-card a, p a, dd a, .content-writing a)):hover::after {
+    opacity: 1;
+    transform: none;
+    transition: opacity 120ms ease-out, transform 120ms ease-out;
+  }
+}
+/* Links inside running text: colour and glow only; brackets around wrapped text read as broken. */
+:where(p a, dd a, .content-writing a):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence) *):is(:focus-visible, :active) {
+  color: var(--hot);
+  text-shadow: var(--crt-glow);
+}
+@media (hover: hover) {
+  :where(p a, dd a, .content-writing a):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence) *):hover {
+    color: var(--hot);
+    text-shadow: var(--crt-glow);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* The global rule drops transitions; the resting scale must go too so the reticle simply appears. */
+  :where(a, button, [role="tab"], summary, .equipment-card)::after { transform: none !important; }
+}
+
+/* Win95: dotted focus rectangle on every control inside Win95 chrome. */
+:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-window, .window-taskbar, .project-app-nav) :is(a, button, select, summary, [tabindex="0"]):focus-visible,
+.desktop-file-open:focus-visible,
+.desktop-file-info:focus-visible {
+  outline: 1px dotted #000;
+  outline-offset: -4px;
+}
+.window-taskbar button:focus-visible { outline-offset: -5px; }
+/* Menu and list items: navy bar, white text. */
+.project-app-nav a:hover,
+.project-app-nav a:focus-visible,
+.art-viewer-tab:not(.is-active) > button:first-child:hover,
+.system-apps a:hover,
+.system-apps a:focus-visible,
+.system-apps button:hover,
+.system-apps button:focus-visible,
+.desktop-file-info:hover {
+  background: #000080;
+  color: #fff;
+}
+.project-app-nav a:focus-visible,
+.system-apps a:focus-visible,
+.system-apps button:focus-visible { outline-color: #fff; }
+/* Toolbar buttons sit flat and raise on hover; every Win95 button presses in on click. */
+.art-viewer-toolbar button:not([aria-pressed="true"]),
+.comic-reader-navigation button,
+.art-viewer-thumbs button:not(.is-active) {
+  border: 1px solid transparent;
+  background: transparent;
+}
+@media (hover: hover) {
+  .art-viewer-toolbar button:hover:not(:disabled),
+  .comic-reader-navigation button:hover:not(:disabled),
+  .art-viewer-thumbs button:hover {
+    border: 1px solid;
+    border-color: #fff #404040 #404040 #fff;
+  }
+}
+.art-viewer-toolbar button:active:not(:disabled),
+.comic-reader-navigation button:active:not(:disabled),
+.art-viewer-thumbs button:active,
+.retro-window-controls button:active,
+.window-controls button:active,
+.window-taskbar button:active,
+.pixel-monitor-header button:active,
+.desktop-file-info:active {
+  border-style: solid;
+  border-color: #404040 #fff #fff #404040;
+}
+.desktop-file-open:active { border-style: inset; }
+
+@media (forced-colors: active) {
+  :focus-visible { outline: 2px solid CanvasText !important; }
 }

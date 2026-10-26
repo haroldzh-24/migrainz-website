@@ -11,6 +11,7 @@ import { viewerAccess } from '@/lib/patreon/viewer';
 import { patreonConfig, patreonJoinURL } from '@/lib/patreon/server';
 import localFont from "next/font/local";
 import InlineScript from "@/components/InlineScript";
+import HighlightEffects from "@/components/HighlightEffects";
 import "./globals.css";
 
 // Bundled locally (SIL OFL, app/fonts/IBM-Plex-Mono-OFL.txt) so the build never reaches a font host.
@@ -54,7 +55,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
               <feFuncB type="table" tableValues="0.043 0.420 0.690 0.855" />
             </feComponentTransfer>
           </filter>
-        </svg><PatreonAccessProvider viewer={viewer} enabled={Boolean(patreonConfig())} joinURL={patreonJoinURL()}><SoundProvider><WindowManagerProvider><StartupSequence>
+        </svg><PatreonAccessProvider viewer={viewer} enabled={Boolean(patreonConfig())} joinURL={patreonJoinURL()}><SoundProvider><HighlightEffects /><WindowManagerProvider><StartupSequence>
           <a className="skip-link" href="#top">
             SKIP TO CONTENT
           </a>
