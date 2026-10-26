@@ -27,7 +27,7 @@ export async function findListing<C extends Collection>(cms: Payload, options: {
   collection: C; where?: Where; sort?: string | string[]; depth?: number;
   overrideAccess?: false; pagination?: false; limit?: number; select?: TypedCollectionSelect[C];
 }): Promise<{ docs: ListingDoc<C>[] }> {
-  const { collection, where, sort, depth = 0 } = options;
+  const { collection, where, sort, depth = 0, limit } = options;
   const req = await contentRequest();
   const parent = collection === 'chapters' ? 'comics' : collection === 'projects' ? undefined : 'projects';
   const scope: Where[] = [visible, { accessLevel: { in: ['public', 'redacted', 'patron'] } }];
@@ -50,7 +50,8 @@ export async function findListing<C extends Collection>(cms: Payload, options: {
     ...(parent === 'comics' ? { comic: true } : {}),
     ...(collection === 'tracker-items' ? { kind: true } : {}),
   } as TypedCollectionSelect[C];
-  const metadata = await cms.find({ req, collection, overrideAccess: true, depth: 0, pagination: false,
+  // limit caps the metadata rows (the first page, in sort order); without it every matching row is listed.
+  const metadata = await cms.find({ req, collection, overrideAccess: true, depth: 0, ...(limit ? { limit, page: 1 } : { pagination: false }),
     where: { and: scope }, sort, select });
   const publicIDs = metadata.docs.filter(doc => doc.accessLevel === 'public' || doc.accessLevel === 'patron').map(doc => doc.id);
   const publicDocs = publicIDs.length ? await cms.find({ req, collection, overrideAccess: false, depth,

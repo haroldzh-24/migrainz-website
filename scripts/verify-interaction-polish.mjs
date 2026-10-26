@@ -88,8 +88,18 @@ try {
     await file.focus();
     assert.equal(await file.evaluate(el => getComputedStyle(el).outlineStyle), 'dotted', 'Win95 dotted focus rectangle');
     assert.equal(await file.locator('.desktop-file-copy strong').evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(0, 0, 128)', 'desktop icon label turns navy');
+    // Project-window title bar controls are Win95 chrome: no reticle, dotted focus, pressed bevel.
+    const control = page.locator('.project-application .retro-window-controls button').last();
+    await control.hover();
+    assert.equal(await afterStyle(control, 'content'), 'none', 'no reticle on window controls');
+    await control.focus();
+    assert.equal(await control.evaluate(el => getComputedStyle(el).outlineStyle), 'dotted', 'window control dotted focus');
+    await page.mouse.down();
+    assert.equal(await control.evaluate(el => getComputedStyle(el).borderTopColor), 'rgb(64, 64, 64)', 'window control presses in');
+    await page.mouse.move(2, 2);
+    await page.mouse.up();
     await context.close();
-    pass('reticle hover/focus without layout shift; Win95 bar, dotted focus and navy icon label');
+    pass('reticle hover/focus without layout shift; Win95 bar, dotted focus, navy icon label, window controls');
   }
 
   // 3. Touch: no sticky reticle after a tap. Forced colours: a real outline. Reduced motion: no animation.
@@ -97,6 +107,16 @@ try {
     const { context, page } = await open({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
     await page.goto(base + '/');
     const trigger = page.getByRole('button', { name: '03 / requisitions.exe Requisitions / shop', exact: true });
+    // Press state: in this no-hover phone context only :active can show the reticle (headless Chrome does not turn raw
+    // DevTools touch events into a press, so a held mouse button stands in for the finger; real touch is unverified).
+    const box = await page.locator('.terminal-nav a').first().boundingBox();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    assert.equal(await afterStyle(page.locator('.terminal-nav a').first(), 'opacity'), '0', 'no hover reticle without a hovering pointer');
+    await page.mouse.down();
+    await page.waitForTimeout(200);
+    assert.equal(await afterStyle(page.locator('.terminal-nav a').first(), 'opacity'), '1', 'reticle shows while pressed');
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height + 400);
+    await page.mouse.up();
     await trigger.tap();
     await page.waitForTimeout(300);
     assert.equal(await afterStyle(trigger, 'opacity'), '0', 'no sticky reticle after a tap');

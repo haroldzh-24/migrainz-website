@@ -41,8 +41,8 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
-  const viewer = await viewerAccess();
-  const bootLines = [...await getBootStatus(), bootClearance(viewer)];
+  const [viewer, bootStatus] = await Promise.all([viewerAccess(), getBootStatus()]);
+  const bootLines = [...bootStatus, bootClearance(viewer)];
   return (
     <html lang="en" data-scroll-behavior="smooth" data-crt="on" data-phosphor="green" className={plexMono.variable} suppressHydrationWarning>
       <head><InlineScript code={crtModeScript} /></head>

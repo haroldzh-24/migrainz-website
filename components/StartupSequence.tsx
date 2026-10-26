@@ -160,14 +160,15 @@ export default function StartupSequence({ lines: dataLines, children }: { lines:
           {state === "boot" ? <div className="startup-log">
             <p className="eyebrow">MIGRAINZ SYSTEM BIOS v0.3 / BOOT CHECK</p>
             <ol className="boot-checklist" aria-live="polite">
-              {lines.slice(0, stage).map(line => <li key={line.label} className="boot-line" data-status={line.status}>
+              {/* Append-only list; labels can repeat (e.g. two classified rows), so the position is the key. */}
+              {lines.slice(0, stage).map((line, index) => <li key={index} className="boot-line" data-status={line.status}>
                 <span className="boot-status">{line.status === "ok" ? "[ OK ]" : "[ !! ]"}</span>
                 <span className="boot-label">{line.label}</span>
                 <span className="boot-leader" aria-hidden="true" />
                 <span className="boot-value">{line.value}</span>
               </li>)}
             </ol>
-            <p className="boot-hint">ANY KEY / CLICK TO SKIP &middot; S = SOUND</p>
+            <p className="boot-hint">ANY KEY / CLICK OR TAP TO SKIP &middot; S = SOUND</p>
           </div> : <div className="startup-announcement">
             <p className="eyebrow"><span className="startup-blink">[ NEW ]</span> / INCOMING STUDIO AD</p>
             {announcement.image ? <img className="startup-announcement-image" src={announcement.image} alt="" /> : <div className="startup-ad-placeholder" aria-hidden="true">MIGRAINZ<br />PUBLIC ACCESS<br />[ TRANSMISSION 001 ]</div>}

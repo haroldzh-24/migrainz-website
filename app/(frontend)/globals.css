@@ -1019,6 +1019,8 @@ html[data-phosphor="amber"] .watcher-eyes-amber { display: inline; }
 .classified-placeholder--card { min-height: 110px; }
 .classified-placeholder--media { justify-content: center; width: 100%; min-height: 200px; aspect-ratio: 4 / 3; background: #292929; }
 .patron-locked-trigger { width: 100%; text-align: left; cursor: pointer; font: inherit; }
+/* Locked placeholders keep their own dark-on-grey colours, so they keep this outline rather than the pale reticle. */
+.patron-locked-trigger:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
 .classified-placeholder--patron { background: #959a90; color: #101510; }
 .classified-placeholder--patron .classified-placeholder-bars i { background: #000; }
 .classified-placeholder--patron.classified-placeholder--media { background: var(--crt-panel); color: var(--green); border: 4px solid var(--green); }
@@ -1727,7 +1729,8 @@ a.directory-row:hover {
   background: #ffff00;
   color: blue;
   padding-left: 4px;
-  outline: 2px solid #000080;
+  outline: 1px dotted #000;
+  outline-offset: -4px;
 }
 .promo-body small {
   display: block;
@@ -1979,10 +1982,10 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
    Terminal: the Watcher's reticle, four corner brackets drawn as an overlay (no layout shift).
    Win95 (windows, monitor, promo/startup windows, taskbar, desktop icons): navy bars, bevels and a dotted focus rectangle.
    Selectors stay inside :where() so they never outrank component rules; the state rules carry one pseudo-class. */
-:where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .desktop-file) *):not(:where(.skip-link, .equipment-card a, p a, dd a, .content-writing a)) {
+:where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .retro-window-titlebar, .desktop-file) *):not(:where(.skip-link, .equipment-card a, .patron-locked-trigger, p a, dd a, .content-writing a)) {
   position: relative;
 }
-:where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .desktop-file) *):not(:where(.skip-link, .equipment-card a, p a, dd a, .content-writing a))::after {
+:where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .retro-window-titlebar, .desktop-file) *):not(:where(.skip-link, .equipment-card a, .patron-locked-trigger, p a, dd a, .content-writing a))::after {
   --reticle: var(--hot);
   content: "";
   position: absolute;
@@ -2002,14 +2005,14 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
 }
 /* Full-width cards and rows draw the reticle on their own edge, never outside it, so it can't widen a page that has
    no side margin (it only fades in there; even mid-animation nothing leaves the box). */
-:where(.equipment-card, .terminal-nav a, .nav-trigger, .home-feed-row, .home-project-row, .home-directory-row, a.directory-row, .archive-list button, .patron-locked-trigger, .system-menu-panel button)::after {
+:where(.equipment-card, .terminal-nav a, .nav-trigger, .home-feed-row, .home-project-row, .home-directory-row, a.directory-row, .archive-list button, .system-menu-panel button)::after {
   --reticle-inset: 0px;
   --reticle-from: 0px;
 }
 /* In: ~120ms lock-on, the corners closing in from further out. Out: instant. Nothing is scaled at rest: an invisible
    scaled overlay still counts as overflow and widened the page on phones. */
 @keyframes reticle-lock { from { inset: var(--reticle-from, -9px); opacity: 0; } }
-:where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .desktop-file) *):not(:where(.skip-link, .equipment-card a, p a, dd a, .content-writing a)):is(:focus-visible, :active),
+:where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .retro-window-titlebar, .desktop-file) *):not(:where(.skip-link, .equipment-card a, .patron-locked-trigger, p a, dd a, .content-writing a)):is(:focus-visible, :active),
 .equipment-card:has(a:focus-visible, a:active) {
   color: var(--hot);
   text-shadow: var(--crt-glow);
@@ -2017,18 +2020,18 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
   outline: 2px solid transparent;
   outline-offset: 2px;
 }
-:where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .desktop-file) *):not(:where(.skip-link, .equipment-card a, p a, dd a, .content-writing a)):is(:focus-visible, :active)::after,
+:where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .retro-window-titlebar, .desktop-file) *):not(:where(.skip-link, .equipment-card a, .patron-locked-trigger, p a, dd a, .content-writing a)):is(:focus-visible, :active)::after,
 .equipment-card:has(a:focus-visible, a:active)::after {
   opacity: 1;
   animation: reticle-lock 120ms ease-out;
 }
 /* Hover only where a real pointer hovers, so a tap on a phone doesn't leave the reticle stuck. */
 @media (hover: hover) {
-  :where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .desktop-file) *):not(:where(.skip-link, .equipment-card a, p a, dd a, .content-writing a)):hover {
+  :where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .retro-window-titlebar, .desktop-file) *):not(:where(.skip-link, .equipment-card a, .patron-locked-trigger, p a, dd a, .content-writing a)):hover {
     color: var(--hot);
     text-shadow: var(--crt-glow);
   }
-  :where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .desktop-file) *):not(:where(.skip-link, .equipment-card a, p a, dd a, .content-writing a)):hover::after {
+  :where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .retro-window-titlebar, .desktop-file) *):not(:where(.skip-link, .equipment-card a, .patron-locked-trigger, p a, dd a, .content-writing a)):hover::after {
     opacity: 1;
     animation: reticle-lock 120ms ease-out;
   }
@@ -2046,17 +2049,20 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
 }
 
 /* Win95: dotted focus rectangle on every control inside Win95 chrome. */
-:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-window, .window-taskbar, .project-app-nav) :is(a, button, select, summary, [tabindex="0"]):focus-visible,
+:where(.retro-window:not(.project-application), .retro-window-titlebar, .pixel-monitor, .promo-window, .startup-window, .window-taskbar, .project-app-nav) :is(a, button, select, summary, [tabindex="0"]):focus-visible,
 .desktop-file-open:focus-visible,
 .desktop-file-info:focus-visible {
   outline: 1px dotted #000;
   outline-offset: -4px;
 }
 .window-taskbar button:focus-visible { outline-offset: -5px; }
+/* The equipment card draws the reticle for its link, so the link itself shows no second indicator. */
+.equipment-card a:focus-visible { outline: 2px solid transparent; }
 /* Menu and list items: navy bar, white text. */
 .project-app-nav a:hover,
 .project-app-nav a:focus-visible,
 .art-viewer-tab:not(.is-active) > button:first-child:hover,
+.art-viewer-tab:not(.is-active) > button:first-child:focus-visible,
 .system-apps a:hover,
 .system-apps a:focus-visible,
 .system-apps button:hover,
@@ -2068,14 +2074,15 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
 .project-app-nav a:focus-visible,
 .system-apps a:focus-visible,
 .system-apps button:focus-visible { outline-color: #fff; }
-/* Toolbar buttons sit flat and raise on hover; every Win95 button presses in on click. */
-.art-viewer-toolbar button:not([aria-pressed="true"]),
-.comic-reader-navigation button,
-.art-viewer-thumbs button:not(.is-active) {
-  border: 1px solid transparent;
-  background: transparent;
-}
+/* With a real pointer, toolbar buttons sit flat and raise on hover; touch keeps the raised buttons so they still read as
+   buttons. Window controls and taskbar buttons stay raised, as in Win95. Every Win95 button presses in on click. */
 @media (hover: hover) {
+  .art-viewer-toolbar button:not([aria-pressed="true"]),
+  .comic-reader-navigation button,
+  .art-viewer-thumbs button:not(.is-active) {
+    border: 1px solid transparent;
+    background: transparent;
+  }
   .art-viewer-toolbar button:hover:not(:disabled),
   .comic-reader-navigation button:hover:not(:disabled),
   .art-viewer-thumbs button:hover {

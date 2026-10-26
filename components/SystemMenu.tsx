@@ -42,7 +42,9 @@ export default function SystemMenu() {
 
   return (
     <div ref={root} className="system-menu" data-open={open || undefined} onKeyDown={onKeyDown}
-      onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false); }}>
+      // Close when focus moves to another control. A null target (a click on padding, or Safari, where buttons don't take
+      // focus on click) is left to the outside-pointerdown listener, so a click on a toggle is never lost.
+      onBlur={(event) => { if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget)) setOpen(false); }}>
       <button ref={button} className="system-menu-button" type="button" aria-expanded={open} aria-controls={panelId}
         data-sound={open ? "close" : "open"} onClick={() => setOpen((value) => !value)}>
         SYSTEM<span aria-hidden="true"> ▾</span>

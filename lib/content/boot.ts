@@ -20,10 +20,10 @@ export const getBootStatus = cache(async (): Promise<BootLine[]> => {
     const cms = await getPayload({ config });
     const [projects, tracker, comics, chapters] = await Promise.all([
       findListing(cms, { collection: 'projects', overrideAccess: false, pagination: false, where: publicWhere, select: { slug: true } }),
-      findListing(cms, { collection: 'tracker-items', overrideAccess: false, pagination: false, sort: '-lastUpdated',
+      findListing(cms, { collection: 'tracker-items', overrideAccess: false, pagination: false, limit: 3, sort: '-lastUpdated',
         where: { and: [publicWhere, { kind: { equals: 'phase' } }] }, select: { project: true, title: true, percentage: true } }),
       findListing(cms, { collection: 'comics', overrideAccess: false, pagination: false, where: publicWhere, select: { slug: true } }),
-      findListing(cms, { collection: 'chapters', overrideAccess: false, pagination: false, sort: '-createdAt',
+      findListing(cms, { collection: 'chapters', overrideAccess: false, pagination: false, limit: 1, sort: '-createdAt',
         where: publicWhere, select: { comic: true, chapterNumber: true, pages: true } }),
     ]);
     const projectSlug = new Map(projects.docs.filter(doc => !doc.classification).map(doc => [doc.id, doc.slug]));
