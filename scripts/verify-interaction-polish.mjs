@@ -23,12 +23,17 @@ const browser = await playwright.chromium.launch({ executablePath: process.env.B
 const SENTINELS = ['SENTINEL-PHASE-TITLE-7Q', 'SENTINEL-CHAPTER-TITLE-7Q', 'sentinel-chapter-7q'];
 const announcementKey = 'migrainz-announcement:studio-transmission-001';
 const errors = [];
-// Contexts that skip the boot (already dismissed this session) unless a test needs it.
-const open = async (options = {}, { boot = false, phosphor } = {}) => {
+// Contexts that skip the boot (already dismissed this session) unless a test needs it; phosphor and crt preset the
+// saved display modes.
+const open = async (options = {}, { boot = false, phosphor, crt } = {}) => {
   const context = await browser.newContext({ viewport: { width: 1366, height: 768 }, ...options });
-  await context.addInitScript(([key, skip, colour]) => {
-    try { if (skip) sessionStorage.setItem(key, 'studio-transmission-001'); if (colour) localStorage.setItem('crt-phosphor', colour); } catch {}
-  }, [announcementKey, !boot, phosphor]);
+  await context.addInitScript(([key, skip, colour, mode]) => {
+    try {
+      if (skip) sessionStorage.setItem(key, 'studio-transmission-001');
+      if (colour) localStorage.setItem('crt-phosphor', colour);
+      if (mode) localStorage.setItem('crt-effects', mode);
+    } catch {}
+  }, [announcementKey, !boot, phosphor, crt]);
   const page = await context.newPage();
   page.setDefaultTimeout(90000);
   page.on('pageerror', error => errors.push(error.message));
@@ -196,6 +201,102 @@ try {
     assert.match(await page.locator('.watcher-base').evaluate(el => getComputedStyle(el).backgroundImage), /watcher-base\.amber\.png/);
     await context.close();
     pass('amber persists and applies before first paint');
+  }
+
+  // 6. CRT modes (fix/crt-glow): glow by mode, phosphor and context; overlay vignette; scanlines; bezel; Watcher motion.
+  {
+    const read = page => page.evaluate(() => {
+      const style = (selector, prop, pseudo) => { const el = document.querySelector(selector); return el ? getComputedStyle(el, pseudo)[prop] : null; };
+      return {
+        body: style('.hero .lede', 'textShadow'), head: style('.hero h1', 'textShadow'), ui: style('.menu-name', 'textShadow'),
+        lede: style('.hero .lede', 'color'), vignette: style('.crt', 'backgroundImage', '::after'),
+        scanlines: Number(getComputedStyle(document.documentElement).getPropertyValue('--crt-scanline-alpha')),
+        bezel: style('.crt-bezel', 'display'), bezelEvents: style('.crt-bezel', 'pointerEvents'), flicker: style('.watcher-flicker', 'animationName'),
+      };
+    });
+    const cases = [
+      ['on', {}, { crt: 'on' }], ['reduced', {}, { crt: 'reduced' }], ['off', {}, { crt: 'off' }],
+      ['amber-on', {}, { crt: 'on', phosphor: 'amber' }], ['amber-off', {}, { crt: 'off', phosphor: 'amber' }],
+      ['reduced-motion', { reducedMotion: 'reduce' }, { crt: 'on' }], ['phone', { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }, { crt: 'on' }],
+    ];
+    const seen = {};
+    for (const [label, options, modes] of cases) {
+      const { context, page } = await open(options, modes);
+      await visit(page, base + '/');
+      seen[label] = await read(page);
+      await context.close();
+    }
+    const { on, reduced, off } = seen;
+    assert.match(on.body, /2\.8px/, 'body glow in "on"');
+    assert.match(on.head, /18px/, 'heading glow in "on"');
+    assert.match(on.ui, /6px/, 'menu-name glow in "on"');
+    assert.equal(on.lede, 'rgb(168, 216, 176)', 'hero description uses --crt-text');
+    assert.match(on.vignette, /radial-gradient/, 'radial overlay vignette in "on"');
+    assert.equal(on.scanlines, 0.07);
+    assert.deepEqual([on.bezel, on.bezelEvents], ['block', 'none'], 'bezel shown in "on" on a wide screen and never takes clicks');
+    assert.equal(on.flicker, 'watcher-flicker');
+    assert.equal(reduced.body, 'none', 'no body glow in "reduced"');
+    assert.match(reduced.head, /18px/, '"reduced" keeps heading glow');
+    assert.deepEqual([reduced.vignette, reduced.scanlines, reduced.bezel, reduced.flicker], ['none', 0.03, 'none', 'none']);
+    assert.deepEqual([off.body, off.head, off.ui, off.vignette, off.scanlines, off.bezel, off.flicker], ['none', 'none', 'none', 'none', 0, 'none', 'none']);
+    assert.match(seen['amber-on'].head, /rgba\(255, 224, 176, 0\.8\)/, 'amber heading glow uses amber colours');
+    assert.match(seen['amber-on'].body, /rgba\(235, 196, 140, 0\.24\)/, 'amber body glow uses amber colours');
+    assert.deepEqual([seen['amber-off'].head, seen['amber-off'].body], ['none', 'none'], 'amber never turns glow back on in "off"');
+    assert.equal(seen['reduced-motion'].flicker, 'none', 'reduced motion stops the flicker');
+    assert.equal(seen.phone.bezel, 'none', 'no bezel at phone width');
+
+    // Contexts: light project windows and the Win95 promo stay unglowed; the equipment panel is a terminal island.
+    const { context, page } = await open({}, { crt: 'on' });
+    await visit(page, base + '/');
+    const keyframes = await page.evaluate(() => {
+      for (const sheet of document.styleSheets) {
+        let rules; try { rules = sheet.cssRules; } catch { continue; }
+        for (const rule of rules) if (rule.type === CSSRule.KEYFRAMES_RULE && rule.name === 'watcher-flicker')
+          return [...rule.cssRules].map(frame => [frame.keyText, Number(frame.style.opacity)]);
+      }
+      return null;
+    });
+    assert.ok(keyframes && keyframes.every(([, opacity]) => opacity >= 0.94 && opacity <= 1), 'flicker never dims more than 6%');
+    assert.deepEqual(keyframes.filter(([, opacity]) => opacity < 1).length, 3, 'three dips per loop');
+    for (const [key, opacity] of keyframes) if (opacity < 1) {
+      const at = parseFloat(key), back = keyframes.find(([k, o]) => parseFloat(k) > at && o === 1);
+      assert.ok(back && parseFloat(back[0]) - at <= 3, 'each dip returns to full just after');
+    }
+    const corner = await page.evaluate(() => { const el = document.elementFromPoint(3, 300); return el ? el.className || el.tagName : null; });
+    assert.ok(corner !== 'crt-bezel', 'clicks pass through the bezel');
+    // Keyboard, not click: a mouse click hovers first, which opens the shop ad, and the click would then close it.
+    await page.getByRole('button', { name: 'Requisitions / shop 03 / requisitions.exe', exact: true }).focus();
+    await page.keyboard.press('Enter');
+    assert.equal(await page.locator('.promo-window h2').first().evaluate(el => getComputedStyle(el).textShadow), 'none', 'the Win95 promo headline has no glow');
+    await visit(page, base + '/projects/blushland');
+    assert.deepEqual(await page.locator('.project-application .lede').first().evaluate(el => [getComputedStyle(el).color, getComputedStyle(el).textShadow]),
+      ['rgb(51, 51, 51)', 'none'], 'project-window descriptions stay dark grey (.retro-window-body p) without glow');
+    await visit(page, base + '/projects/blushland/equipment/fixture-scanner');
+    assert.match(await page.locator('.equipment-panel p').first().evaluate(el => getComputedStyle(el).textShadow), /2\.8px/, 'the equipment panel keeps body glow');
+    await context.close();
+
+    // Jitter: watched for 10.5s at once in "on", "off" and under reduced motion.
+    const watch = async (options, modes) => {
+      const run = await open(options, modes);
+      await visit(run.page, base + '/');
+      await run.page.evaluate(() => {
+        const el = document.querySelector('.watcher-jitter');
+        window.__jitters = []; let started = 0;
+        new MutationObserver(() => {
+          if (el.dataset.jitter) { started = performance.now(); window.__jitters.push({ side: el.dataset.jitter, ms: null }); }
+          else if (window.__jitters.length) window.__jitters.at(-1).ms = performance.now() - started;
+        }).observe(el, { attributes: true, attributeFilter: ['data-jitter'] });
+      });
+      return run;
+    };
+    const watched = await Promise.all([watch({}, { crt: 'on' }), watch({}, { crt: 'off' }), watch({ reducedMotion: 'reduce' }, { crt: 'on' })]);
+    await new Promise(resolve => setTimeout(resolve, 10500));
+    const [jOn, jOff, jMotion] = await Promise.all(watched.map(run => run.page.evaluate(() => window.__jitters)));
+    await Promise.all(watched.map(run => run.context.close()));
+    assert.ok(jOn.length >= 1, 'the Watcher jitters within 10.5s in "on"');
+    assert.ok(jOn.every(j => ['left', 'right'].includes(j.side) && j.ms !== null && j.ms < 250), 'each jitter snaps back within ~90ms');
+    assert.deepEqual([jOff.length, jMotion.length], [0, 0], 'no jitter in "off" or under reduced motion');
+    pass('CRT modes: glow per mode/phosphor/context, vignette, scanlines, bezel, flicker and jitter gating');
   }
 
   // 6. Review screenshots: four sizes, both phosphors, CRT on and off.

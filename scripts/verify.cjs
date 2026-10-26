@@ -57,7 +57,7 @@ const { chromium } = require(
     assert.equal(adminResponse.status(), 200);
     assert.equal(await admin.locator('.startup-sequence').count(), 0);
     assert.equal(await admin.locator('[inert]').count(), 0);
-    assert.equal(await admin.locator('.desktop-file, .desktop-inspector, .crt, .art-viewer-window, .window-taskbar').count(), 0);
+    assert.equal(await admin.locator('.desktop-file, .desktop-inspector, .crt, .crt-bezel, .art-viewer-window, .window-taskbar').count(), 0);
     await adminContext.close();
     await page.goto("/");
     await page.locator('.startup-sequence').waitFor({ state: 'visible' });
