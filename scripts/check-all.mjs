@@ -57,20 +57,28 @@ const logPath = path.resolve(`test-results/check-${stamp}.txt`);
 const log = createWriteStream(logPath);
 const write = text => { process.stdout.write(text); log.write(text); };
 
-// Stop a step: SIGTERM to its process group first so it can clean up (regression.mjs stops its own next dev server),
-// then SIGKILL after a grace period. Windows has no groups: taskkill ends the whole tree.
+// Stop a step. Linux/macOS: SIGTERM to its process group so it can clean up (regression.mjs stops its own dev server
+// and browsers, which sit in their own groups), then SIGKILL to the group after a grace period. Windows: taskkill ends
+// the whole tree at once (no graceful stop there).
 const signalGroup = (pid, signal) => { try { process.kill(-pid, signal); return true; } catch { return false; } };
-const stopTree = (pid, graceMs = 5000) => {
+const stopTree = (pid, graceMs = 8000) => {
   if (process.platform === 'win32') { spawnSync('taskkill', ['/pid', String(pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true }); return; }
-  if (signalGroup(pid, 'SIGTERM')) setTimeout(() => signalGroup(pid, 'SIGKILL'), graceMs).unref();
+  if (signalGroup(pid, 'SIGTERM')) setTimeout(() => signalGroup(pid, 'SIGKILL'), graceMs);
 };
 let current; // the running step's child, for the signal handlers below
 let interrupted = false;
-for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => {
+// First Ctrl+C: stop the running step gracefully, skip the rest, still write the summary. Second: kill it now.
+for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => {
+  if (interrupted) {
+    write(`\n===== ${signal} again; killing the running step =====\n`);
+    if (current?.pid) process.platform === 'win32' ? stopTree(current.pid) : signalGroup(current.pid, 'SIGKILL');
+    return;
+  }
   interrupted = true;
-  write(`\n===== Interrupted (${signal}); stopping ${current ? 'the running step' : 'nothing'} =====\n`);
-  if (current?.pid) stopTree(current.pid, 3000);
-  setTimeout(() => process.exit(130), current ? 3500 : 0);
+  process.exitCode = 130;
+  write(`\n===== Interrupted (${signal}); stopping ${current ? 'the running step' : 'nothing'}; remaining steps are skipped =====\n`);
+  if (current?.pid) stopTree(current.pid);
+  setTimeout(() => process.exit(130), 20000).unref(); // last resort if a step never exits
 });
 const run = step => new Promise(resolve => {
   const started = Date.now();
@@ -102,12 +110,12 @@ for (const step of steps) {
   if (interrupted) { results.push({ name: step.name, result: 'NOT RUN', seconds: 0 }); continue; }
   results.push(await run(step));
 }
-const changed = (spawnSync('git', ['status', '--porcelain'], { encoding: 'utf8' }).stdout ?? '').trim();
+const changed = (spawnSync('git', ['status', '--porcelain'], { encoding: 'utf8' }).stdout ?? '').trimEnd();
 write('\n===== Summary =====\n');
 for (const r of results) write(`${r.result.padEnd(8)} ${r.name.padEnd(22)} ${r.seconds}s\n`);
 if (changed) write(`Working tree after the run (check for files the run rewrote, e.g. next-env.d.ts, payload-types.ts, AGENTS.md):\n${changed}\n`);
 const failed = results.filter(r => r.result !== 'PASS');
 write(failed.length ? `FAILED: ${failed.map(r => `${r.name} (${r.result})`).join(', ')}\n` : `All ${results.length} steps passed.\n`);
 write(`Log: ${path.relative(process.cwd(), logPath)}\nSimulated only: headless Chrome on throwaway SQLite fixtures; not real devices, other browsers, the live site or production data.\n`);
-log.end();
-process.exitCode = failed.length ? 1 : 0;
+const code = interrupted ? 130 : failed.length ? 1 : 0;
+log.end(() => process.exit(code));

@@ -2,7 +2,8 @@
 //   node scripts/verify-fixture-env.mjs
 // Fake values only; nothing here reads a real .env file.
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { BLANKED, fixtureEnv, fixtureEnvProblems } from './fixture-env.mjs';
@@ -47,7 +48,19 @@ try {
     const start = source.indexOf(firstStart);
     assert.ok(check > 0 && refuse > check && start > refuse, `${runner} refuses to start before it starts anything (check ${check}, refusal ${refuse}, first start ${start})`);
   }
-  console.log('PASS: fixture environment blanks Blob/Patreon/Vercel and .env* names, and refuses production databases, storage and credentials (names only).');
+  // And for real: with a credential-like variable in the environment, both runners refuse, start nothing and leave no
+  // fixture directory behind. (Safe to run: the refusal comes before any server, database or browser.)
+  const fixtures = () => existsSync('test-results') ? readdirSync('test-results').filter(name => name.startsWith('regression-')).length : 0;
+  for (const args of [['scripts/regression.mjs'], ['scripts/serve-fixture.mjs', '0']]) {
+    const before = fixtures();
+    const run = spawnSync(process.execPath, args, { env: { ...process.env, NEON_API_KEY: 'fake-for-test' }, encoding: 'utf8', timeout: 60000 });
+    assert.equal(run.status, 1, `${args[0]} exits 1 when a credential is set`);
+    assert.match(run.stderr, /Refusing to start\. Offending variables: .*NEON_API_KEY/, `${args[0]} names the variable`);
+    assert.ok(!run.stderr.includes('fake-for-test') && !run.stdout.includes('fake-for-test'), `${args[0]} never prints the value`);
+    assert.ok(!/Regression fixture:|Local:/.test(run.stdout), `${args[0]} started nothing`);
+    assert.equal(fixtures(), before, `${args[0]} removed its fixture directory`);
+  }
+  console.log('PASS: fixture environment blanks Blob/Patreon/Vercel and .env* names, and refuses production databases, storage and credentials (names only); both runners refuse a planted credential before starting anything.');
 } finally {
   rmSync(tmp, { recursive: true, force: true });
 }

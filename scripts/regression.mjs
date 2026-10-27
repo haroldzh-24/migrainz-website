@@ -15,10 +15,12 @@ const problems = fixtureEnvProblems(env, fixture);
 if (problems.length) { rmSync(fixture, { recursive: true, force: true }); console.error('Refusing to start. Offending variables: ' + problems.join(', ')); process.exit(1); }
 mkdirSync(env.CMS_MEDIA_DIR);
 const children = new Set();
+const groups = new Set(); // every process group started, kept after the leader exits (its workers may still run)
 function launch(args) {
   // Own process group on Linux/macOS so stop() can end next dev and its workers together.
   const child = spawn(process.execPath, args, { env, stdio: 'inherit', windowsHide: true, detached: process.platform !== 'win32' });
   children.add(child);
+  if (child.pid) groups.add(child.pid);
   child.once('exit', () => children.delete(child));
   return child;
 }
@@ -28,15 +30,19 @@ function completed(child) {
     child.once('exit', (code, signal) => code === 0 ? resolve() : reject(new Error(`Regression subprocess exited with ${signal || code}`)));
   });
 }
-function stop() {
+// Ends only this runner's process trees: SIGTERM to each group, a few seconds to exit, then SIGKILL to every group
+// this run started (Windows: taskkill /T /F, which is immediate).
+async function stop() {
   for (const child of children) {
     if (!child.pid) continue;
-    // next dev starts a worker; terminate only this runner's process trees.
     if (process.platform === 'win32') spawnSync('taskkill', ['/pid', String(child.pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true });
     else { try { process.kill(-child.pid, 'SIGTERM'); } catch { child.kill('SIGTERM'); } }
   }
+  if (process.platform === 'win32') return;
+  for (const deadline = Date.now() + 5000; children.size && Date.now() < deadline;) await new Promise(done => setTimeout(done, 100));
+  for (const pid of groups) { try { process.kill(-pid, 'SIGKILL'); } catch {} }
 }
-for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => { stop(); process.exit(1); });
+for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, async () => { await stop(); process.exit(1); });
 
 try {
   console.log(`Regression fixture: ${fixture}`);
@@ -77,5 +83,5 @@ try {
   console.error(error);
   process.exitCode = 1;
 } finally {
-  stop();
+  await stop();
 }
