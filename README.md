@@ -8,7 +8,7 @@ Payload CMS now feeds the terminal frontend. See [CMS setup, editing, migration 
 
 ## Run locally
 
-Requires Node.js 20.9+ and npm. In this directory, using PowerShell:
+Requires Node.js 20.9+ (Next 16 and Payload 3.88) and npm; checked on Node 22.23 and 24.20. The planned Payload 3.92 upgrade will need Node ^22.23.4 or >=24.22.1. In this directory, using PowerShell:
 
 ```powershell
 npm.cmd ci
@@ -54,7 +54,7 @@ npm.cmd start
 - `tsconfig.json`, `next-env.d.ts`: TypeScript configuration.
 - `.gitignore`: excludes build/dependency output, secrets and validation artifacts.
 - `scripts/verify.cjs`: browser smoke checks using temporary Playwright tooling.
-- `AGENTS.md`, `features.md`, `changelog.md`: migrated workflow, completed features and future work. `bugs.md` has no recorded issues.
+- `AGENTS.md`: every working and safety rule (`CLAUDE.md` only imports it). `features.md`, `changelog.md`, `bugs.md`: features, changes and bugs with evidence. `docs/roadmap.md`: the order of work; `docs/redesign-plan.md`: design decisions.
 
 ## Content workflow
 
@@ -71,6 +71,8 @@ Replace `shopUrl` in `data/site.ts` when the real storefront is ready and remove
 Patreon API v2 login verifies campaign membership and optional tier IDs on the server. Protected content and Media requests require authorization; visitors without access receive safe classified placeholders. See [Patreon setup and manual tests](docs/PATREON.md) for configuration, the pending migration and current media/session limitations. `public/` contains public files only. Never put restricted files in public assets or unauthenticated client data.
 
 ## Browser checks
+
+Everything at once (typecheck, build, every test script, with a saved log): `npm.cmd run check`. See AGENTS.md "Commands". On Linux or macOS, point the scripts at Chrome first, for example `BROWSER_PATH=/opt/google/chrome/chrome npm run check`.
 
 Stop the development server, then run the complete suite with Chrome installed at its default Windows path:
 

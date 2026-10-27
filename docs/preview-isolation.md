@@ -1,6 +1,6 @@
 # Preview isolation: steps, each needing Harold's approval
 
-Status: NOT STARTED. Nothing below has been run. Until all steps are done and verified, no branch is pushed (a push creates a Vercel Preview deployment that may have been built with production credentials; see CLAUDE.md "Production safety").
+Status: NOT STARTED. Nothing below has been run. Until all steps are done and verified, no branch is pushed (a push creates a Vercel Preview deployment that may have been built with production credentials; see AGENTS.md "Production safety").
 
 Why: today there is no isolated Preview. A preview of any branch could read or write the production database and the private Blob store. Once this is done, every branch gets a preview link for phone checks without touching production.
 
@@ -48,7 +48,7 @@ Approval needed to run. Re-run the step 1 inventory. Done when no variable holdi
 
 Approval needed to push, one time. Push a harmless branch (for example a one-line docs change on `chore/workflow-setup`). Confirm in the deployment that it connects to its own database branch and preview Blob store, not production: check that a record created or changed only in the preview does not appear on https://migrainzxxl.com, and that preview media requests use the preview store. Do not use real visitor data. Delete the test branch's preview afterwards if wanted.
 
-Done when: the preview works and production is unaffected. After that, update CLAUDE.md "Release status" (Preview isolated) and the "Production safety" push rule: pushing a branch is then allowed without a separate approval, while pushing `main` still needs approval because it deploys production. In `.claude/hooks/guard-git-push.mjs` (and its test), change the guard so pushes of non-main branches are allowed or asked instead of denied, and remove the narrow push denies in `.claude/settings.json` that no longer apply. Until then, only `git push origin main` can be requested (it asks every time), and this step's one-off branch push needs a visible, temporary rule change by Harold.
+Done when: the preview works and production is unaffected. After that, update AGENTS.md "Release status" (Preview isolated) and the "Production safety" push rule: pushing a branch is then allowed without a separate approval, while pushing `main` still needs approval because it deploys production. In `.claude/hooks/guard-git-push.mjs` (and its test), change the guard so pushes of non-main branches are allowed or asked instead of denied, and remove the narrow push denies in `.claude/settings.json` that no longer apply. Until then, only `git push origin main` can be requested (it asks every time), and this step's one-off branch push needs a visible, temporary rule change by Harold.
 
 ## Order and rollback
 

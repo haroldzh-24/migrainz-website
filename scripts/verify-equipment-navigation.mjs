@@ -95,7 +95,7 @@ const server = createServer(async (req, res) => {
 });
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE ? pathToFileURL(process.env.PLAYWRIGHT_MODULE).href : 'playwright');
-const browser = await chromium.launch({ channel: 'chrome', headless: true });
+const browser = await chromium.launch({ headless: true, ...(process.env.BROWSER_PATH ? { executablePath: process.env.BROWSER_PATH } : { channel: 'chrome' }) });
 const base = `http://127.0.0.1:${server.address().port}`;
 const viewer = page => page.locator('.art-viewer-window');
 const tab = (slug, title, images, poster) => ({ id: 'equipment:fixture:' + slug, href: '/projects/fixture/equipment/' + slug, title, project: 'Fixture Project', role: 'Small Arms', description: '', images, poster });

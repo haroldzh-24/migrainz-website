@@ -2,7 +2,7 @@
 
 Handoff from the claude.ai planning chat (2026-10-25). From here on, Claude Code works from this file; there is no other planning channel.
 
-**CLAUDE.md and AGENTS.md stay authoritative.** Nothing in this file overrides their safety rules (no pushes, deploys, database, Blob or `.env*` access without Harold's explicit approval in the conversation). Keep this file current as the source of truth for design decisions, and commit updates as small docs commits.
+**AGENTS.md stays authoritative** (CLAUDE.md only imports it since 2026-10-27). Nothing in this file overrides its safety rules (no pushes, deploys, database, Blob or `.env*` access without Harold's explicit approval in the conversation). Keep this file current as the source of truth for design decisions, and commit updates as small docs commits.
 
 ---
 
@@ -23,7 +23,7 @@ Then: refresh `test-results/crt-screens/`, run `npm.cmd run test:regression`, `v
 
 ### 2. Self-review, then STOP
 
-Launch a fresh subagent with no context of the work. Have it check the branch diff and the screenshots against this file and CLAUDE.md and list problems. Fix what is clearly in scope; list the rest.
+Launch a fresh subagent with no context of the work. Have it check the branch diff and the screenshots against this file and AGENTS.md and list problems. Fix what is clearly in scope; list the rest.
 
 STOP and give Harold, in plain language:
 - what changed since the last report
@@ -47,12 +47,13 @@ See "Workflow setup" below.
 
 ### 5. Rework phases
 
-See "Rework phases" below. One branch per phase. Each phase: plan in plan mode first (Opus 5.5 with higher effort recommended), the fresh reviewer subagent checks the plan against this file and CLAUDE.md, Harold approves, then build, self-review (step 2), Harold looks on the review server, ship.
+See "Rework phases" below. One branch per phase. Each phase: plan in plan mode first (Opus 5.5 with higher effort recommended), the fresh reviewer subagent checks the plan against this file and AGENTS.md, Harold approves, then build, self-review (step 2), Harold looks on the review server, ship.
 
 ---
 
 ## Current state (2026-10-25 16:24 CT)
 
+- 2026-10-27: the CRT glow pass (`7658101`) is live (pushed 2026-10-26; GitHub deployment record: Production success 39 s later). After an audit (Project doc `claude/project-audit-2026-10-26.md`) Harold approved docs/roadmap.md, which orders the work from here. Decisions (Harold, 2026-10-27): code-only batches M1–M3 (rules, tests, audit fixes, security headers) may ship before Preview isolation and the Payload upgrade, each push to `main` with his OK; the Payload upgrade still follows Preview isolation and comes before phase 2; after isolation each batch goes through a branch and pull request.
 - 2026-10-25 ~23:30 CT: phase 1 (interaction polish) merged into `main` (`f718830`, `--no-ff`) and pushed with Harold's approval; live ~47 s later. Live GET checks (observed on migrainzxxl.com): all listed pages, `/admin` and `/boot-status` 200; `/boot-status` is `private, no-store` and shows only public data; public media Range GET 206; no Blob URLs in page source; amber assets 200. Read-only headless visit (desktop 1366, phone 390): boot checklist renders from live data, ENTER dismisses, new menu labels and SYSTEM menu present, no sideways overflow, no page errors, `/boot-status` requested once at boot and not on later page loads. Not checked: real devices, Safari/Firefox, sound, restricted-media 404 (no known restricted file). Follow-up: the live tracker title already contains the project name, so the line reads `blushland_blushland_ch1`.
 - Order (Harold, 2026-10-26): the CRT glow branch (values from Harold), then Preview isolation (docs/preview-isolation.md, step by step with Harold at the dashboards; check Vercel’s Node version there), then the Payload upgrade (production lane, see below), then the phase 2 plan.
 - 2026-10-26: `chore/dependency-updates` (local) fixes the Next (incl. two RCEs), sharp, fast-uri, source-map-js and Blob-undici advisories with patch/minor updates (audit 26 -> 21), turns off Next's agent upgrade stop, and fixes the boot label. The Payload advisories need Payload 3.90+ as a set, which needs a database migration and a Blob adapter check: production-lane work behind the CLAUDE.md schema blockers, which Preview isolation helps clear. 2026-10-26: merged and pushed with Harold’s approval (`086c592`); live ~56 s later. Live checks (observed): all listed pages, `/admin` and `/boot-status` 200; `/boot-status` `private, no-store`, label now `blushland_ch1`; media Range GET 206; no Blob URLs; headless visit at 1366/390: client reports Next 16.4.3, boot checklist and ENTER work, no overflow, no page errors, `/boot-status` requested once at boot only; `/admin` redirects to the login form (no create-first-user screen).
@@ -63,7 +64,7 @@ See "Rework phases" below. One branch per phase. Each phase: plan in plan mode f
 - Review server: `node scripts/serve-fixture.mjs` (dev mode over LAN, fail-closed env check); stop with `--stop`. Production builds can't run on SQLite by design (`payload.config.ts` guard + `scripts/verify-production-guard.mjs`); do not weaken that guard.
 - `payload-types.ts` gets line-ending-only changes while the dev server runs; safe to `git checkout` it.
 - `stash@{0}` "pre-revert local work" (2026-09-28): keep, don't drop.
-- Repo CLAUDE.md "Release status" may still describe the 10-15 state (Equipment "NOT approved"). Update it during workflow setup.
+- AGENTS.md "Release status" is current as of 2026-10-27 (it moved there from CLAUDE.md).
 
 ## Open bugs and checks
 
@@ -207,7 +208,7 @@ Watcher moods (blink, flinch at fast movement, glance at hovered links, doze whe
 
 ## Workflow setup
 
-Status (branch `chore/workflow-setup`, 2026-10-25): items 1 to 6 and 8 are done in the repo: CLAUDE.md "Two lanes", batching and model lines; `.claude/settings.json`; `.claude/agents/reviewer.md`; `.claude/commands/check-everything.md`. Item 7 is written up step by step in docs/preview-isolation.md and NOT started (each step needs Harold's approval). Not yet merged to `main`. The permission rules have not been exercised against real denied commands; see the CLAUDE.md note on what they do and do not block.
+Status (branch `chore/workflow-setup`, 2026-10-25): items 1 to 6 and 8 are done in the repo: CLAUDE.md "Two lanes", batching and model lines; `.claude/settings.json`; `.claude/agents/reviewer.md`; `.claude/commands/check-everything.md`. Item 7 is written up step by step in docs/preview-isolation.md and NOT started (each step needs Harold's approval). Not yet merged to `main`. The permission rules have not been exercised against real denied commands; see AGENTS.md "Project Claude Code settings" on what they do and do not block. 2026-10-27: everything CLAUDE.md held now lives in AGENTS.md; CLAUDE.md only imports it.
 
 1. **Two lanes in CLAUDE.md.** Code-only work (UI, styling, components, docs): one plan review, then work and report at the end. Production work (database, Blob, Vercel, Neon, pushes, env vars): keep stop-and-approve.
 2. **Hard rules in project Claude Code settings.** Deny `git push`, `payload migrate` and `migrate:*`, `vercel`, `neonctl`, and reading `.env*`. Allow typecheck, build, the test and verify scripts, `serve-fixture`, and git status/diff/log/add/commit. Code-only work can then run in accept-edits mode.

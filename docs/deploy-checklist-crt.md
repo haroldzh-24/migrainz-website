@@ -2,6 +2,8 @@
 
 Prepared before asking for approval to push `main`. Nothing here has been run against production. Pushing `main` deploys production; there is no isolated Preview yet (see docs/redesign-plan.md "Workflow setup").
 
+Historical record of the 2026-10-25 deploy. The CLAUDE.md rules it cites moved to AGENTS.md on 2026-10-27.
+
 ## What ships (`origin/main` 88913ea to local `main`)
 
 - The CRT restyle: theme tokens, IBM Plex Mono, effects toggle, text-size floor, phone header, shop ad rules, baked Watcher PNGs (`public/images/watcher/*.crt.png`), focus-ring fix.

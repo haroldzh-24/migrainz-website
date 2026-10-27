@@ -1,0 +1,309 @@
+// Site health check against a running seeded fixture (npm run test:regression starts one; so does
+// node scripts/serve-fixture.mjs). Never point it at production: BASE_URL must be a local address, every request goes
+// to that origin, and the browser blocks requests to any other origin (they are reported instead).
+//   BASE_URL=http://127.0.0.1:<port> node scripts/verify-site-health.mjs [--write-baseline | --self-test]
+// Playwright and axe-core come from the `npm exec --package=...` folders on PATH (see package.json "test:regression");
+// PLAYWRIGHT_MODULE / AXE_MODULE override that, BROWSER_PATH overrides the Chrome path.
+//
+// 1. Discovers pages by following links in the browser at 1366x768 (project windows render their links after
+//    hydration), from the main pages; every internal link must load with 200, media links must answer a Range GET with
+//    200/206, and every required route template must be reached.
+// 2. Visits up to two pages per route template again at 390x844 (touch), plus the first-visit announcement at both
+//    widths. Each visit: no page or console errors, no failed same-origin requests, no requests to other origins, no
+//    sideways scroll, a page-specific <title>, no classified fixture titles in the page, and (on the template pages)
+//    no axe-core violations (WCAG 2.0/2.1/2.2 A and AA plus best practice). Reduced motion, CRT mode and the dismissed
+//    popups are fixed so blinking cursors, flicker and timed windows cannot change the result between runs.
+// 3. Missing records must return 404.
+// Known findings are listed in scripts/site-health-baseline.json with a date and reason. Anything outside it fails,
+// and a baseline entry that no longer occurs fails too ("stale"), so the baseline can only shrink.
+// --write-baseline rewrites the baseline from this run (keeps existing reasons); review the diff before committing.
+// --self-test plants a broken link, a wrong 404 expectation, a missing and a stale baseline entry, and passes only if
+// each one is reported (run by test:regression, so the checker itself is tested).
+// Writes test-results/site-health/report.json and screenshots of each template at both widths.
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+
+const base = process.env.BASE_URL || process.argv.find(arg => arg.startsWith('http'));
+if (!base || !/^http:\/\/(127\.0\.0\.1|localhost):\d+$/.test(base)) {
+  console.error('Set BASE_URL to the local fixture server, e.g. http://127.0.0.1:3100');
+  process.exit(1);
+}
+const origin = new URL(base).origin;
+const writeBaseline = process.argv.includes('--write-baseline');
+const selfTest = process.argv.includes('--self-test');
+const require = createRequire(import.meta.url);
+const searchPaths = process.env.PATH.split(path.delimiter).map(entry => path.dirname(entry));
+const playwright = process.env.PLAYWRIGHT_MODULE
+  ? await import(pathToFileURL(process.env.PLAYWRIGHT_MODULE).href)
+  : require(require.resolve('playwright', { paths: searchPaths }));
+const AXE_VERSION = '4.14.0'; // keep in step with package.json "test:regression" and scripts/check-all.mjs
+const axeSource = readFileSync(process.env.AXE_MODULE || require.resolve('axe-core/axe.min.js', { paths: searchPaths }), 'utf8');
+const baselineFile = path.resolve('scripts/site-health-baseline.json');
+const savedBaseline = existsSync(baselineFile) ? JSON.parse(readFileSync(baselineFile, 'utf8')) : {};
+const out = path.resolve('test-results', selfTest ? 'site-health-self-test' : 'site-health');
+mkdirSync(out, { recursive: true });
+
+// Fixture-specific: data/projects.ts seeds BLUSHLAND (with The Observer), STALKER and MISC WORKS;
+// seed-desktop-fixture.ts adds equipment, factions and classified sentinel records.
+const SEEDS = ['/', '/projects', '/comics', '/archive', '/tracker', '/about', '/patreon'];
+const REQUIRED_TEMPLATES = ['/', '/projects', '/projects/:slug', '/projects/:slug/characters', '/projects/:slug/characters/:item',
+  '/projects/:slug/equipment', '/projects/:slug/equipment/:item', '/projects/:slug/factions', '/projects/:slug/factions/:item',
+  '/comics', '/comics/:comic/:chapter', '/archive', '/tracker', '/about', '/patreon'];
+const MIN_PAGES = 20;
+const MAX_PAGES = 300;
+const NOT_FOUND = [
+  '/no-such-page',
+  '/comics/no-such-comic/no-such-chapter',
+  '/projects/no-such-project',
+  '/projects/no-such-project/characters',
+  '/projects/blushland/characters/no-such-character',
+  '/projects/blushland/equipment/no-such-item',
+  '/projects/blushland/factions/no-such-faction',
+  '/projects/stalker/characters/the-observer',
+];
+// Titles of REDACTED fixture records: they must never reach any page (scripts/seed-desktop-fixture.ts).
+const SENTINELS = ['SENTINEL-PHASE-TITLE-7Q', 'SENTINEL-CHAPTER-TITLE-7Q', 'sentinel-chapter-7q'];
+const SKIP = /^\/(admin|api|auth|_next)(\/|$)/;
+const MEDIA = /^\/api\/media\/file\//;
+const ANNOUNCEMENT_KEY = 'migrainz-announcement:studio-transmission-001';
+const WIDTHS = [{ name: 'phone', width: 390, height: 844, isMobile: true, hasTouch: true }, { name: 'desktop', width: 1366, height: 768 }];
+const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'];
+
+const seeds = selfTest ? ['/', '/self-test-broken-link'] : SEEDS;
+const notFound = selfTest ? ['/projects'] : NOT_FOUND;
+const baseline = selfTest ? { axe: { 'self-test-stale .never-present': 'planted by --self-test' } } : savedBaseline;
+
+const failures = [];
+const findings = { softNotFound: new Set(), failedRequests: new Set(), externalRequests: new Set(), genericTitle: new Set(), externalPlaceholder: new Set(), axe: new Map() };
+const fail = message => { failures.push(message); console.log('FAIL ' + message); };
+
+// Route template: /projects/blushland/equipment/fixture-scanner -> /projects/:slug/equipment/:item
+const template = pathname => {
+  const parts = pathname.split('?')[0].split('/').filter(Boolean);
+  if (parts[0] === 'projects' && parts.length >= 2) { parts[1] = ':slug'; if (parts.length >= 4) parts[3] = ':item'; }
+  if (parts[0] === 'comics' && parts.length >= 3) { parts[1] = ':comic'; parts[2] = ':chapter'; }
+  return '/' + parts.join('/');
+};
+// Stable key for an axe node: drop positional pseudo-classes and keep only the first word of attribute values, so
+// "Close PROJECT: BLUSHLAND" and "Close COMIC READER" are the same finding.
+const axeKey = (rule, target) => `${rule} ${String(target).replace(/:nth-(child|of-type)\(\d+\)/g, '').replace(/="([^"\s]*)[^"]*"/g, '="$1"')}`;
+const internalPath = (href, from) => {
+  try {
+    const url = new URL(href.replace(/&amp;/g, '&'), base + from);
+    if (url.origin !== origin) return /^https?:$/.test(url.protocol) ? { external: url.href } : {};
+    return { path: url.pathname + url.search };
+  } catch { return {}; }
+};
+
+const browser = await playwright.chromium.launch({ executablePath: process.env.BROWSER_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: true });
+try {
+  const api = await browser.newContext();
+  const get = (p, headers) => {
+    const url = new URL(p, base);
+    if (url.origin !== origin) throw new Error(`refusing to request ${url.origin}`);
+    return api.request.get(url.href, { headers, timeout: 90000, maxRedirects: 5 });
+  };
+
+  const status = new Map(); // path -> { status, from }
+  const external = new Map(); // url -> first page linking to it
+  const queue = seeds.map(p => ({ path: p, from: '(start)' }));
+  const queued = new Set(seeds);
+  const addLinks = async (hrefs, from) => {
+    for (const href of hrefs) {
+      if (!href || href.startsWith('#') || /^(mailto|tel|javascript):/i.test(href)) continue;
+      const link = internalPath(href, from);
+      if (link.external) { if (!external.has(link.external)) external.set(link.external, from); continue; }
+      if (!link.path) continue;
+      if (MEDIA.test(link.path)) {
+        if (status.has(link.path)) continue;
+        const response = await get(link.path, { Range: 'bytes=0-0' });
+        status.set(link.path, { status: response.status(), from });
+        if (![200, 206].includes(response.status())) fail(`media link ${link.path} returned ${response.status()} (linked from ${from})`);
+        continue;
+      }
+      if (selfTest || SKIP.test(link.path) || queued.has(link.path)) continue;
+      queued.add(link.path);
+      queue.push({ path: link.path, from });
+    }
+  };
+  const homeTitle = (await (await get('/')).text()).match(/<title>([^<]*)<\/title>/)?.[1] ?? '';
+
+  const contexts = {};
+  const contextFor = async (size, firstVisit) => {
+    const key = size.name + (firstVisit ? '-first' : '');
+    if (contexts[key]) return contexts[key];
+    const context = await browser.newContext({ viewport: { width: size.width, height: size.height }, isMobile: size.isMobile, hasTouch: size.hasTouch, reducedMotion: 'reduce' });
+    // Same state on every run: CRT on, green, shop ad already seen; the announcement dismissed except on first visits.
+    await context.addInitScript(([key, dismiss]) => {
+      try {
+        localStorage.setItem('crt-effects', 'on');
+        localStorage.setItem('crt-phosphor', 'green');
+        sessionStorage.setItem('migrainz-shop-promo-seen', '1');
+        if (dismiss) sessionStorage.setItem(key, key.split(':')[1]);
+      } catch {}
+    }, [ANNOUNCEMENT_KEY, !firstVisit]);
+    // Tests stay offline and never call third parties; any attempt is recorded as a finding.
+    await context.route(url => url.origin !== origin && /^https?:$/.test(url.protocol), route => {
+      findings.externalRequests.add(new URL(route.request().url()).origin);
+      return route.abort('blockedbyclient');
+    });
+    return (contexts[key] = context);
+  };
+
+  let visits = 0;
+  let axeChecked = false;
+  const visit = async (size, p, { firstVisit = false, full = false, label = template(p) } = {}) => {
+    const page = await (await contextFor(size, firstVisit)).newPage();
+    page.setDefaultTimeout(90000);
+    const problems = [];
+    page.on('pageerror', error => problems.push('page error: ' + error.message.split('\n')[0]));
+    page.on('console', message => {
+      if (message.type() === 'error' && !/Failed to load resource/.test(message.text())) problems.push('console error: ' + message.text().split('\n')[0].slice(0, 200));
+    });
+    page.on('response', response => {
+      const url = new URL(response.url());
+      if (url.origin === origin && response.status() >= 400 && url.pathname + url.search !== p && !/hmr/i.test(url.pathname)) findings.failedRequests.add(url.pathname);
+    });
+    try {
+      const response = await page.goto(base + p, { waitUntil: 'load' });
+      if (!response || response.status() !== 200) { problems.push(`returned ${response?.status()}`); return null; }
+      if (firstVisit) await page.getByRole('button', { name: 'ENTER' }).waitFor();
+      else await page.locator('.startup-sequence').waitFor({ state: 'hidden' });
+      await page.waitForLoadState('networkidle').catch(() => {});
+      const info = await page.evaluate(() => ({
+        overflow: document.documentElement.scrollWidth - window.innerWidth,
+        title: document.title,
+        html: document.documentElement.outerHTML,
+        links: [...document.querySelectorAll('a[href]')].map(a => a.getAttribute('href')),
+      }));
+      if (info.overflow > 0) problems.push(`scrolls sideways by ${info.overflow}px`);
+      if (!info.title.trim()) problems.push('empty <title>');
+      else if (!firstVisit && p !== '/' && info.title === homeTitle) findings.genericTitle.add(template(p));
+      for (const sentinel of SENTINELS) if (info.html.includes(sentinel)) problems.push(`classified fixture text "${sentinel}" is in the page`);
+      if (full) {
+        await page.addScriptTag({ content: axeSource });
+        if (!axeChecked) {
+          const version = await page.evaluate(() => window.axe.version);
+          if (version !== AXE_VERSION) throw new Error(`axe-core ${version} loaded; the baseline was made with ${AXE_VERSION}`);
+          axeChecked = true;
+        }
+        const violations = await page.evaluate(async tags => (await window.axe.run(document, { runOnly: { type: 'tag', values: tags } })).violations
+          .map(v => ({ id: v.id, impact: v.impact, help: v.help, targets: v.nodes.map(n => n.target.join(' ')) })), AXE_TAGS);
+        for (const v of violations) for (const target of v.targets) {
+          const key = axeKey(v.id, target);
+          if (!findings.axe.has(key)) findings.axe.set(key, { impact: v.impact, help: v.help, pages: new Set() });
+          findings.axe.get(key).pages.add(`${size.width}px ${p}`);
+        }
+        await page.screenshot({ path: path.join(out, `${size.width}${label.replace(/[/:?=&]+/g, '_').replace(/[^\w.-]/g, '') || '_home'}.png`) });
+      }
+      visits++;
+      return info.links;
+    } finally {
+      for (const problem of problems) fail(`${size.width}px ${p}: ${problem}`);
+      await page.close();
+    }
+  };
+
+  // 1. Discover at desktop width; the first two pages of each template get the full check.
+  const [phone, desktop] = WIDTHS;
+  const scanned = new Map(); // template -> paths given the full check
+  while (queue.length) {
+    const { path: p, from } = queue.shift();
+    const t = template(p);
+    const list = scanned.get(t) ?? [];
+    const full = list.length < 2;
+    const links = await visit(desktop, p, { full, label: list.length ? t + '-2' : t });
+    status.set(p, { status: links ? 200 : 'error', from });
+    if (!links) fail(`link to ${p} is broken (linked from ${from})`);
+    if (full && links) scanned.set(t, [...list, p]);
+    if (links) await addLinks(links, p);
+    if (status.size >= MAX_PAGES) { fail(`crawl stopped at ${MAX_PAGES} pages; is a link generating endless URLs?`); queue.length = 0; }
+  }
+  // 2. The same template pages at phone width, then pages linked only there, then the first visit at both widths.
+  if (!selfTest) {
+    for (const [t, list] of scanned) for (const [i, p] of list.entries()) { const links = await visit(phone, p, { full: true, label: i ? t + '-2' : t }); if (links) await addLinks(links, p); }
+    while (queue.length) {
+      const { path: p, from } = queue.shift();
+      const links = await visit(phone, p);
+      status.set(p, { status: links ? 200 : 'error', from });
+      if (!links) fail(`link to ${p} is broken (linked from ${from}, phone width)`);
+    }
+    for (const size of WIDTHS) await visit(size, '/', { firstVisit: true, full: true, label: '/first-visit' });
+  }
+  const pages = [...status].filter(([p, s]) => s.status === 200 && !MEDIA.test(p)).map(([p]) => p);
+  if (!selfTest) {
+    const missing = REQUIRED_TEMPLATES.filter(t => !scanned.has(t));
+    if (missing.length) fail(`crawl never reached ${missing.join(', ')}; links may have broken or moved`);
+    if (pages.length < MIN_PAGES) fail(`crawl reached only ${pages.length} pages (expected at least ${MIN_PAGES})`);
+  }
+  const media = [...status.keys()].filter(p => MEDIA.test(p)).length;
+  console.log(`${failures.length ? 'INFO' : 'PASS'} crawl: ${pages.length} pages reachable by links, ${media} media links; ${visits} page loads across ${scanned.size} route templates`);
+
+  // 3. Missing records. A 200 counts as a known "soft 404" only if the browser shows the in-world missing-record
+  // page (app/(frontend)/not-found.tsx, h1 "RECORD NOT FOUND"); the HTML text alone can't tell, because every page's
+  // RSC payload carries that boundary.
+  for (const p of notFound) {
+    const response = await get(p);
+    if (response.status() === 404) continue;
+    let missingPage = false;
+    if (response.status() === 200) {
+      const page = await (await contextFor(desktop, false)).newPage();
+      try {
+        await page.goto(base + p, { waitUntil: 'load' });
+        await page.locator('.startup-sequence').waitFor({ state: 'hidden' });
+        missingPage = (await page.locator('h1').allTextContents()).some(text => /^\s*RECORD NOT FOUND\s*$/i.test(text));
+      } finally { await page.close(); }
+    }
+    if (missingPage) findings.softNotFound.add(p);
+    else fail(`${p} should be 404, returned ${response.status()}`);
+  }
+  // External links are never fetched; placeholder destinations are findings.
+  for (const url of external.keys()) if (/^https?:\/\/(www\.)?example\.(com|org|net)\b/.test(url)) findings.externalPlaceholder.add(url);
+  for (const context of Object.values(contexts)) await context.close();
+
+  // Compare with the baseline.
+  const current = Object.fromEntries(Object.entries(findings).map(([kind, set]) => [kind, [...set.keys()].sort()]));
+  const labels = { softNotFound: 'missing record returns 200 instead of 404', failedRequests: 'same-origin request failed', externalRequests: 'request to another site',
+    genericTitle: 'page uses the generic site title', externalPlaceholder: 'link to a placeholder site', axe: 'accessibility violation' };
+  if (writeBaseline && !selfTest) {
+    const today = new Date().toISOString().slice(0, 10);
+    const next = { _readme: savedBaseline._readme ?? 'Known findings for scripts/verify-site-health.mjs. Each entry says why it is accepted for now and which roadmap item removes it. Entries that stop occurring must be deleted (the check fails on stale entries).' };
+    for (const kind of Object.keys(current)) {
+      next[kind] = {};
+      for (const key of current[kind]) next[kind][key] = savedBaseline[kind]?.[key] ?? `${today}: pre-existing; ${kind === 'axe' ? findings.axe.get(key).impact + ', ' + findings.axe.get(key).help : labels[kind]}`;
+    }
+    writeFileSync(baselineFile, JSON.stringify(next, null, 2) + '\n');
+    console.log(`Baseline written to ${path.relative(process.cwd(), baselineFile)}; review the diff.`);
+  } else {
+    for (const kind of Object.keys(current)) {
+      const known = baseline[kind] ?? {};
+      for (const key of current[kind]) if (!(key in known)) {
+        const detail = kind === 'axe' ? ` (${findings.axe.get(key).impact}: ${findings.axe.get(key).help}; e.g. ${[...findings.axe.get(key).pages][0]})` : '';
+        fail(`new ${labels[kind]}: ${key}${detail}`);
+      }
+      for (const key of Object.keys(known)) if (!current[kind].includes(key)) fail(`stale baseline entry (fixed? delete it from ${path.basename(baselineFile)}): ${kind} ${key}`);
+    }
+  }
+  const open = Object.entries(current).reduce((sum, [kind, list]) => sum + list.filter(key => key in (baseline[kind] ?? {})).length, 0);
+  writeFileSync(path.join(out, 'report.json'), JSON.stringify({ base, pages, scanned: Object.fromEntries(scanned), external: Object.fromEntries(external),
+    findings: { ...current, axe: Object.fromEntries([...findings.axe].map(([k, v]) => [k, { ...v, pages: [...v.pages] }])) }, failures }, null, 2));
+
+  if (selfTest) {
+    const expected = {
+      'broken link': /link to \/self-test-broken-link is broken/,
+      'wrong status for a missing record': /\/projects should be 404, returned 200/,
+      'new accessibility violation (empty baseline)': /new accessibility violation/,
+      'stale baseline entry': /stale baseline entry .*self-test-stale/,
+    };
+    const missed = Object.entries(expected).filter(([, pattern]) => !failures.some(message => pattern.test(message))).map(([name]) => name);
+    if (missed.length) { console.log(`FAIL self-test: the checker did not report: ${missed.join(', ')}`); process.exitCode = 1; }
+    else console.log(`PASS self-test: the checker reports ${Object.keys(expected).join(', ')} (the FAIL lines above were planted)`);
+  } else if (failures.length) {
+    console.log(`FAIL site health: ${failures.length} problem(s); report in test-results/site-health/report.json`);
+    process.exitCode = 1;
+  } else console.log(`PASS site health: links, status codes, overflow, titles, console, third-party requests and accessibility (${open} known baseline finding(s) still open)`);
+} finally {
+  await browser.close();
+}

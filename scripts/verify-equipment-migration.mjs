@@ -1,10 +1,20 @@
-// In-memory PostgreSQL only. PGLITE_MODULE may point at a temporary installation.
+// In-memory PostgreSQL only. PGlite is a test tool, not an app dependency. Found, in order: PGLITE_MODULE (path to
+// pglite's dist/index.js), the `npm exec --package=@electric-sql/pglite@...` folders on PATH (`npm run check` supplies
+// them), then the older hand-made test-results/schema-check install. If none exists the check is SKIPPED with exit
+// code 2, which `npm run check` counts as a failure.
+import { existsSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 import { PgDialect } from 'drizzle-orm/pg-core';
 import { migrations } from '../migrations/postgres/index.ts';
-const modulePath = process.env.PGLITE_MODULE || 'test-results/schema-check/node_modules/@electric-sql/pglite/dist/index.js';
+const entry = path.join('@electric-sql', 'pglite', 'dist', 'index.js');
+const modulePath = [process.env.PGLITE_MODULE, ...process.env.PATH.split(path.delimiter).map(dir => path.join(path.dirname(dir), entry)),
+  path.join('test-results', 'schema-check', 'node_modules', entry)].find(candidate => candidate && existsSync(candidate));
+if (!modulePath) {
+  console.log('SKIPPED: PGlite not found. Run `npm run check`, or set PGLITE_MODULE to @electric-sql/pglite/dist/index.js.');
+  process.exit(2);
+}
 const { PGlite } = await import(pathToFileURL(path.resolve(modulePath)).href);
 const pg = new PGlite();
 const dialect = new PgDialect();
