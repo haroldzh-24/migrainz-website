@@ -18,7 +18,8 @@ import { fixtureEnv, fixtureEnvProblems } from './fixture-env.mjs';
 
 mkdirSync('test-results', { recursive: true });
 const pidFile = path.resolve('test-results/serve-fixture.pid');
-const killTree = pid => process.platform === 'win32' ? spawnSync('taskkill', ['/pid', String(pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true }) : process.kill(pid, 'SIGTERM');
+// A server that already exited is not an error (the pid file is still removed).
+const killTree = pid => { try { process.platform === 'win32' ? spawnSync('taskkill', ['/pid', String(pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true }) : process.kill(pid, 'SIGTERM'); } catch {} };
 
 if (process.argv.includes('--stop')) {
   if (existsSync(pidFile)) { killTree(Number(readFileSync(pidFile, 'utf8'))); rmSync(pidFile); console.log('Stopped the fixture server.'); }

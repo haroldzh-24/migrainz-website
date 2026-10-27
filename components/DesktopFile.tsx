@@ -46,7 +46,8 @@ function PublicDesktopFile({ label, fileName, type, href, subtitle, viewerTab, o
   useEffect(() => () => cancel(), []);
   useEffect(() => {
     if (!open) return;
-    const key = (event: KeyboardEvent) => { if (event.key === "Escape") dismiss(); };
+    // Handled here only: the Art Viewer must not also close on this key.
+    const key = (event: KeyboardEvent) => { if (event.key === "Escape" && !event.defaultPrevented) { event.preventDefault(); dismiss(); } };
     const outside = (event: PointerEvent) => { if (!root.current?.contains(event.target as Node) && !panel.current?.contains(event.target as Node)) dismiss(); };
     document.addEventListener("keydown", key);
     document.addEventListener("pointerdown", outside);

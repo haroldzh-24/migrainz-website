@@ -15,7 +15,7 @@ export default function TerminalHeader() {
   }, []);
   return (
     <header className="topbar shell">
-      <Link className="brand" href="/#top" aria-label="Home">
+      <Link className="brand" href="/#top">
         MIGRAINZ<span className="brand-full"> // PUBLIC ACCESS TERMINAL</span>
       </Link>
       {/* Phase 2 puts the menu-bar navigation here. */}

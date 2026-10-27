@@ -63,6 +63,8 @@ type WindowManagerValue = {
 const WindowManagerContext = createContext<WindowManagerValue | null>(null);
 const viewerWindowId = "art-viewer";
 const viewerStorageKey = "migrainz-art-viewer-tabs-v2";
+// Set when the viewer is closed, cleared when it opens: a page reload keeps the tabs but must not reopen a closed viewer.
+export const viewerClosedKey = "migrainz-art-viewer-closed";
 const viewerWindowDefaults = {
   position: { x: 70, y: 50 },
   size: { width: 900, height: 650 },
@@ -185,6 +187,7 @@ export function WindowManagerProvider({ children }: { children: ReactNode }) {
   };
   const closeWindow = (id: string) => {
     if (id === "system") hideDesktop();
+    if (id === viewerWindowId) { try { window.sessionStorage.setItem(viewerClosedKey, "1"); } catch { /* Optional storage. */ } }
     setWindows((current) => current.map((window) => window.id === id ? { ...window, open: false, minimized: false, focused: false } : window));
     playSound("close");
   };
@@ -198,6 +201,7 @@ export function WindowManagerProvider({ children }: { children: ReactNode }) {
   };
 
   const ensureViewerWindow = () => {
+    try { window.sessionStorage.removeItem(viewerClosedKey); } catch { /* Optional storage. */ }
     nextZIndex.current += 1;
     setWindows((current) => {
       const existing = current.find((window) => window.id === viewerWindowId);
@@ -341,7 +345,7 @@ export function PublicWindowWorkspace() {
   const systemFocused = windows.some((window) => window.id === "system" && window.focused);
   return <>
     <div className="public-window-layer" data-system-focused={systemFocused || undefined}>
-      <div ref={setWorkspace} className="public-windows" aria-label="Public terminal window workspace" />
+      <div ref={setWorkspace} className="public-windows" role="region" aria-label="Public terminal window workspace" />
     </div>
     <div className="public-window-dock"><WindowTaskbar /></div>
   </>;

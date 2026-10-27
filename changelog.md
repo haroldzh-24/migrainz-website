@@ -1,5 +1,14 @@
 # Changelog
 
+## Changed - 2026-10-27 / Batch 2: audit fixes (fix/batch-2-audit-fixes)
+
+- Headings inside light Win95 windows (FACTIONS, RELATED COMIC CHAPTERS, the character EQUIPMENT section, ASSIGNED CHARACTERS, equipment card titles) are dark instead of pale terminal green (about 1.02:1 before). The ACCESS DENIED window heading is Win95 navy. Dark modules inside windows keep their terminal colours.
+- Favicon (`app/(frontend)/icon.svg`, an original green M on near-black), `robots.txt` (allows the site and media; disallows `/admin`, `/api/`, `/auth/`, `/boot-status`), an "Equipment" page title for equipment directories, and link-preview tags (Open Graph and Twitter card) with a 1200x630 card image (`app/(frontend)/opengraph-image.png`, rendered by `scripts/make-og-image.mjs` from the site's own font, palette and Watcher layers). Every page's preview uses the site title.
+- Accessibility: the brand link's name is its visible text (was "Home"); the window workspaces are labelled regions (a label on a plain div before); the tracker keeps heading order with a visually hidden "Projects" h2; Win95 window controls sit 4px apart instead of 2px (same 21x19 size; meets the WCAG 2.2 spacing rule); "i" property buttons have a 25x25 hit area around the unchanged 21x21 face; empty-state lines use `--crt-mid` (4.23:1 before); the blinking "[ NEW ]" alternates two readable colours instead of fading to 35% opacity.
+- Art Viewer: Escape closes it also after another window took focus. One Escape closes one thing: the file inspector, promo windows, SYSTEM menu, monitor and the announcement take it first; auto-repeat and text fields are ignored. A closed viewer no longer reopens on the next full page load (its tabs are still kept).
+- `node scripts/serve-fixture.mjs --stop` no longer crashes when the server has already exited.
+- Tests: new `scripts/verify-art-viewer-keys.mjs` (6 cases; cases 2 and 4 failed before the fix), run by the regression suite; site health checks the favicon, robots.txt rules and preview tags; the brand-link locators in `verify.cjs` follow the new name. 78 of the 85 baseline entries are gone; the 7 left wait for roadmap 2.2 (real 404s, needs Harold's decision on `proxy.ts`) and 2.6 (store URL).
+
 ## Changed - 2026-10-27 / Batch 1c: fixes from the independent review of batch 1b (chore/batch-1c-review-fixes)
 
 - Site health: accessibility findings are keyed by the failing element itself (tag, id, sorted classes, first word of its aria-label) instead of axe's page-dependent CSS selectors, so adding a card no longer turns into new and stale entries. Unknown baseline sections fail.

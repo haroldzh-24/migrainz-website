@@ -2,19 +2,13 @@
 
 ## Open Bugs
 
-### 2026-10-27 - Site-health baseline: soft 404s, generic title, placeholder link, accessibility (batch 2)
+### 2026-10-27 - Missing records return HTTP 200 (soft 404) and the store link is a placeholder
 
-- Found by the 2026-10-26 audit and recorded by `scripts/verify-site-health.mjs` in `scripts/site-health-baseline.json` (fixture, headless Chrome, 390 and 1366).
-- Missing project, character, equipment and faction records (and a character under the wrong project) return HTTP 200 "Record not found" instead of 404. Unknown top-level paths and missing comics already return 404.
-- Equipment directory pages use the generic site title. The store link points at `example.com` (labelled as a placeholder).
-- Accessibility (axe-core 4.14): headings inside light Win95 windows use the green terminal colour on grey (axe flagged FACTIONS on project pages, the section heading on a faction page and, at 390 px, the character EQUIPMENT heading; a browser probe found the same colour on RELATED COMIC CHAPTERS, ASSIGNED CHARACTERS and equipment card titles), about 1.02:1 on the live FACTIONS heading; "ARCHIVE INDEX AWAITING FILES." 4.23:1; Win95 window buttons 21x19 px and "i" buttons 21x21 px (24 px needed); the brand link is named "Home" but shows "MIGRAINZ"; `aria-label` on a plain div; tracker heading order; the window layer outside landmarks.
-- Status: Open; roadmap batch 2 (items 2.1-2.4, 2.6).
-
-### 2026-10-22 - Art Viewer Escape only closes the viewer while it is the focused window (minor, logging only)
-
-- components/ArtViewer.tsx (around line 175) closes on Escape through a document keydown listener, but only while the window manager marks the viewer focused, not minimized and visible. The viewer does take focus when it opens (components/WindowManager.tsx line 271 moves DOM focus to the focused window element), so Escape works straight after opening.
-- It stops working once another window (a project window, the comic reader) is clicked or focused: Escape then does nothing until the viewer is clicked. Escape is also ignored when a handler already called preventDefault. This may be what the original "Escape did not close it" report hit; not confirmed with the reporter.
-- Not fixed in feature/crt-readability. Status: Open, minor.
+- Found by the 2026-10-26 audit; recorded in `scripts/site-health-baseline.json`. Missing project, character, equipment and faction records (and a character under the wrong project) return HTTP 200 with the in-world "RECORD NOT FOUND" page instead of 404. Unknown top-level paths and missing comics already return 404.
+- Cause (found in batch 2 by experiment): project pages render inside a Win95 window that only exists in the browser, so during server rendering the page is never rendered and its `notFound()` never reaches the status code. A probe page that called `notFound()` at once under the project layout still returned 200; with a plain layout it returned 404.
+- Proposed fix (needs Harold's OK because it adds a small Vercel proxy invocation per /projects request): `proxy.ts` copies the path into a request header so the project layout can check the record and call `notFound()` before rendering the window.
+- The store link points at `example.com` (labelled as a placeholder) until the real store URL exists.
+- Status: Open; roadmap 2.2 and 2.6. The other audit findings in this entry (headings, titles, accessibility) were fixed in batch 2.
 
 ### 2026-10-21 - Art Viewer close button off-screen and page shifted left at about 669px (not reproducible; simulated check only)
 
@@ -80,6 +74,17 @@
 - Status: Open
 
 ## Resolved Bugs
+
+### 2026-10-27 - Closed Art Viewer reopened on the next full page load (found while testing batch 2)
+
+- Closing the viewer kept its tabs in sessionStorage (by design), and on the next full load the restored tabs registered the window as open, so a viewer the visitor had closed came back. Client-side navigation was not affected.
+- Fix (batch 2): a sessionStorage flag records that the viewer was closed; restored tabs then register the window closed, and opening any artwork clears the flag. Test: case 4 of scripts/verify-art-viewer-keys.mjs (failed before the fix). Status: Resolved.
+
+### 2026-10-22 - Art Viewer Escape only closes the viewer while it is the focused window (minor, logging only)
+
+- components/ArtViewer.tsx (around line 175) closes on Escape through a document keydown listener, but only while the window manager marks the viewer focused, not minimized and visible. The viewer does take focus when it opens (components/WindowManager.tsx line 271 moves DOM focus to the focused window element), so Escape works straight after opening.
+- It stops working once another window (a project window, the comic reader) is clicked or focused: Escape then does nothing until the viewer is clicked. Escape is also ignored when a handler already called preventDefault. This may be what the original "Escape did not close it" report hit; not confirmed with the reporter.
+- Fix (batch 2): the viewer closes on Escape whenever it is open, listening on window after the document-level handlers; components that handle Escape (inspector, promo windows, SYSTEM menu, monitor, announcement) now mark it handled, so one Escape closes one thing. Test: scripts/verify-art-viewer-keys.mjs (reproduced first). Status: Resolved; not tried on a real keyboard device.
 
 ### 2026-10-27 - Regression fixture could inherit production credentials (found in plan review, no evidence it happened)
 

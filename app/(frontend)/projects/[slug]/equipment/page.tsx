@@ -3,6 +3,8 @@ import { EquipmentViewerLink } from '@/components/EquipmentViewerLink';
 import { lockedPageOrNotFound } from '@/components/LockedContentPage';
 import { getProjectIdentity, getEquipmentDirectory } from '@/lib/content/queries';
 
+export const metadata = { title: 'Equipment' };
+
 export default async function EquipmentDirectory({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const project = await getProjectIdentity(slug);

@@ -76,7 +76,8 @@ export default function PromoWindow({
       if (!wrapper.current?.contains(event.target as Node)) setOpen(false);
     };
     const escape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
+      if (event.key === "Escape" && !event.defaultPrevented) {
+        event.preventDefault(); // handled: the Art Viewer must not also close on this key
         setOpen(false);
         trigger.current?.focus();
       }

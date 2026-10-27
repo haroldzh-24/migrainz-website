@@ -46,7 +46,7 @@ export default function PixelMonitorDesktop() {
         <button ref={hideButton} type="button" onClick={hideDesktop} aria-label="Hide desktop and return to terminal">RETURN TO TERMINAL [×]</button>
       </div>
       <div className="pixel-monitor-screen">
-        <div ref={setSystemWorkspace} className="desktop-windows" aria-label="SYSTEM monitor workspace" />
+        <div ref={setSystemWorkspace} className="desktop-windows" role="region" aria-label="SYSTEM monitor workspace" />
         <div className="pixel-monitor-dock"><WindowTaskbar system /></div>
       </div>
       <div className="pixel-monitor-hardware" aria-hidden="true">

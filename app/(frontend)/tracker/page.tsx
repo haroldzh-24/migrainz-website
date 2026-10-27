@@ -9,6 +9,8 @@ export default async function TrackerPage() {
       <p className="lede">
         Public phases, milestones and production notes.
       </p>
+      {/* Keeps the heading order h1 > h2 > h3 for screen readers; each project card has its own h3. */}
+      <h2 className="visually-hidden">Projects</h2>
       {projects
         .filter((project) => project.classification || project.phases.length > 0)
         .map((project) => (
