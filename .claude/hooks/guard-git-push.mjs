@@ -20,7 +20,7 @@ export function judge(command) {
 
 const reasons = {
   deny: 'Blocked by .claude/hooks/guard-git-push.mjs: only `git push origin main` (no flags, no force) can ever be requested, and Harold approves it each time. Force pushes, other branches, deletes and refspecs stay denied until Preview isolation is done.',
-  ask: 'git push origin main deploys production (CLAUDE.md). Approve only if Harold asked for this push in the current conversation.',
+  ask: 'git push origin main deploys production (AGENTS.md). Approve only if Harold asked for this push in the current conversation.',
 };
 
 // Run as the hook (not when imported by the test file).

@@ -1,5 +1,11 @@
 # Features
 
+## Implemented - 2026-10-27 / One check command and site-health checks (batch 1)
+
+- `npm run check` runs typecheck, build and every test script with a saved log; required before every commit (AGENTS.md).
+- Site-health crawl in the regression suite: links, status codes, 404s, errors, third-party requests, overflow, titles, classified text and accessibility at phone and desktop width, with a reviewed baseline that can only shrink.
+- AGENTS.md holds all working and safety rules for every agent; docs/roadmap.md orders the work.
+
 ## Implemented - 2026-10-26 / CRT glow pass (fix/crt-glow)
 
 - Supersedes the 2026-10-22 notes "body text does not glow", "no continuous flicker" and "jitter loops removed" (Harold's explicit decision; values in docs/redesign-plan.md "Theme").
@@ -314,12 +320,12 @@
 - Documented production variable scopes, redeployment, existing PostgreSQL migration commands and temporary private `/tmp` demo media.
 - Live deployment and production database validation remain pending authenticated Vercel access.
 
-## Implemented Ã¢â‚¬â€ 2026-09-08
+## Implemented — 2026-09-08
 
 - Next.js + React + TypeScript foundation, reusable components and pinned dependencies.
 - Original terminal styling, responsive layout, CRT overlay, live clock and cursor-reactive placeholder.
 - Data-driven project index, directories, characters, chapters and public production tracker.
-- Complete BLUSHLAND sample path: project Ã¢â€ â€™ characters Ã¢â€ â€™ The Observer Ã¢â€ â€™ chapter 01 Ã¢â€ â€™ three-page reader Ã¢â€ â€™ project.
+- Complete BLUSHLAND sample path: project → characters → The Observer → chapter 01 → three-page reader → project.
 - Reader page controls, boundary handling, page selection, arrow keys and described sample artwork.
 - SHOP/Patreon promotional windows with mouse hover, touch/keyboard activation and close/Escape/outside dismissal.
 - External placeholder store and explicitly future Patreon account connection.

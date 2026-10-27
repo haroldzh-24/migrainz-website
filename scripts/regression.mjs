@@ -1,28 +1,23 @@
 import { spawn, spawnSync } from 'node:child_process';
-import { randomBytes } from 'node:crypto';
-import { mkdirSync, mkdtempSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fixtureEnv, fixtureEnvProblems } from './fixture-env.mjs';
 
 // Never seed or republish records in the editor's database. Each run owns a
 // fresh, ignored database and private media directory; .env.local stays intact.
 mkdirSync('test-results', { recursive: true });
 const fixture = mkdtempSync(path.resolve('test-results/regression-'));
-const env = {
-  ...process.env,
-  NODE_ENV: 'development',
-  CMS_DATABASE: 'sqlite',
-  DATABASE_URL: pathToFileURL(path.join(fixture, 'content.db')).href,
-  CMS_MEDIA_DIR: path.join(fixture, 'media'),
-  PAYLOAD_SECRET: randomBytes(32).toString('hex'),
-  BOOT_ONLY: '0',
-  DESKTOP_TEST_FIXTURE: fixture,
-};
+// Same fail-closed environment as the review server (scripts/fixture-env.mjs): Blob, Patreon, Vercel and every .env*
+// variable blanked, so next dev cannot fill them from .env.local.
+const env = fixtureEnv(fixture);
+const problems = fixtureEnvProblems(env, fixture);
+if (problems.length) { rmSync(fixture, { recursive: true, force: true }); console.error('Refusing to start. Offending variables: ' + problems.join(', ')); process.exit(1); }
 mkdirSync(env.CMS_MEDIA_DIR);
 const children = new Set();
 function launch(args) {
-  const child = spawn(process.execPath, args, { env, stdio: 'inherit', windowsHide: true });
+  // Own process group on Linux/macOS so stop() can end next dev and its workers together.
+  const child = spawn(process.execPath, args, { env, stdio: 'inherit', windowsHide: true, detached: process.platform !== 'win32' });
   children.add(child);
   child.once('exit', () => children.delete(child));
   return child;
@@ -38,7 +33,7 @@ function stop() {
     if (!child.pid) continue;
     // next dev starts a worker; terminate only this runner's process trees.
     if (process.platform === 'win32') spawnSync('taskkill', ['/pid', String(child.pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true });
-    else child.kill('SIGTERM');
+    else { try { process.kill(-child.pid, 'SIGTERM'); } catch { child.kill('SIGTERM'); } }
   }
 }
 for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => { stop(); process.exit(1); });
@@ -76,6 +71,8 @@ try {
   await completed(launch(['scripts/verify-factions.cjs']));
   await completed(launch(['scripts/verify.cjs']));
   await completed(launch(['scripts/verify-interaction-polish.mjs']));
+  await completed(launch(['scripts/verify-site-health.mjs']));
+  await completed(launch(['scripts/verify-site-health.mjs', '--self-test']));
 } catch (error) {
   console.error(error);
   process.exitCode = 1;

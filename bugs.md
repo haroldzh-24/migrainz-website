@@ -2,21 +2,13 @@
 
 ## Open Bugs
 
-### 2026-10-26 - CRT vignette contrast (fix/crt-glow)
+### 2026-10-27 - Site-health baseline: soft 404s, generic title, placeholder link, accessibility (batch 2)
 
-- As a fixed overlay above the text, the spec's radial vignette (up to .55 black) dropped `--crt-dim` text from 4.94:1 to ~3.2:1 (menu file label 02), ~2.6:1 (label 03) and ~2.4:1 (footer) at 1366x768 (calculated).
-- Fix (Harold's decision, 2026-10-26): the vignette moved, values unchanged, into the fixed background layer under all content (`body::before`); the scanlines stay the overlay. Measured from screenshot pixels (brightest text pixel vs local background, 1366x768, CRT on, animations frozen): green 4.68 / 4.84 / 4.72:1 (labels 02, 03, footer), amber 4.49 / 4.82 / 4.51:1. The 4.94:1 nominal contrast is reduced a little by the scanlines; amber label 02 and the footer sit right at the 4.5 line. Rough method (subpixel text antialiasing), not a formal audit.
-- Status: Resolved; recheck on a real screen.
- vignette contrast (fix/crt-glow, decision for Harold)
-
-- The radial overlay vignette from the glow spec darkens the corners by up to .55 black. Calculated (alpha compositing over text and background, not measured from pixels; 1366x768): `--crt-dim` text (4.94:1 normally) falls to ~3.2:1 on menu file label 02, ~2.6:1 on label 03 and ~2.4:1 in the footer; 12px labels need 4.5:1 (AA). At 390x844 the footer text is ~2.2:1. The brand stays ~6.2:1. Green and amber behave the same.
-- Options (footer figure): keep the spec values (2.4:1); end alpha .35 (3.2:1); start at 65% (2.6:1); start 65% with end .45 (3.0:1). None reaches 4.5:1; that would need a brighter `--crt-dim` or no vignette (`CRT: REDUCED` already has none).
-- Status: Open; values left as specified until Harold decides.
-
-### 2026-10-25 - Boot checklist doubles the project name on live data (cosmetic)
-
-- Live `/boot-status` after the phase 1 deploy: the tracker phase titled with the project name prints as `blushland_blushland_ch1`. lib/content/boot.ts always prefixes the project slug.
-- Fix (chore/dependency-updates, deployed 2026-10-26 in `086c592`; live `/boot-status` now shows `blushland_ch1`): phase labels skip the prefix when the title already starts with the project slug as a whole word (compared with the slug, not the project title) (lib/content/boot-labels.ts; scripts/verify-boot-labels.ts). Status: Resolved.
+- Found by the 2026-10-26 audit and recorded by `scripts/verify-site-health.mjs` in `scripts/site-health-baseline.json` (fixture, headless Chrome, 390 and 1366).
+- Missing project, character, equipment and faction records (and a character under the wrong project) return HTTP 200 "Record not found" instead of 404. Unknown top-level paths and missing comics already return 404.
+- Equipment directory pages use the generic site title. The store link points at `example.com` (labelled as a placeholder).
+- Accessibility (axe-core 4.14): headings inside light Win95 windows (FACTIONS on project pages, section headings on character and project pages) use the green terminal colour on grey, about 1.02:1 on the live FACTIONS heading; "ARCHIVE INDEX AWAITING FILES." 4.23:1; Win95 window buttons 21x19 px and "i" buttons 21x21 px (24 px needed); the brand link is named "Home" but shows "MIGRAINZ"; `aria-label` on a plain div; tracker heading order; the window layer outside landmarks.
+- Status: Open; roadmap batch 2 (items 2.1-2.4, 2.6).
 
 ### 2026-10-22 - Art Viewer Escape only closes the viewer while it is the focused window (minor, logging only)
 
@@ -75,7 +67,7 @@
 - Accepted for now: zod < 4.6.6 (memory exhaustion on oversized collections) inside `@vercel/cli-config`, reached via `@vercel/blob` -> `@vercel/oidc` (4 audit entries). No fixed release exists (the latest cli-config still bundles 4.1.11); npm’s only fix is downgrading `@vercel/blob` to 2.4.0. The path reads the local Vercel CLI config for token lookup, not request input; the app passes an explicit Blob token. Recheck when `@vercel/cli-config` updates.
 - Remaining 17 all need the Payload set upgrade (payload, every `@payloadcms/*` package, Payload’s pinned undici, happy-dom under lexical, drizzle-kit/esbuild dev tooling, the unused `@payloadcms/storage-s3`). By target: 3.90.2 clears every Payload-core advisory (all three criticals and the first-register RCE) but leaves happy-dom code execution (8.8), all Payload-undici issues and the dev tooling; 3.91.0 also clears happy-dom/lexical and most undici (pins 7.29.1), leaving three undici DoS/SRI advisories (need 7.30.1) and the dev tooling, Node >=20.18.1; 3.92.0 clears everything (pins undici 7.30.1) but needs Node ^22.23.4 or >=24.22.1 (local is 24.20.0; Vercel’s Node version not checked).
 - Live exposure, judged from each advisory’s stated preconditions against this repo (code reading only, not tested): GHSA-f7hx (unauthorized update, 9.8) needs `orderable: true` - not used here; GHSA-97rh (first-register RCE) needs a site with no user yet - the live /admin shows the login page; GHSA-66wr (auth token) needs a field mapped to a reserved JWT claim - no `saveToJWT` here; GHSA-vc4h (duplicate copies hidden fields) needs duplicate/create access - create is staff-only; GHSA-pj7x (SQL injection) affects db-postgres only below 3.73 - production runs Postgres 3.88 (local SQLite is affected, dev only). Several high-severity upload and access issues (SVG/XML uploads, upload lifecycle validation, API key disclosure, token-refresh field exposure) list no such precondition.
-- Any Payload 3.90+ upgrade needs a database migration (Payload release notes: new `resetPasswordRequestedAt` on users, `_objectKey` on upload collections; 3.91 adds `_parent_id` indexes on localized tables) and a check of the private Blob adapter against 3.90’s upload changes (`_objectKey`, filename hardening; the official adapters change storage paths, cms/blob-storage.ts builds its own). Production-lane work behind the CLAUDE.md schema blockers, which Preview isolation helps clear.
+- Any Payload 3.90+ upgrade needs a database migration (Payload release notes: new `resetPasswordRequestedAt` on users, `_objectKey` on upload collections; 3.91 adds `_parent_id` indexes on localized tables) and a check of the private Blob adapter against 3.90’s upload changes (`_objectKey`, filename hardening; the official adapters change storage paths, cms/blob-storage.ts builds its own). Production-lane work behind the AGENTS.md schema blockers, which Preview isolation helps clear.
 - Update 2026-10-26: the Next fixes are live (`086c592`; the live client reports Next 16.4.3). The live `/admin` redirects to the login form with no create-first-user screen (headless browser, read-only), consistent with GHSA-97rh’s precondition not being met. Decided (Harold): Payload upgrade after Preview isolation and before phase 2, production lane with the equipment-migration steps (backup, tested restore, rehearsal on a Neon copy, apply, deploy); target 3.92.0 if Vercel’s Node is >=24.22.1, otherwise 3.91.0; remove `@payloadcms/storage-s3` in that branch. Status: Next part resolved; Payload part open until that branch ships.
 
 
@@ -88,6 +80,23 @@
 - Status: Open
 
 ## Resolved Bugs
+
+### 2026-10-27 - Regression fixture could inherit production credentials (found in plan review, no evidence it happened)
+
+- `scripts/regression.mjs` copied the shell environment into its `next dev` fixture server without blanking anything. `next dev` fills undefined variables from `.env.local`, and `cms/blob-storage.ts` switches to the private Blob store whenever `BLOB_READ_WRITE_TOKEN` is set. If `.env.local` held a Blob token, fixture media requests would have gone to `migrainz-media`. The review server already blanked these.
+- Not reproduced: `.env.local` is never read by rule, so whether it holds a token is unknown.
+- Fix (batch 1): one shared fail-closed environment (`scripts/fixture-env.mjs`) for both runners; they refuse to start if anything points at a remote database, storage or credential. Unit checks in `scripts/verify-fixture-env.mjs` (a mutation that stops blanking the Blob token makes them fail). Status: Resolved.
+
+### 2026-10-26 - CRT vignette contrast (fix/crt-glow)
+
+- As a fixed overlay above the text, the spec's radial vignette (up to .55 black) dropped `--crt-dim` text from 4.94:1 to ~3.2:1 (menu file label 02), ~2.6:1 (label 03) and ~2.4:1 (footer) at 1366x768 (calculated).
+- Fix (Harold's decision, 2026-10-26): the vignette moved, values unchanged, into the fixed background layer under all content (`body::before`); the scanlines stay the overlay. Measured from screenshot pixels (brightest text pixel vs local background, 1366x768, CRT on, animations frozen): green 4.68 / 4.84 / 4.72:1 (labels 02, 03, footer), amber 4.49 / 4.82 / 4.51:1. The 4.94:1 nominal contrast is reduced a little by the scanlines; amber label 02 and the footer sit right at the 4.5 line. Rough method (subpixel text antialiasing), not a formal audit.
+- Status: Resolved; recheck on a real screen. (Before the fix, the overlay was also calculated at ~2.2:1 for footer text at 390x844; that width was not re-measured after the fix.)
+
+### 2026-10-25 - Boot checklist doubles the project name on live data (cosmetic)
+
+- Live `/boot-status` after the phase 1 deploy: the tracker phase titled with the project name prints as `blushland_blushland_ch1`. lib/content/boot.ts always prefixes the project slug.
+- Fix (chore/dependency-updates, deployed 2026-10-26 in `086c592`; live `/boot-status` now shows `blushland_ch1`): phase labels skip the prefix when the title already starts with the project slug as a whole word (compared with the slug, not the project title) (lib/content/boot-labels.ts; scripts/verify-boot-labels.ts). Status: Resolved.
 
 ### 2026-10-25 - SND toggle never played its confirmation tone
 
@@ -115,12 +124,14 @@
 - Cause: the CMS only offered PUBLIC/PATRON access; all public document queries required PUBLIC, and no safe listing projection existed for restricted content.
 - Fix: add distinct REDACTED/HIDDEN access states and a server-only allowlisted metadata path for visible REDACTED/PATRON placeholders. Full document/file reads stay PUBLIC-only; hidden records and inaccessible descendants are omitted.
 - Status: Source implemented; PostgreSQL enum migration remains unapplied. `npm.cmd run typecheck` passed; manual access and rendering checks remain.
+- Update 2026-10-27: production's migration ledger (read 2026-10-16 on a Neon copy, equipment release runbook in the claude.ai Project) lists `20260928_180000_classified_access` as applied (2026-09-30 build).
 
 ### 2026-09-28 - Factions/equipment compound index collision
 
 - Cause: Payload 3.88 does not support explicit names for collection compound indexes and derives names from field paths, so Factions, Characters and Equipment competed for `project_slug_idx` and version-index names.
 - Fix: Preserve the foundation Characters compound indexes. Replace new Factions/Equipment composites with hidden unique `routeKey` fields derived from project ID and slug, using collection-specific unique indexes. Correct the unapplied migration and schema snapshot without dropping or recreating Character indexes.
 - Status: Source and migration corrected; migration remains unapplied. `npm.cmd run typecheck` passed.
+- Update 2026-10-27: production's migration ledger (read 2026-10-16 on a Neon copy, equipment release runbook) lists the factions/equipment and route-key repair migrations as applied.
 
 ### 2026-09-15 - Regression suite depended on editorial publication state
 

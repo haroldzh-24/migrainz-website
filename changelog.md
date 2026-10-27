@@ -1,5 +1,16 @@
 # Changelog
 
+## Changed - 2026-10-27 / Batch 1: working rules, roadmap, one check command, site-health checks (chore/batch-1-working-rules)
+
+- AGENTS.md now holds every rule; CLAUDE.md only imports it (`@AGENTS.md`). Every CLAUDE.md line moved unchanged except the release status and three wording updates. New sections: Ask Harold first, Delivery (commit per batch; push `main` only with Harold's OK each time; pull requests after Preview isolation), How we work (numbered batches), Reporting. Release status records the `7658101` push and the equipment migration applied on 2026-10-16 (per the equipment release runbook, with Harold's approval). Pointers in the push hook, the reviewer agent and the docs updated.
+- docs/roadmap.md: the approved roadmap (M0 decisions recorded).
+- `npm run check` (scripts/check-all.mjs): typecheck, build and all 11 test scripts in one run, with `--list` / `--only`, a log in `test-results/check-<time>.txt`, per-step timeouts and a non-zero exit when any step fails or is skipped. `/check-everything` calls it.
+- New `scripts/verify-site-health.mjs`, run by `test:regression`: follows every link in the browser and checks status codes, missing-record 404s, page and console errors, requests to other sites, sideways scroll at 390, page titles, classified fixture text, and axe-core accessibility at 390 and 1366. Known findings live in `scripts/site-health-baseline.json` (new ones and stale ones fail). `--self-test` proves the checker catches a broken link, a wrong 404, a new violation and a stale entry.
+- Safety: the regression suite now uses the same fail-closed environment as the review server (`scripts/fixture-env.mjs`): Blob, Patreon, Vercel and every `.env*` variable blanked, and it refuses to start if anything points at a remote database, storage or credential. Before, it copied the shell environment, so `next dev` could fill those from `.env.local`. Unit checks: `scripts/verify-fixture-env.mjs`.
+- The regression runner stops `next dev` with its whole process group on Linux and macOS.
+- Test tools pinned and fetched by `npm exec`: Playwright 1.64.1 (was unpinned), axe-core 4.14.0, PGlite 0.5.11. `verify-equipment-migration.mjs` finds PGlite that way and prints SKIPPED (exit 2) instead of crashing without it. The four Playwright scripts that used `channel: 'chrome'` honour `BROWSER_PATH`.
+- Docs: bugs.md (stray half-entry removed, two resolved entries moved to Resolved, migration status notes), broken characters in features.md and changelog.md, README (Node versions, checks).
+
 ## Changed - 2026-10-26 / CRT glow pass (fix/crt-glow)
 
 - Glow tokens per Harold's values: headings and the hero title (`--crt-glow-head`), menu names, brand and active items (`--crt-glow-ui`), amber links (`--crt-glow-link`; no amber links exist yet), paragraphs (`--crt-glow-body`, CRT "on" only). Amber mode uses the same strengths in amber colours.
@@ -340,7 +351,7 @@
 - Add `cms:verify-env`; test each missing hosted variable and production SQLite rejection without local secrets.
 - Document dashboard remediation and non-resetting migration workflow; retain private temporary demo media and defer R2.
 
-## 2026-09-08 Ã¢â‚¬â€ Terminal foundation / 0.2.0
+## 2026-09-08 — Terminal foundation / 0.2.0
 
 ### Added
 
