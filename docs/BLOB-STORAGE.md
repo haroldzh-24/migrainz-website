@@ -2,8 +2,8 @@
 
 The storage adapter uses the existing `migrainz-media` Vercel Blob store. It does not
 provision a provider/store, change Media records, add database fields, or run
-migrations. The Equipment schema expansion has a separate unapplied additive
-migration described in [CMS documentation](CMS.md). Existing media fallback and
+migrations. The Equipment schema expansion has a separate additive
+migration described in [CMS documentation](CMS.md) (applied to production 2026-10-16; see AGENTS.md "Release status"). Existing media fallback and
 access classification remain unchanged.
 
 ## Implementation

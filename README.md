@@ -72,7 +72,7 @@ Patreon API v2 login verifies campaign membership and optional tier IDs on the s
 
 ## Browser checks
 
-Everything at once (typecheck, build, every test script, with a saved log): `npm.cmd run check`. See AGENTS.md "Commands". On Linux or macOS, point the scripts at Chrome first, for example `BROWSER_PATH=/opt/google/chrome/chrome npm run check`.
+Everything at once (typecheck, build and every automated test script with a saved log; `scripts/verify-cms.cjs` stays separate because it needs a database with no administrator): `npm.cmd run check`. See AGENTS.md "Commands". On Linux or macOS, point the scripts at Chrome first, for example `BROWSER_PATH=/opt/google/chrome/chrome npm run check`.
 
 Stop the development server, then run the complete suite with Chrome installed at its default Windows path:
 
@@ -85,7 +85,7 @@ This imports the preserved demo fixture into a fresh SQLite database and private
 To check an already-running server that has the published demo fixture:
 
 ```powershell
-npm.cmd exec --yes --package=playwright -- node scripts/verify.cjs
+npm.cmd exec --yes --package=playwright@1.64.1 -- node scripts/verify.cjs
 ```
 
 Playwright is temporary tooling, not an application dependency. Override `BROWSER_PATH` or `BASE_URL` if needed. Screenshots go to ignored `test-results/`.

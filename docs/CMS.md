@@ -98,6 +98,9 @@ request. Disabled schematics do not independently authorize their video or poste
 another accessible reference may still authorize shared media. Both schematic
 relationships and live/current draft assignments participate in deletion protection.
 
+Update 2026-10-27: this migration was applied to production on 2026-10-16; see
+AGENTS.md "Release status". The paragraph below is the original note.
+
 The additive migration `20261015_080148_equipment_schematics_assignments` is
 generated and registered, **not applied**. It depends on the preceding registered
 migrations, adds live/versioned Equipment columns and ordered specification and
@@ -159,6 +162,9 @@ Equipment requires an accessible project and, when assigned, an accessible
 faction; characters retain their existing project-based access. Hiding a listing
 does not make content or its files private. Unpublishing a faction revokes media
 used only by it or its equipment, through the existing media authorization layer.
+
+Update 2026-10-27: production's migration ledger (read 2026-10-16) lists this
+migration as applied; see AGENTS.md "Release status". The original note follows.
 
 The additive PostgreSQL migration `20260927_190344_factions_equipment` is generated
 but not applied. Apply pending migrations through the existing production
@@ -412,8 +418,8 @@ See [Blob setup and recovery](BLOB-STORAGE.md) for recovery and upload-size limi
 npm.cmd run typecheck
 npm.cmd run cms:verify
 npm.cmd run build
-npm.cmd exec --yes --package=playwright -- node scripts/verify.cjs
-npm.cmd exec --yes --package=playwright -- node scripts/verify-cms.cjs
+npm.cmd exec --yes --package=playwright@1.64.1 -- node scripts/verify.cjs
+npm.cmd exec --yes --package=playwright@1.64.1 -- node scripts/verify-cms.cjs
 ```
 
 Browser checks require the local dev server and Chrome. The CMS workflow check
