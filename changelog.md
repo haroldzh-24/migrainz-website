@@ -1,5 +1,12 @@
 # Changelog
 
+## Changed - 2026-10-27 / Batch 1d: fixes from the independent review of batch 1c (chore/batch-1d-review-fixes)
+
+- Site health: accessibility keys are built in the page from the failing element (tag, id, sorted classes, aria-label word; for an element with none of those, its first words of text), so a bare `h2` no longer covers every heading on a page type. Off-site and failed requests are recorded for every page in a browser context (the missing-record checks were missed before).
+- Site-health self-test now plants 16 problems (adds: a violation on a bare element, an off-site redirect hop inside the browser, a request that fails without a response); all are reported.
+- `npm run check`: a repeated signal within 2 s (one Ctrl+C can arrive twice through npm) is ignored; a later one kills the running step and the process groups the regression runner listed for it; closing the terminal (SIGHUP) stops the run like Ctrl+C. The regression runner ends each step's process group as soon as the step exits, ignores repeated signals while stopping, and handles SIGHUP.
+- `verify-fixture-env.mjs`: the planted credential has a unique name (checked absent from `.env*` files) and the runners are started in their own process group with a 20 s limit.
+
 ## Changed - 2026-10-27 / Batch 2: audit fixes (fix/batch-2-audit-fixes)
 
 - Headings inside light Win95 windows (FACTIONS, RELATED COMIC CHAPTERS, the character EQUIPMENT section, ASSIGNED CHARACTERS, equipment card titles) are dark instead of pale terminal green (about 1.02:1 before). The ACCESS DENIED window heading is Win95 navy. Dark modules inside windows keep their terminal colours.
@@ -14,7 +21,7 @@
 - Site health: accessibility findings are keyed by the failing element itself (tag, id, sorted classes, first word of its aria-label) instead of axe's page-dependent CSS selectors, so adding a card no longer turns into new and stale entries. Unknown baseline sections fail.
 - Site health: Chrome now runs with every host except the local server unresolvable and without a proxy, so a same-origin redirect to another site can't load anything; every off-site request is recorded (also redirect hops), and same-origin requests that fail without a response are recorded too.
 - Site-health self-test plants 13 problems (adds: a baseline entry without a roadmap reason, classified text in a JSON response, an off-site redirect against a throwaway local server); all are reported.
-- `npm run check`: a second Ctrl+C kills the running step at once; after the first, the summary is still written and the log flushed before exiting (exit code 130). The regression runner waits for its servers and browsers to stop, then SIGKILLs every process group it started.
+- `npm run check`: a second Ctrl+C kills the running step at once; after the first, the summary is still written and the log flushed before exiting (exit code 130). The regression runner waits for its steps (dev server, test scripts) to stop, then SIGKILLs their process groups; browsers are closed by the test scripts that started them.
 - `verify-fixture-env.mjs` now also runs both fixture runners with a fake credential set and checks they refuse, start nothing, print no value and leave no fixture directory.
 - docs/roadmap.md: 1.6 marked done except Harold's Windows run.
 

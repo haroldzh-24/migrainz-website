@@ -2,11 +2,11 @@
 //   node scripts/verify-fixture-env.mjs
 // Fake values only; nothing here reads a real .env file.
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { BLANKED, fixtureEnv, fixtureEnvProblems } from './fixture-env.mjs';
+import { BLANKED, envFileNames, fixtureEnv, fixtureEnvProblems } from './fixture-env.mjs';
 
 const tmp = mkdtempSync(path.join(os.tmpdir(), 'fixture-env-'));
 try {
@@ -50,12 +50,24 @@ try {
   }
   // And for real: with a credential-like variable in the environment, both runners refuse, start nothing and leave no
   // fixture directory behind. (Safe to run: the refusal comes before any server, database or browser.)
+  // The planted name must not be listed in a real .env file, or the runner would blank it and really start.
+  const planted = 'VERIFY_FIXTURE_NEON_KEY';
+  assert.ok(!envFileNames().includes(planted), `${planted} must not appear in a .env file`);
   const fixtures = () => existsSync('test-results') ? readdirSync('test-results').filter(name => name.startsWith('regression-')).length : 0;
+  // Own process group with a short timeout, so a runner that wrongly starts is ended with everything it started.
+  const runRefusing = args => new Promise(resolve => {
+    const child = spawn(process.execPath, args, { env: { ...process.env, [planted]: 'fake-for-test' }, detached: process.platform !== 'win32', windowsHide: true });
+    let stdout = '', stderr = '';
+    child.stdout.on('data', chunk => { stdout += chunk; });
+    child.stderr.on('data', chunk => { stderr += chunk; });
+    const timer = setTimeout(() => { try { process.platform === 'win32' ? child.kill('SIGKILL') : process.kill(-child.pid, 'SIGKILL'); } catch {} }, 20000);
+    child.once('exit', status => { clearTimeout(timer); resolve({ status, stdout, stderr }); });
+  });
   for (const args of [['scripts/regression.mjs'], ['scripts/serve-fixture.mjs', '0']]) {
     const before = fixtures();
-    const run = spawnSync(process.execPath, args, { env: { ...process.env, NEON_API_KEY: 'fake-for-test' }, encoding: 'utf8', timeout: 60000 });
+    const run = await runRefusing(args);
     assert.equal(run.status, 1, `${args[0]} exits 1 when a credential is set`);
-    assert.match(run.stderr, /Refusing to start\. Offending variables: .*NEON_API_KEY/, `${args[0]} names the variable`);
+    assert.match(run.stderr, new RegExp(`Refusing to start\\. Offending variables: .*${planted}`), `${args[0]} names the variable`);
     assert.ok(!run.stderr.includes('fake-for-test') && !run.stdout.includes('fake-for-test'), `${args[0]} never prints the value`);
     assert.ok(!/Regression fixture:|Local:/.test(run.stdout), `${args[0]} started nothing`);
     assert.equal(fixtures(), before, `${args[0]} removed its fixture directory`);

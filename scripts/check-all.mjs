@@ -8,7 +8,7 @@
 // is non-zero if any step failed, timed out or was skipped. All of it is simulated: headless Chrome on throwaway SQLite
 // fixtures, no real devices, no production data. Set BROWSER_PATH on Linux and macOS.
 import { spawn, spawnSync } from 'node:child_process';
-import { createWriteStream, existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { createWriteStream, existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
 
 const minutes = n => n * 60000;
@@ -54,6 +54,10 @@ if (!env.PLAYWRIGHT_MODULE) {
 mkdirSync('test-results', { recursive: true });
 const stamp = new Date().toISOString().replace(/[-:]/g, '').replace('T', '-').slice(0, 15);
 const logPath = path.resolve(`test-results/check-${stamp}.txt`);
+// Steps that start their own process groups (the regression runner: dev server, browsers) list them here, so a forced
+// stop can reach them too.
+const pgidFile = path.resolve(`test-results/check-${stamp}.pgids`);
+env.CHECK_PGID_FILE = pgidFile;
 const log = createWriteStream(logPath);
 const write = text => { process.stdout.write(text); log.write(text); };
 
@@ -61,20 +65,27 @@ const write = text => { process.stdout.write(text); log.write(text); };
 // and browsers, which sit in their own groups), then SIGKILL to the group after a grace period. Windows: taskkill ends
 // the whole tree at once (no graceful stop there).
 const signalGroup = (pid, signal) => { try { process.kill(-pid, signal); return true; } catch { return false; } };
+const listedGroups = () => { try { return readFileSync(pgidFile, 'utf8').split('\n').map(Number).filter(Boolean); } catch { return []; } };
+const killNow = pid => { signalGroup(pid, 'SIGKILL'); for (const group of listedGroups()) signalGroup(group, 'SIGKILL'); };
 const stopTree = (pid, graceMs = 8000) => {
   if (process.platform === 'win32') { spawnSync('taskkill', ['/pid', String(pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true }); return; }
-  if (signalGroup(pid, 'SIGTERM')) setTimeout(() => signalGroup(pid, 'SIGKILL'), graceMs);
+  if (signalGroup(pid, 'SIGTERM')) setTimeout(() => killNow(pid), graceMs);
 };
 let current; // the running step's child, for the signal handlers below
 let interrupted = false;
-// First Ctrl+C: stop the running step gracefully, skip the rest, still write the summary. Second: kill it now.
-for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => {
+// First Ctrl+C: stop the running step gracefully, skip the rest, still write the summary. Another one more than 2 s
+// later: kill it now. (One keypress can arrive twice, from the terminal and from npm forwarding it, so repeats within
+// 2 s are ignored.) Closing the terminal (SIGHUP) counts as a first Ctrl+C.
+let firstSignalAt = 0;
+for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) process.on(signal, () => {
   if (interrupted) {
+    if (Date.now() - firstSignalAt < 2000) return;
     write(`\n===== ${signal} again; killing the running step =====\n`);
-    if (current?.pid) process.platform === 'win32' ? stopTree(current.pid) : signalGroup(current.pid, 'SIGKILL');
+    if (current?.pid) process.platform === 'win32' ? stopTree(current.pid) : killNow(current.pid);
     return;
   }
   interrupted = true;
+  firstSignalAt = Date.now();
   process.exitCode = 130;
   write(`\n===== Interrupted (${signal}); stopping ${current ? 'the running step' : 'nothing'}; remaining steps are skipped =====\n`);
   if (current?.pid) stopTree(current.pid);
@@ -118,4 +129,5 @@ const failed = results.filter(r => r.result !== 'PASS');
 write(failed.length ? `FAILED: ${failed.map(r => `${r.name} (${r.result})`).join(', ')}\n` : `All ${results.length} steps passed.\n`);
 write(`Log: ${path.relative(process.cwd(), logPath)}\nSimulated only: headless Chrome on throwaway SQLite fixtures; not real devices, other browsers, the live site or production data.\n`);
 const code = interrupted ? 130 : failed.length ? 1 : 0;
+rmSync(pgidFile, { force: true });
 log.end(() => process.exit(code));

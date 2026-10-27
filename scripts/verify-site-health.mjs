@@ -23,9 +23,10 @@
 // fails ("stale"), and an entry without a "Roadmap" reason fails, so nothing is accepted silently.
 // --write-baseline rewrites the baseline from this run (keeps existing reasons; new ones get a placeholder that fails
 // until a reason is written); review the diff before committing.
-// --self-test plants one of each problem (broken link, wrong 404, accessibility violation, stale baseline entry, entry
-// without a reason, third-party request, classified text in the page and in a JSON response, console error, sideways
-// scroll, generic title, failed request, off-site redirect) and passes only if every one is reported (run by
+// --self-test plants one of each problem (broken link, wrong 404, accessibility violation, one on a bare element, stale
+// baseline entry, entry without a reason, third-party request, off-site redirect hop in the browser, classified text in
+// the page and in a JSON response, console error, sideways scroll, generic title, failed request with and without a
+// response, off-site redirect for the script's own requests) and passes only if every one is reported (run by
 // test:regression, so the checker itself is tested).
 // Writes test-results/site-health/report.json and screenshots of each template at both widths.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -97,20 +98,11 @@ const template = pathname => {
   if (parts[0] === 'comics' && parts.length >= 3) { parts[1] = ':comic'; parts[2] = ':chapter'; }
   return '/' + parts.join('/');
 };
-// Key for an axe node: rule, route template and the element itself (tag, id, sorted classes, first word of its
-// aria-label), read from the node's own HTML. axe's CSS selectors depend on what else is on the page (class order,
-// uniqueness, parents), so they are not used. "Close PROJECT: BLUSHLAND" and "Close COMIC READER" match, but only on the
-// template where the finding was seen.
-const elementKey = html => {
-  const open = /^<([a-z0-9-]+)([^>]*)>/i.exec(String(html).trim());
-  if (!open) return 'unknown';
-  const attr = name => new RegExp(`\\s${name}="([^"]*)"`, 'i').exec(open[2])?.[1];
-  const classes = (attr('class') ?? '').split(/\s+/).filter(Boolean).sort().map(c => '.' + c).join('');
-  const id = attr('id') ? '#' + attr('id') : '';
-  const label = attr('aria-label') ? `[aria-label=${attr('aria-label').split(/\s+/)[0]}]` : '';
-  return open[1].toLowerCase() + id + classes + label;
-};
-const axeKey = (rule, routeTemplate, html) => `${rule} ${routeTemplate} ${elementKey(html)}`;
+// Key for an axe node: rule, route template and the element itself, built in the page from the live element (tag, id,
+// sorted classes, first word of its aria-label; for an element with none of those, its first words of text). axe's
+// CSS selectors depend on what else is on the page, so they are not used. "Close PROJECT: BLUSHLAND" and "Close COMIC
+// READER" match, but only on the template where the finding was seen.
+const axeKey = (rule, routeTemplate, element) => `${rule} ${routeTemplate} ${element}`;
 const internalPath = (href, from) => {
   try {
     const url = new URL(href.replace(/&amp;/g, '&'), base + from);
@@ -194,16 +186,31 @@ try {
       if (location.pathname !== '/') return;
       const plant = html => document.body.insertAdjacentHTML('beforeend', html);
       plant('<button class="self-test-nameless"></button>');
+      plant('<section style="background:#fff"><h2 style="color:#fefefe">Bare self-test heading</h2></section>');
       plant('<img alt="" src="https://example.org/self-test.png"><img alt="" src="/self-test-missing.png"><img alt="" src="/self-test-missing-2.png">');
+      plant('<img alt="" src="/self-test-redirect.png"><img alt="" src="/self-test-abort.png">');
       plant('<p hidden>sentinel-phase-title-7q</p><div style="width:4000px;height:1px"></div>');
       fetch('/self-test-data.json').catch(() => {});
       console.error('self-test console error');
     }, 0)));
     // A JSON response carrying classified text, as data fetched after hydration would.
     if (selfTest) await context.route(url => url.pathname === '/self-test-data.json', route => route.fulfill({ contentType: 'application/json', body: '{"t":"Sentinel-Chapter-Title-7q"}' }));
+    // A same-origin URL that redirects off-site (the browser follows the hop), and a request that fails without a response.
+    if (selfTest) await context.route(url => url.pathname === '/self-test-redirect.png', route => route.fulfill({ status: 302, headers: { location: 'https://example.net/self-test.png' } }));
+    if (selfTest) await context.route(url => url.pathname === '/self-test-abort.png', route => route.abort('failed'));
     // Tests stay offline and never call third parties; any attempt is recorded as a finding. Chrome is also launched
     // with every host but the local one unresolvable, which covers redirect hops that routing doesn't see.
     await context.route(url => url.origin !== origin && /^https?:$/.test(url.protocol), route => route.abort('blockedbyclient'));
+    // Recorded for every page in the context (also redirect hops, popups and the missing-record checks).
+    context.on('request', request => {
+      const url = new URL(request.url());
+      if (url.origin !== origin && /^https?:$/.test(url.protocol)) findings.externalRequests.add(url.origin);
+    });
+    // Same-origin requests that fail without an HTTP response (aborted navigations aside).
+    context.on('requestfailed', request => {
+      const url = new URL(request.url());
+      if (url.origin === origin && !/ERR_ABORTED/.test(request.failure()?.errorText ?? '') && !/hmr/i.test(url.pathname)) findings.failedRequests.add(url.pathname);
+    });
     return (contexts[key] = context);
   };
 
@@ -214,15 +221,6 @@ try {
     page.setDefaultTimeout(90000);
     const problems = [];
     page.on('pageerror', error => problems.push('page error: ' + error.message.split('\n')[0]));
-    page.on('request', request => {
-      const url = new URL(request.url());
-      if (url.origin !== origin && /^https?:$/.test(url.protocol)) findings.externalRequests.add(url.origin);
-    });
-    // Same-origin requests that fail without an HTTP response (aborted navigations aside).
-    page.on('requestfailed', request => {
-      const url = new URL(request.url());
-      if (url.origin === origin && !/ERR_ABORTED/.test(request.failure()?.errorText ?? '') && !/hmr/i.test(url.pathname)) findings.failedRequests.add(url.pathname);
-    });
     page.on('console', message => {
       if (message.type() === 'error' && !/Failed to load resource/.test(message.text())) problems.push('console error: ' + message.text().split('\n')[0].slice(0, 200));
     });
@@ -261,8 +259,18 @@ try {
           if (version !== AXE_VERSION) throw new Error(`axe-core ${version} loaded; the baseline was made with ${AXE_VERSION}`);
           axeChecked = true;
         }
-        const violations = await page.evaluate(async tags => (await window.axe.run(document, { runOnly: { type: 'tag', values: tags } })).violations
-          .map(v => ({ id: v.id, impact: v.impact, help: v.help, targets: v.nodes.map(n => n.html) })), AXE_TAGS);
+        const violations = await page.evaluate(async tags => {
+          const describe = el => {
+            if (!(el instanceof Element)) return 'unknown';
+            const classes = [...el.classList].sort().map(c => '.' + c).join('');
+            const id = el.id ? '#' + el.id : '';
+            const label = el.getAttribute('aria-label') ? `[aria-label=${el.getAttribute('aria-label').trim().split(/\s+/)[0]}]` : '';
+            const text = classes || id || label ? '' : `"${(el.textContent ?? '').trim().split(/\s+/).slice(0, 3).join(' ').slice(0, 30)}"`;
+            return el.tagName.toLowerCase() + id + classes + label + text;
+          };
+          const result = await window.axe.run(document, { runOnly: { type: 'tag', values: tags }, elementRef: true });
+          return result.violations.map(v => ({ id: v.id, impact: v.impact, help: v.help, targets: v.nodes.map(n => describe(n.element)) }));
+        }, AXE_TAGS);
         for (const v of violations) for (const target of v.targets) {
           const key = axeKey(v.id, template(p), target);
           if (!findings.axe.has(key)) findings.axe.set(key, { impact: v.impact, help: v.help, pages: new Set() });
@@ -388,6 +396,7 @@ try {
       'broken link': /link to \/self-test-broken-link is broken/,
       'wrong status for a missing record': /\/projects should be 404, returned 200/,
       'new accessibility violation': /new accessibility violation: button-name \/ button\.self-test-nameless/,
+      'element key with text for a bare element': /new accessibility violation: [a-z-]+ \/ h2"Bare self-test heading"/,
       'stale baseline entry': /stale baseline entry .*self-test-stale/,
       'request to another site': /new request to another site: https:\/\/example\.org/,
       'classified text (any case)': /classified fixture text "SENTINEL-PHASE-TITLE-7Q" is in the page/,
@@ -398,6 +407,8 @@ try {
       'baseline entry without a roadmap reason': /baseline entry without a reason and roadmap item: failedRequests \/self-test-missing-2\.png/,
       'classified text in a JSON response': /classified fixture text "SENTINEL-CHAPTER-TITLE-7Q" is in the response from \/self-test-data\.json/,
       'off-site redirect refused': /\/off-site redirects to another site \(https:\/\/example\.org\)/,
+      'off-site redirect hop in the browser': /new request to another site: https:\/\/example\.net/,
+      'request failed without a response': /new same-origin request failed: \/self-test-abort\.png/,
     };
     const missed = Object.entries(expected).filter(([, pattern]) => !failures.some(message => pattern.test(message))).map(([name]) => name);
     if (missed.length) { console.log(`FAIL self-test: the checker did not report: ${missed.join(', ')}`); process.exitCode = 1; }
