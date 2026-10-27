@@ -1,5 +1,11 @@
 # Features
 
+## Implemented - 2026-10-27 / Audit fixes (batch 2)
+
+- Favicon, robots.txt and link-preview cards (Open Graph / Twitter) with a site-styled 1200x630 image.
+- Readable headings in light windows; larger tap areas for "i" buttons and spaced Win95 window controls; screen-reader fixes (brand name, labelled window regions, tracker heading order).
+- Escape closes the Art Viewer whenever it is open (one Escape closes one thing); a closed viewer stays closed after a reload.
+
 ## Implemented - 2026-10-27 / One check command and site-health checks (batch 1)
 
 - `npm run check` runs typecheck, build and every test script with a saved log; required before every commit (AGENTS.md).

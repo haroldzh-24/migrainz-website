@@ -17,6 +17,7 @@
 //    no axe-core violations (WCAG 2.0/2.1/2.2 A and AA plus best practice). Reduced motion, CRT mode and the dismissed
 //    popups are fixed so blinking cursors, flicker and timed windows cannot change the result between runs.
 // 3. Missing records must return 404.
+// 4. The homepage has a working favicon, robots.txt rules and link-preview (Open Graph / Twitter) tags.
 // Known findings are listed in scripts/site-health-baseline.json, keyed by rule, route template and element, each with
 // a reason naming the roadmap item that removes it. Anything outside it fails, a baseline entry that no longer occurs
 // fails ("stale"), and an entry without a "Roadmap" reason fails, so nothing is accepted silently.
@@ -329,6 +330,25 @@ try {
     }
     if (missingPage) findings.softNotFound.add(p);
     else fail(`${p} should be 404, returned ${response.status()}`);
+  }
+  // 4. Site metadata (roadmap 2.3): favicon, robots.txt and link-preview tags on the homepage.
+  if (!selfTest) {
+    const home = await (await get('/')).text();
+    const tags = name => [...home.matchAll(new RegExp(`<${name}\\b[^>]*>`, 'gi'))].map(([tag]) => Object.fromEntries([...tag.matchAll(/([a-z:-]+)="([^"]*)"/gi)].map(m => [m[1].toLowerCase(), m[2].replace(/&amp;/g, '&')])));
+    const local = href => { const url = new URL(href, base); return url.pathname + url.search; }; // dev renders absolute URLs with localhost:3000
+    const icon = tags('link').find(tag => /(^|\s)icon(\s|$)/.test(tag.rel ?? ''));
+    if (!icon?.href) fail('homepage has no <link rel="icon">');
+    else { const response = await get(local(icon.href)); if (response.status() !== 200) fail(`icon ${local(icon.href)} returned ${response.status()}`); }
+    const robots = await get('/robots.txt');
+    const robotsText = await robots.text();
+    for (const rule of ['Disallow: /admin', 'Disallow: /api/', 'Allow: /api/media/file/', 'Disallow: /auth/', 'Disallow: /boot-status'])
+      if (robots.status() !== 200 || !robotsText.includes(rule)) fail(`robots.txt lacks "${rule}" (status ${robots.status()})`);
+    const meta = Object.fromEntries(tags('meta').map(tag => [tag.property ?? tag.name, tag.content]).filter(([key]) => key));
+    for (const key of ['og:title', 'og:description', 'og:image', 'og:site_name', 'twitter:card']) if (!meta[key]) fail(`homepage has no ${key} meta tag`);
+    if (meta['og:image']) {
+      const response = await get(local(meta['og:image']));
+      if (response.status() !== 200 || !/^image\//.test(response.headers()['content-type'] ?? '')) fail(`og:image ${local(meta['og:image'])} returned ${response.status()} ${response.headers()['content-type']}`);
+    }
   }
   // External links are never fetched; placeholder destinations are findings.
   for (const url of external.keys()) if (/^https?:\/\/(www\.)?example\.(com|org|net)\b/.test(url)) findings.externalPlaceholder.add(url);

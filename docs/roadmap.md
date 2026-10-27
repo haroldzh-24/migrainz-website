@@ -1,6 +1,6 @@
 # Roadmap: migrainz-website
 
-Proposed 2026-10-26 after an audit (claude.ai Project doc `claude/project-audit-2026-10-26.md`); approved by Harold 2026-10-27. **Status (2026-10-27): M1 built (batches 1, 1b, 1c; each reviewed after its commit; committed locally, not pushed yet); M2 in progress.**
+Proposed 2026-10-26 after an audit (claude.ai Project doc `claude/project-audit-2026-10-26.md`); approved by Harold 2026-10-27. **Status (2026-10-27): M1 built (batches 1, 1b, 1c); M2 built except 2.2 (waiting for Harold's decision on `proxy.ts`) and 2.6 (waiting for the store URL). Committed locally, not pushed yet.**
 
 This file is the repo copy; the Project copy (`claude/roadmap-<date>.md`) is kept in sync. Each item is ticked with its batch and commit when done. docs/redesign-plan.md stays the source of truth for design decisions and for Harold's agreed order of production work (Preview isolation, then the Payload upgrade, then the phase 2 plan); this roadmap fits the code-only batches around that order and gets Harold's OK where it changes it.
 
@@ -38,12 +38,12 @@ This file is the repo copy; the Project copy (`claude/roadmap-<date>.md`) is kep
 
 | # | Item | Done when |
 |---|---|---|
-| 2.1 | FACTIONS heading readable inside light windows. | axe contrast clean on the project page; screenshot at 390 and 1366. |
-| 2.2 | Missing records return HTTP 404 (project, character, equipment, faction, wrong project), keeping the in-world page. | Test asserts 404 for each case and 200 for real records. |
-| 2.3 | Favicon, robots.txt, page title for equipment directories, basic Open Graph tags (title, description, image). Sitemap only if Harold wants one. | Fixture serves them; tests check each. |
-| 2.4 | Accessibility: brand link name includes "MIGRAINZ"; no `aria-label` on a plain div; tracker heading order; 24 px hit area for Win95 window buttons and "i" buttons without changing how they look; "AWAITING FILES" and cursor contrast. | No serious axe violations left in the baseline (or each remaining one has a written reason); screenshots unchanged except the fixes. |
-| 2.5 | Art Viewer: Escape closes it after focus has moved to another window (bugs.md 10-22). | A test reproduces the bug first, then passes. |
-| 2.6 | Store link: real URL if given (M0.8). | No example.com link in the build. |
+| 2.1 | FACTIONS heading readable inside light windows. | axe contrast clean on the project page; screenshot at 390 and 1366. **Done** batch 2: all light-window headings, plus the ACCESS DENIED window. |
+| 2.2 | Missing records return HTTP 404 (project, character, equipment, faction, wrong project), keeping the in-world page. | Test asserts 404 for each case and 200 for real records. **Waiting for Harold:** the fix needs `proxy.ts` (one small Vercel invocation per /projects request). Cause and design in bugs.md. |
+| 2.3 | Favicon, robots.txt, page title for equipment directories, basic Open Graph tags (title, description, image). Sitemap only if Harold wants one. | Fixture serves them; tests check each. **Done** batch 2 (no sitemap); site health checks each. |
+| 2.4 | Accessibility: brand link name includes "MIGRAINZ"; no `aria-label` on a plain div; tracker heading order; 24 px hit area for Win95 window buttons and "i" buttons without changing how they look; "AWAITING FILES" and cursor contrast. | No serious axe violations left in the baseline (or each remaining one has a written reason); screenshots unchanged except the fixes. **Done** batch 2. Deviation: Win95 window controls keep 21x19 and get 4px spacing (WCAG 2.5.8 spacing rule) instead of a 24px box, which would make titlebars taller; the "i" buttons have a real 25x25 hit area. Cursor contrast: the blinking "[ NEW ]" alternates two readable colours. |
+| 2.5 | Art Viewer: Escape closes it after focus has moved to another window (bugs.md 10-22). | A test reproduces the bug first, then passes. **Done** batch 2 (also: a closed viewer no longer reopens on reload). |
+| 2.6 | Store link: real URL if given (M0.8). | No example.com link in the build. **Waiting for Harold:** needs the real store URL. |
 
 ## M3 — Batch 3: security headers (code-only; live check is production lane)
 

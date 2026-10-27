@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type PointerEvent } from "react";
-import { RetroWindow, useWindowManager, type ViewerImage } from "@/components/WindowManager";
+import { RetroWindow, useWindowManager, viewerClosedKey, type ViewerImage } from "@/components/WindowManager";
 
 export type View = { scale: number | null; x: number; y: number };
 export const fitView: View = { scale: null, x: 0, y: 0 };
@@ -167,17 +167,28 @@ export default function ArtViewer() {
   const [imageIndex, setImageIndex] = useState(0);
   const [views, setViews] = useState<Record<string, View>>({});
   const normalViews = useRef<Record<string, View>>({});
+  // Restored tabs reopen the viewer after a reload only if it was open (bugs.md 2026-10-27).
+  const [startOpen] = useState(() => { try { return window.sessionStorage.getItem(viewerClosedKey) !== "1"; } catch { return true; } });
   const record = windows.find((window) => window.id === "art-viewer");
   const maximized = record?.maximized;
   const active = viewerTabs.find((tab) => tab.id === activeViewerTab) ?? viewerTabs[0];
 
   useEffect(() => setImageIndex(0), [active?.id]);
-  const closeable = Boolean(active && record?.open && !record.minimized && record.focused);
+  // Escape closes the viewer whenever it is open, also after another window took focus (bugs.md 2026-10-22). One Escape
+  // closes one thing: it listens on window, after the document-level handlers (inspector, promo and monitor windows),
+  // skips keys they already handled, leaves the boot/announcement window and text fields alone, and ignores auto-repeat.
+  const closeable = Boolean(active && record?.open && !record.minimized);
   useEffect(() => {
     if (!closeable) return;
-    const key = (event: KeyboardEvent) => { if (event.key === "Escape" && !event.defaultPrevented) closeWindow("art-viewer"); };
-    document.addEventListener("keydown", key);
-    return () => document.removeEventListener("keydown", key);
+    const key = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented || event.repeat || event.isComposing) return;
+      if (event.target instanceof Element && event.target.closest("select, input, textarea, [contenteditable]")) return;
+      if (document.querySelector(".startup-sequence")) return;
+      event.preventDefault();
+      closeWindow("art-viewer");
+    };
+    window.addEventListener("keydown", key);
+    return () => window.removeEventListener("keydown", key);
   }, [closeable, closeWindow]);
   if (!active) return null;
   const artwork = active.images[imageIndex] ?? active.images[0];
@@ -195,6 +206,7 @@ export default function ArtViewer() {
     id="art-viewer"
     title="ART VIEWER"
     className="art-viewer-window"
+    defaultOpen={startOpen}
     defaultPosition={{ x: 70, y: 50 }}
     defaultSize={{ width: 900, height: 650 }}
     titlebarContent={tabs}

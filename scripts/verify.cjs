@@ -89,7 +89,7 @@ const { chromium } = require(
     assert.equal(await page.locator('#top').evaluate(el => !!el.closest('[inert]')), false);
     assert.equal(await page.locator('.startup-sequence').evaluate(el => getComputedStyle(el).backgroundColor), 'rgba(0, 0, 0, 0)');
     // A real page control outside the hanging window remains usable.
-    await page.getByRole('link', { name: 'Home', exact: true }).click();
+    await page.locator('header a.brand').click();
     assert.equal(await page.locator('.startup-announcement').isVisible(), true);
     // The shop ad cannot be opened (hover or click) while the splash is showing.
     const splashShop = page.getByRole('button', { name: 'Requisitions / shop 03 / requisitions.exe' });
@@ -129,7 +129,7 @@ const { chromium } = require(
       await page.getByRole('button', { name: 'ENTER', exact: true }).waitFor();
       if (key === 'click') await page.getByRole('button', { name: 'Close announcement' }).click();
       else {
-        await page.getByRole('link', { name: 'Home', exact: true }).focus();
+        await page.locator('header a.brand').focus();
         await page.keyboard.press(key);
       }
       await page.locator('.startup-sequence').waitFor({ state: 'hidden' });

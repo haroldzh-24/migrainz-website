@@ -37,6 +37,20 @@ export const metadata: Metadata = {
   },
   description:
     "Studio Migrainz: a public terminal for projects, artwork, comics, production logs and studio archives.",
+  // Link previews. The card image is app/(frontend)/opengraph-image.png (scripts/make-og-image.mjs). Pages set only
+  // their own <title>, so every preview shows the site title. Absolute URLs use Next's default base (the Vercel
+  // production URL on Vercel), so no domain is written here.
+  openGraph: {
+    type: "website",
+    siteName: "MIGRAINZ",
+    title: "MIGRAINZ // PUBLIC ACCESS TERMINAL",
+    description: "Artwork, comics, objects and works in progress from Studio Migrainz.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "MIGRAINZ // PUBLIC ACCESS TERMINAL",
+    description: "Artwork, comics, objects and works in progress from Studio Migrainz.",
+  },
 };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
