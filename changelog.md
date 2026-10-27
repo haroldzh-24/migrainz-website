@@ -1,10 +1,19 @@
 # Changelog
 
+## Changed - 2026-10-27 / Batch 1c: fixes from the independent review of batch 1b (chore/batch-1c-review-fixes)
+
+- Site health: accessibility findings are keyed by the failing element itself (tag, id, sorted classes, first word of its aria-label) instead of axe's page-dependent CSS selectors, so adding a card no longer turns into new and stale entries. Unknown baseline sections fail.
+- Site health: Chrome now runs with every host except the local server unresolvable and without a proxy, so a same-origin redirect to another site can't load anything; every off-site request is recorded (also redirect hops), and same-origin requests that fail without a response are recorded too.
+- Site-health self-test plants 13 problems (adds: a baseline entry without a roadmap reason, classified text in a JSON response, an off-site redirect against a throwaway local server); all are reported.
+- `npm run check`: a second Ctrl+C kills the running step at once; after the first, the summary is still written and the log flushed before exiting (exit code 130). The regression runner waits for its servers and browsers to stop, then SIGKILLs every process group it started.
+- `verify-fixture-env.mjs` now also runs both fixture runners with a fake credential set and checks they refuse, start nothing, print no value and leave no fixture directory.
+- docs/roadmap.md: 1.6 marked done except Harold's Windows run.
+
 ## Changed - 2026-10-27 / Batch 1b: fixes from the independent review (chore/batch-1b-review-fixes)
 
-- Site health: accessibility baseline keys now include the route template, so a known finding is only accepted on the page type where it was seen (78 entries instead of 16). Entries without a "Roadmap" reason fail. The script's own requests no longer follow redirects to other sites. Classified fixture text is matched in any case and also in JSON and RSC responses fetched after hydration.
+- Site health: accessibility baseline keys now include the route template, so a known finding is only accepted on the page type where it was seen. Entries without a "Roadmap" reason fail. The script's own requests no longer follow redirects to other sites. Classified fixture text is matched in any case and also in JSON and RSC responses the page fetches (in `next dev` there are no link prefetches, so this is mostly the page's own data).
 - Site-health self-test now plants one of each problem (broken link, wrong 404, accessibility violation, stale entry, third-party request, classified text, console error, sideways scroll, generic title, failed request) instead of relying on real defects; all ten are reported.
-- `npm run check`: Ctrl+C or a timeout stops the running step gracefully (SIGTERM, then SIGKILL after a grace period) so the regression suite can stop its own server; the last lines of a step's output are no longer cut off; a missing git no longer hides the summary.
+- `npm run check`: on Linux and macOS, Ctrl+C or a timeout stops the running step gracefully (SIGTERM, then SIGKILL after a grace period) so the regression suite can stop its own server; on Windows the step's process tree is ended at once (taskkill). The last lines of a step's output are no longer cut off; a missing git no longer hides the summary.
 - AGENTS.md: the independent review runs after each batch commit, before asking for the push (findings never go live first); "no branch is pushed" now says "no branch other than `main`"; `verify-cms.cjs` named as outside `npm run check`; Playwright pinned in the documented commands (also README, docs/CMS.md).
 - docs/CMS.md and docs/BLOB-STORAGE.md no longer call the equipment and factions migrations unapplied (pointer to AGENTS.md "Release status").
 - `verify-fixture-env.mjs` checks that both fixture runners refuse to start before they start anything.

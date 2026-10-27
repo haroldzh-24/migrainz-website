@@ -1,7 +1,7 @@
 // Site health check against a running seeded fixture (npm run test:regression starts one; so does
 // node scripts/serve-fixture.mjs). Never point it at production: BASE_URL must be a local address, the script's own
-// requests go only to that origin (redirects elsewhere are refused and reported), and the browser blocks requests to
-// any other origin (they are reported instead).
+// requests go only to that origin (redirects elsewhere are refused and reported), and Chrome runs with every other host
+// unresolvable and other origins blocked (any attempt is reported).
 //   BASE_URL=http://127.0.0.1:<port> node scripts/verify-site-health.mjs [--write-baseline | --self-test]
 // Playwright and axe-core come from the `npm exec --package=...` folders on PATH (see package.json "test:regression");
 // PLAYWRIGHT_MODULE / AXE_MODULE override that, BROWSER_PATH overrides the Chrome path.
@@ -12,7 +12,8 @@
 // 2. Visits up to two pages per route template again at 390x844 (touch), plus the first-visit announcement at both
 //    widths. Each visit: no page or console errors, no failed same-origin requests, no requests to other origins, no
 //    sideways scroll, a page-specific <title>, no classified fixture titles in the page or in its JSON/RSC responses
-//    (case-insensitive), and (on the template pages)
+//    fetched by the page (case-insensitive; in `next dev` there are no link prefetches, so this is mostly the page's own
+//    data), and (on the template pages)
 //    no axe-core violations (WCAG 2.0/2.1/2.2 A and AA plus best practice). Reduced motion, CRT mode and the dismissed
 //    popups are fixed so blinking cursors, flicker and timed windows cannot change the result between runs.
 // 3. Missing records must return 404.
@@ -21,11 +22,13 @@
 // fails ("stale"), and an entry without a "Roadmap" reason fails, so nothing is accepted silently.
 // --write-baseline rewrites the baseline from this run (keeps existing reasons; new ones get a placeholder that fails
 // until a reason is written); review the diff before committing.
-// --self-test plants one of each problem (broken link, wrong 404, accessibility violation, stale baseline entry,
-// third-party request, classified text, console error, sideways scroll, generic title, failed request) and passes
-// only if every one is reported (run by test:regression, so the checker itself is tested).
+// --self-test plants one of each problem (broken link, wrong 404, accessibility violation, stale baseline entry, entry
+// without a reason, third-party request, classified text in the page and in a JSON response, console error, sideways
+// scroll, generic title, failed request, off-site redirect) and passes only if every one is reported (run by
+// test:regression, so the checker itself is tested).
 // Writes test-results/site-health/report.json and screenshots of each template at both widths.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -78,7 +81,9 @@ const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-
 
 const seeds = selfTest ? ['/', '/projects', '/self-test-broken-link'] : SEEDS;
 const notFound = selfTest ? ['/projects'] : NOT_FOUND;
-const baseline = selfTest ? { axe: { 'self-test-stale .never-present': 'planted by --self-test' } } : savedBaseline;
+// The self-test baseline: one entry that never occurs (stale) and one real planted finding with no roadmap reason.
+const baseline = selfTest ? { axe: { 'self-test-stale / never-present': 'planted by --self-test' }, failedRequests: { '/self-test-missing-2.png': 'planted, no reason' } } : savedBaseline;
+const KINDS = ['softNotFound', 'failedRequests', 'externalRequests', 'genericTitle', 'externalPlaceholder', 'axe'];
 
 const failures = [];
 const findings = { softNotFound: new Set(), failedRequests: new Set(), externalRequests: new Set(), genericTitle: new Set(), externalPlaceholder: new Set(), axe: new Map() };
@@ -91,10 +96,20 @@ const template = pathname => {
   if (parts[0] === 'comics' && parts.length >= 3) { parts[1] = ':comic'; parts[2] = ':chapter'; }
   return '/' + parts.join('/');
 };
-// Key for an axe node: rule, route template and element. Positional pseudo-classes are dropped and attribute values cut
-// to their first word, so "Close PROJECT: BLUSHLAND" and "Close COMIC READER" match, but only on the template where the
-// finding was seen.
-const axeKey = (rule, routeTemplate, target) => `${rule} ${routeTemplate} ${String(target).replace(/:nth-(child|of-type)\(\d+\)/g, '').replace(/="([^"\s]*)[^"]*"/g, '="$1"')}`;
+// Key for an axe node: rule, route template and the element itself (tag, id, sorted classes, first word of its
+// aria-label), read from the node's own HTML. axe's CSS selectors depend on what else is on the page (class order,
+// uniqueness, parents), so they are not used. "Close PROJECT: BLUSHLAND" and "Close COMIC READER" match, but only on the
+// template where the finding was seen.
+const elementKey = html => {
+  const open = /^<([a-z0-9-]+)([^>]*)>/i.exec(String(html).trim());
+  if (!open) return 'unknown';
+  const attr = name => new RegExp(`\\s${name}="([^"]*)"`, 'i').exec(open[2])?.[1];
+  const classes = (attr('class') ?? '').split(/\s+/).filter(Boolean).sort().map(c => '.' + c).join('');
+  const id = attr('id') ? '#' + attr('id') : '';
+  const label = attr('aria-label') ? `[aria-label=${attr('aria-label').split(/\s+/)[0]}]` : '';
+  return open[1].toLowerCase() + id + classes + label;
+};
+const axeKey = (rule, routeTemplate, html) => `${rule} ${routeTemplate} ${elementKey(html)}`;
 const internalPath = (href, from) => {
   try {
     const url = new URL(href.replace(/&amp;/g, '&'), base + from);
@@ -103,23 +118,38 @@ const internalPath = (href, from) => {
   } catch { return {}; }
 };
 
-const browser = await playwright.chromium.launch({ executablePath: process.env.BROWSER_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: true });
+const browser = await playwright.chromium.launch({ executablePath: process.env.BROWSER_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: true,
+  args: ['--no-proxy-server', `--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE ${new URL(base).hostname}`] });
 try {
   const api = await browser.newContext();
   // Redirects are followed by hand so a same-origin URL can never lead the script to another site.
-  const get = async (p, headers) => {
-    let url = new URL(p, base);
+  const makeGet = allowed => async (p, headers) => {
+    let url = new URL(p, allowed);
     for (let hops = 0; ; hops++) {
-      if (url.origin !== origin) throw new Error(`refusing to request ${url.origin}`);
+      if (url.origin !== allowed) throw new Error(`refusing to request ${url.origin}`);
       const response = await api.request.get(url.href, { headers, timeout: 90000, maxRedirects: 0 });
       const location = response.headers().location;
       if (response.status() < 300 || response.status() >= 400 || !location) return response;
       const next = new URL(location, url);
-      if (next.origin !== origin) { fail(`${p} redirects to another site (${next.origin})`); return response; }
+      if (next.origin !== allowed) { fail(`${p} redirects to another site (${next.origin})`); return response; }
       if (hops >= 5) { fail(`${p} redirects more than 5 times`); return response; }
       url = next;
     }
   };
+  const get = makeGet(origin);
+  if (selfTest) {
+    // The redirect guard, tested against a throwaway local server: one same-site hop is followed, an off-site one refused.
+    const server = createServer((req, res) => {
+      if (req.url === '/off-site') { res.writeHead(302, { location: 'https://example.org/x' }); res.end(); }
+      else if (req.url === '/hop') { res.writeHead(302, { location: '/ok' }); res.end(); }
+      else { res.writeHead(200, { 'content-type': 'text/plain' }); res.end('ok'); }
+    });
+    await new Promise(done => server.listen(0, '127.0.0.1', done));
+    const local = makeGet(`http://127.0.0.1:${server.address().port}`);
+    if ((await local('/hop')).status() !== 200) fail('self-test: a same-site redirect was not followed');
+    await local('/off-site');
+    server.close();
+  }
 
   const status = new Map(); // path -> { status, from }
   const external = new Map(); // url -> first page linking to it
@@ -163,15 +193,16 @@ try {
       if (location.pathname !== '/') return;
       const plant = html => document.body.insertAdjacentHTML('beforeend', html);
       plant('<button class="self-test-nameless"></button>');
-      plant('<img alt="" src="https://example.org/self-test.png"><img alt="" src="/self-test-missing.png">');
+      plant('<img alt="" src="https://example.org/self-test.png"><img alt="" src="/self-test-missing.png"><img alt="" src="/self-test-missing-2.png">');
       plant('<p hidden>sentinel-phase-title-7q</p><div style="width:4000px;height:1px"></div>');
+      fetch('/self-test-data.json').catch(() => {});
       console.error('self-test console error');
     }, 0)));
-    // Tests stay offline and never call third parties; any attempt is recorded as a finding.
-    await context.route(url => url.origin !== origin && /^https?:$/.test(url.protocol), route => {
-      findings.externalRequests.add(new URL(route.request().url()).origin);
-      return route.abort('blockedbyclient');
-    });
+    // A JSON response carrying classified text, as data fetched after hydration would.
+    if (selfTest) await context.route(url => url.pathname === '/self-test-data.json', route => route.fulfill({ contentType: 'application/json', body: '{"t":"Sentinel-Chapter-Title-7q"}' }));
+    // Tests stay offline and never call third parties; any attempt is recorded as a finding. Chrome is also launched
+    // with every host but the local one unresolvable, which covers redirect hops that routing doesn't see.
+    await context.route(url => url.origin !== origin && /^https?:$/.test(url.protocol), route => route.abort('blockedbyclient'));
     return (contexts[key] = context);
   };
 
@@ -182,6 +213,15 @@ try {
     page.setDefaultTimeout(90000);
     const problems = [];
     page.on('pageerror', error => problems.push('page error: ' + error.message.split('\n')[0]));
+    page.on('request', request => {
+      const url = new URL(request.url());
+      if (url.origin !== origin && /^https?:$/.test(url.protocol)) findings.externalRequests.add(url.origin);
+    });
+    // Same-origin requests that fail without an HTTP response (aborted navigations aside).
+    page.on('requestfailed', request => {
+      const url = new URL(request.url());
+      if (url.origin === origin && !/ERR_ABORTED/.test(request.failure()?.errorText ?? '') && !/hmr/i.test(url.pathname)) findings.failedRequests.add(url.pathname);
+    });
     page.on('console', message => {
       if (message.type() === 'error' && !/Failed to load resource/.test(message.text())) problems.push('console error: ' + message.text().split('\n')[0].slice(0, 200));
     });
@@ -221,7 +261,7 @@ try {
           axeChecked = true;
         }
         const violations = await page.evaluate(async tags => (await window.axe.run(document, { runOnly: { type: 'tag', values: tags } })).violations
-          .map(v => ({ id: v.id, impact: v.impact, help: v.help, targets: v.nodes.map(n => n.target.join(' ')) })), AXE_TAGS);
+          .map(v => ({ id: v.id, impact: v.impact, help: v.help, targets: v.nodes.map(n => n.html) })), AXE_TAGS);
         for (const v of violations) for (const target of v.targets) {
           const key = axeKey(v.id, template(p), target);
           if (!findings.axe.has(key)) findings.axe.set(key, { impact: v.impact, help: v.help, pages: new Set() });
@@ -308,6 +348,7 @@ try {
     writeFileSync(baselineFile, JSON.stringify(next, null, 2) + '\n');
     console.log(`Baseline written to ${path.relative(process.cwd(), baselineFile)}; review the diff.`);
   } else {
+    for (const kind of Object.keys(baseline)) if (kind !== '_readme' && !KINDS.includes(kind)) fail(`unknown section "${kind}" in ${path.basename(baselineFile)} (known: ${KINDS.join(', ')})`);
     for (const kind of Object.keys(current)) {
       const known = baseline[kind] ?? {};
       for (const key of current[kind]) if (!(key in known)) {
@@ -315,7 +356,7 @@ try {
         fail(`new ${labels[kind]}: ${key}${detail}`);
       }
       for (const key of Object.keys(known)) if (!current[kind].includes(key)) fail(`stale baseline entry (fixed? delete it from ${path.basename(baselineFile)}): ${kind} ${key}`);
-      if (!selfTest) for (const [key, reason] of Object.entries(known)) if (!/Roadmap \d/.test(reason) || /TODO/.test(reason)) fail(`baseline entry without a reason and roadmap item: ${kind} ${key}`);
+      for (const [key, reason] of Object.entries(known)) if (!/Roadmap \d/.test(reason) || /TODO/.test(reason)) fail(`baseline entry without a reason and roadmap item: ${kind} ${key}`);
     }
   }
   const open = Object.entries(current).reduce((sum, [kind, list]) => sum + list.filter(key => key in (baseline[kind] ?? {})).length, 0);
@@ -326,7 +367,7 @@ try {
     const expected = {
       'broken link': /link to \/self-test-broken-link is broken/,
       'wrong status for a missing record': /\/projects should be 404, returned 200/,
-      'new accessibility violation': /new accessibility violation: button-name \/ \.self-test-nameless/,
+      'new accessibility violation': /new accessibility violation: button-name \/ button\.self-test-nameless/,
       'stale baseline entry': /stale baseline entry .*self-test-stale/,
       'request to another site': /new request to another site: https:\/\/example\.org/,
       'classified text (any case)': /classified fixture text "SENTINEL-PHASE-TITLE-7Q" is in the page/,
@@ -334,6 +375,9 @@ try {
       'sideways scroll': /1366px \/: scrolls sideways/,
       'generic title': /new page uses the generic site title: \/projects$/,
       'failed same-origin request': /new same-origin request failed: \/self-test-missing\.png/,
+      'baseline entry without a roadmap reason': /baseline entry without a reason and roadmap item: failedRequests \/self-test-missing-2\.png/,
+      'classified text in a JSON response': /classified fixture text "SENTINEL-CHAPTER-TITLE-7Q" is in the response from \/self-test-data\.json/,
+      'off-site redirect refused': /\/off-site redirects to another site \(https:\/\/example\.org\)/,
     };
     const missed = Object.entries(expected).filter(([, pattern]) => !failures.some(message => pattern.test(message))).map(([name]) => name);
     if (missed.length) { console.log(`FAIL self-test: the checker did not report: ${missed.join(', ')}`); process.exitCode = 1; }
