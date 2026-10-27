@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { appendFileSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
 import { fixtureEnv, fixtureEnvProblems } from './fixture-env.mjs';
@@ -15,13 +15,14 @@ const problems = fixtureEnvProblems(env, fixture);
 if (problems.length) { rmSync(fixture, { recursive: true, force: true }); console.error('Refusing to start. Offending variables: ' + problems.join(', ')); process.exit(1); }
 mkdirSync(env.CMS_MEDIA_DIR);
 const children = new Set();
-const groups = new Set(); // every process group started, kept after the leader exits (its workers may still run)
 function launch(args) {
-  // Own process group on Linux/macOS so stop() can end next dev and its workers together.
+  // Own process group on Linux/macOS so stop() can end next dev and its workers together. Under `npm run check` the
+  // group is also listed in CHECK_PGID_FILE so a forced stop of the whole check can reach it.
   const child = spawn(process.execPath, args, { env, stdio: 'inherit', windowsHide: true, detached: process.platform !== 'win32' });
   children.add(child);
-  if (child.pid) groups.add(child.pid);
-  child.once('exit', () => children.delete(child));
+  if (child.pid && process.env.CHECK_PGID_FILE) { try { appendFileSync(process.env.CHECK_PGID_FILE, `${child.pid}\n`); } catch {} }
+  // When a step ends, end anything it left in its group at once (later its group id could be reused).
+  child.once('exit', () => { children.delete(child); if (process.platform !== 'win32' && child.pid) { try { process.kill(-child.pid, 'SIGKILL'); } catch {} } });
   return child;
 }
 function completed(child) {
@@ -30,8 +31,8 @@ function completed(child) {
     child.once('exit', (code, signal) => code === 0 ? resolve() : reject(new Error(`Regression subprocess exited with ${signal || code}`)));
   });
 }
-// Ends only this runner's process trees: SIGTERM to each group, a few seconds to exit, then SIGKILL to every group
-// this run started (Windows: taskkill /T /F, which is immediate).
+// Ends only this runner's process trees: SIGTERM to each running step's group, a few seconds to exit, then SIGKILL to
+// those groups (Windows: taskkill /T /F, which is immediate). Finished steps' groups were already ended on exit.
 async function stop() {
   for (const child of children) {
     if (!child.pid) continue;
@@ -39,10 +40,13 @@ async function stop() {
     else { try { process.kill(-child.pid, 'SIGTERM'); } catch { child.kill('SIGTERM'); } }
   }
   if (process.platform === 'win32') return;
+  const running = [...children].map(child => child.pid).filter(Boolean);
   for (const deadline = Date.now() + 5000; children.size && Date.now() < deadline;) await new Promise(done => setTimeout(done, 100));
-  for (const pid of groups) { try { process.kill(-pid, 'SIGKILL'); } catch {} }
+  for (const pid of running) { try { process.kill(-pid, 'SIGKILL'); } catch {} }
 }
-for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, async () => { await stop(); process.exit(1); });
+// Repeated signals (one keypress can arrive twice) don't interrupt the stop that is already running.
+let stopping = false;
+for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) process.on(signal, async () => { if (stopping) return; stopping = true; await stop(); process.exit(1); });
 
 try {
   console.log(`Regression fixture: ${fixture}`);
