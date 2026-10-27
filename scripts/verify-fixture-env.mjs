@@ -39,10 +39,13 @@ try {
   assert.ok(!problems({ BLOB_READ_WRITE_TOKEN: 'vercel_blob_rw_fake' }).includes('vercel_blob_rw_fake'), 'problems name variables, never values');
 
   // Both fixture runners use this check before starting anything.
-  for (const runner of ['scripts/regression.mjs', 'scripts/serve-fixture.mjs']) {
+  // (Static check of the source: the check must come before the first process the runner starts.)
+  for (const [runner, firstStart] of [['scripts/regression.mjs', 'await completed(launch('], ['scripts/serve-fixture.mjs', "run(['--import"]]) {
     const source = readFileSync(runner, 'utf8');
-    assert.match(source, /fixtureEnvProblems\(env, fixture\)/, `${runner} runs the fail-closed check`);
-    assert.ok(source.indexOf('fixtureEnvProblems(env, fixture)') < source.indexOf('launch(') || !source.includes('launch('), `${runner} checks before launching`);
+    const check = source.indexOf('const problems = fixtureEnvProblems(env, fixture);');
+    const refuse = source.indexOf("console.error('Refusing to start.", check);
+    const start = source.indexOf(firstStart);
+    assert.ok(check > 0 && refuse > check && start > refuse, `${runner} refuses to start before it starts anything (check ${check}, refusal ${refuse}, first start ${start})`);
   }
   console.log('PASS: fixture environment blanks Blob/Patreon/Vercel and .env* names, and refuses production databases, storage and credentials (names only).');
 } finally {

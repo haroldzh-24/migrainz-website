@@ -36,7 +36,7 @@ The Vercel build command is `npm run build` and must not run migrations. Migrati
 - Before every commit: `npm run check` passes (typecheck, production build, full test suite; log in `test-results/`), and the changed pages are opened in a browser at phone (~390px) and desktop (1366px) width. Never call something fixed without that evidence.
 - Each batch updates changelog.md, bugs.md, features.md and docs/roadmap.md.
 - Commit message: `Batch N: <short summary>` plus a short list of what changed.
-- After each push: a separate agent that has not seen the work reviews the commit read-only. Check every finding yourself; fix the real ones as the next sub-batch (`Nb`) with tests, and push (with Harold's OK).
+- After each batch commit, before asking Harold for the push (so findings never go live first): a separate agent that has not seen the work reviews the commit read-only. Check every finding yourself; fix the real ones as the next sub-batch (`Nb`) with tests. Anything pushed without that review gets it right after the push.
 - After each batch: update the Project status doc `claude/status-<date>.md` (latest commit and test count; commits by batch; behaviour changes; what to check by hand; open items only Harold can do; known limitations) and keep the Project roadmap copy in sync with docs/roadmap.md.
 - Keep going batch after batch without waiting, except for "Ask Harold first" items and production-lane steps.
 
@@ -53,12 +53,12 @@ The Vercel build command is `npm run build` and must not run migrations. Migrati
 - 2026-10-26: `main` (`086c592`, merge of `chore/dependency-updates`) was pushed with Harold's approval; production served it ~56 s later (live client reports Next 16.4.3). Next 16.3.4 -> 16.4.3 security update, patched packages, boot label fix, `experimental.agentUpgrade: false`. No schema, migration, Blob or env change. Rollback target: the `f718830` deployment. The docs commits after `086c592` went out with the next push.
 - 2026-10-26 11:14 UTC: `main` (`7658101`, merge of `fix/crt-glow`, the CRT glow pass) was pushed; GitHub's deployment record shows the Production deployment succeeding 39 s later. No schema, migration, Blob or env change. Rollback target: the `086c592` deployment. Live checks (read-only audit, 2026-10-26): 37 public pages 200, the live CSS has the glow rules, the `mp510mmcc` schematic plays, no page errors; real devices not checked.
 - Payload is still 3.88 with open advisories. Decided (Harold, 2026-10-26): upgrade after Preview isolation and before phase 2, as production-lane work with the equipment-migration steps (backup, tested restore, rehearsal on a Neon copy, apply, deploy); target 3.92.0 if Vercel's Node is >=24.22.1, otherwise 3.91.0; remove `@payloadcms/storage-s3` in that branch. Details: bugs.md "Upstream CMS dependency advisories".
-- There is no isolated Preview yet (a push creates a Vercel Preview built with production credentials), so no branch is pushed. Preview isolation is listed in docs/redesign-plan.md "Workflow setup".
+- There is no isolated Preview yet (a push creates a Vercel Preview built with production credentials), so no branch other than `main` is pushed (and `main` only with Harold's OK). Preview isolation is listed in docs/redesign-plan.md "Workflow setup".
 - Blockers before any further production schema work: production `payload_migrations` ledger and schema verified; Neon and Blob backups taken; restore tested in isolation; Preview confirmed on a separate DB branch; pending migrations rehearsed against a production copy.
 - The review server (`node scripts/serve-fixture.mjs`) runs in dev mode on a throwaway SQLite fixture; production builds on SQLite are refused by design.
 
 ## Commands (PowerShell: use npm.cmd)
-- `npm.cmd run check`: everything below in one run (typecheck, build, the isolated checks, the regression suite with the site-health crawl, and the browser verify scripts); keeps going after a failure, saves `test-results/check-<time>.txt` and exits non-zero if any step failed. `npm.cmd run check -- --list` shows the steps, `--only <step,...>` runs some of them. Stop the review server first.
+- `npm.cmd run check`: everything below in one run (typecheck, build, the isolated checks, the regression suite with the site-health crawl, and the browser verify scripts; not `scripts/verify-cms.cjs`, which needs a database with no administrator, see docs/CMS.md); keeps going after a failure, saves `test-results/check-<time>.txt` and exits non-zero if any step failed. `npm.cmd run check -- --list` shows the steps, `--only <step,...>` runs some of them. Stop the review server first.
 - `npm.cmd run typecheck` and `npm.cmd run build` (offline build; does not prove DB or migration state)
 - `npm.cmd run test:regression` (fresh private SQLite fixture plus Playwright; stop the dev server first)
 - Isolated checks that never load `.env.local`: `node --import tsx scripts/verify-equipment.ts`, `node --import tsx scripts/check-blob-storage.mjs`, `node --import tsx scripts/verify-equipment-migration.mjs`, `node scripts/verify-equipment-browser.mjs`
@@ -119,7 +119,7 @@ The Vercel build command is `npm run build` and must not run migrations. Migrati
 - Run npm.cmd run typecheck and npm.cmd run build for TypeScript and production compilation; `npm.cmd run check` runs everything.
 - npm.cmd run dev starts http://127.0.0.1:3000 (or the next free port printed in the terminal).
 - Check the complete BLUSHLAND path, reader boundaries, popup hover/keyboard/touch behavior, mobile widths and reduced motion.
-- Optional browser checks: npm.cmd exec --yes --package=playwright -- node scripts/verify.cjs while the server runs. See README.md.
+- Optional browser checks: npm.cmd exec --yes --package=playwright@1.64.1 -- node scripts/verify.cjs while the server runs. See README.md.
 <!-- BEGIN:nextjs-agent-rules -->
 
 ## This is NOT the Next.js you know

@@ -57,22 +57,37 @@ const logPath = path.resolve(`test-results/check-${stamp}.txt`);
 const log = createWriteStream(logPath);
 const write = text => { process.stdout.write(text); log.write(text); };
 
-const killTree = pid => {
-  if (process.platform === 'win32') spawnSync('taskkill', ['/pid', String(pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true });
-  else { try { process.kill(-pid, 'SIGKILL'); } catch {} }
+// Stop a step: SIGTERM to its process group first so it can clean up (regression.mjs stops its own next dev server),
+// then SIGKILL after a grace period. Windows has no groups: taskkill ends the whole tree.
+const signalGroup = (pid, signal) => { try { process.kill(-pid, signal); return true; } catch { return false; } };
+const stopTree = (pid, graceMs = 5000) => {
+  if (process.platform === 'win32') { spawnSync('taskkill', ['/pid', String(pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true }); return; }
+  if (signalGroup(pid, 'SIGTERM')) setTimeout(() => signalGroup(pid, 'SIGKILL'), graceMs).unref();
 };
+let current; // the running step's child, for the signal handlers below
+let interrupted = false;
+for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => {
+  interrupted = true;
+  write(`\n===== Interrupted (${signal}); stopping ${current ? 'the running step' : 'nothing'} =====\n`);
+  if (current?.pid) stopTree(current.pid, 3000);
+  setTimeout(() => process.exit(130), current ? 3500 : 0);
+});
 const run = step => new Promise(resolve => {
   const started = Date.now();
   write(`\n===== ${step.name}: node ${step.args.join(' ')} =====\n`);
   const child = spawn(process.execPath, step.args, { env, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true, detached: process.platform !== 'win32' });
+  current = child;
   child.stdout.on('data', write);
   child.stderr.on('data', write);
   let timedOut = false;
-  const timer = setTimeout(() => { timedOut = true; killTree(child.pid); }, step.timeout);
-  // Wait for 'exit', not 'close': a leftover grandchild (a dev server worker) can hold the pipes open.
-  child.once('exit', (code, signal) => {
+  const timer = setTimeout(() => { timedOut = true; write(`\n===== ${step.name} timed out after ${step.timeout / 60000} min; stopping it =====\n`); stopTree(child.pid); }, step.timeout);
+  child.once('exit', async (code, signal) => {
     clearTimeout(timer);
-    if (process.platform !== 'win32') { try { process.kill(-child.pid, 'SIGTERM'); } catch {} }
+    current = undefined;
+    // Let the pipes drain so the last lines (often the failing assertion) reach the log, but don't wait forever: a
+    // leftover grandchild (a dev server worker) can hold them open. Then end anything left in the step's group.
+    await Promise.race([new Promise(done => child.once('close', done)), new Promise(done => setTimeout(done, 3000))]);
+    if (process.platform !== 'win32') signalGroup(child.pid, 'SIGTERM');
     child.stdout.destroy(); child.stderr.destroy();
     const seconds = Math.round((Date.now() - started) / 1000);
     const result = timedOut ? 'TIMEOUT' : code === 0 ? 'PASS' : code === 2 && step.name === 'migration' ? 'SKIPPED' : 'FAIL';
@@ -83,8 +98,11 @@ const run = step => new Promise(resolve => {
 });
 
 const results = [];
-for (const step of steps) results.push(await run(step));
-const changed = spawnSync('git', ['status', '--porcelain'], { encoding: 'utf8' }).stdout.trim();
+for (const step of steps) {
+  if (interrupted) { results.push({ name: step.name, result: 'NOT RUN', seconds: 0 }); continue; }
+  results.push(await run(step));
+}
+const changed = (spawnSync('git', ['status', '--porcelain'], { encoding: 'utf8' }).stdout ?? '').trim();
 write('\n===== Summary =====\n');
 for (const r of results) write(`${r.result.padEnd(8)} ${r.name.padEnd(22)} ${r.seconds}s\n`);
 if (changed) write(`Working tree after the run (check for files the run rewrote, e.g. next-env.d.ts, payload-types.ts, AGENTS.md):\n${changed}\n`);

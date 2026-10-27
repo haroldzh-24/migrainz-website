@@ -1,6 +1,7 @@
 // Site health check against a running seeded fixture (npm run test:regression starts one; so does
-// node scripts/serve-fixture.mjs). Never point it at production: BASE_URL must be a local address, every request goes
-// to that origin, and the browser blocks requests to any other origin (they are reported instead).
+// node scripts/serve-fixture.mjs). Never point it at production: BASE_URL must be a local address, the script's own
+// requests go only to that origin (redirects elsewhere are refused and reported), and the browser blocks requests to
+// any other origin (they are reported instead).
 //   BASE_URL=http://127.0.0.1:<port> node scripts/verify-site-health.mjs [--write-baseline | --self-test]
 // Playwright and axe-core come from the `npm exec --package=...` folders on PATH (see package.json "test:regression");
 // PLAYWRIGHT_MODULE / AXE_MODULE override that, BROWSER_PATH overrides the Chrome path.
@@ -10,15 +11,19 @@
 //    200/206, and every required route template must be reached.
 // 2. Visits up to two pages per route template again at 390x844 (touch), plus the first-visit announcement at both
 //    widths. Each visit: no page or console errors, no failed same-origin requests, no requests to other origins, no
-//    sideways scroll, a page-specific <title>, no classified fixture titles in the page, and (on the template pages)
+//    sideways scroll, a page-specific <title>, no classified fixture titles in the page or in its JSON/RSC responses
+//    (case-insensitive), and (on the template pages)
 //    no axe-core violations (WCAG 2.0/2.1/2.2 A and AA plus best practice). Reduced motion, CRT mode and the dismissed
 //    popups are fixed so blinking cursors, flicker and timed windows cannot change the result between runs.
 // 3. Missing records must return 404.
-// Known findings are listed in scripts/site-health-baseline.json with a date and reason. Anything outside it fails,
-// and a baseline entry that no longer occurs fails too ("stale"), so the baseline can only shrink.
-// --write-baseline rewrites the baseline from this run (keeps existing reasons); review the diff before committing.
-// --self-test plants a broken link, a wrong 404 expectation, a missing and a stale baseline entry, and passes only if
-// each one is reported (run by test:regression, so the checker itself is tested).
+// Known findings are listed in scripts/site-health-baseline.json, keyed by rule, route template and element, each with
+// a reason naming the roadmap item that removes it. Anything outside it fails, a baseline entry that no longer occurs
+// fails ("stale"), and an entry without a "Roadmap" reason fails, so nothing is accepted silently.
+// --write-baseline rewrites the baseline from this run (keeps existing reasons; new ones get a placeholder that fails
+// until a reason is written); review the diff before committing.
+// --self-test plants one of each problem (broken link, wrong 404, accessibility violation, stale baseline entry,
+// third-party request, classified text, console error, sideways scroll, generic title, failed request) and passes
+// only if every one is reported (run by test:regression, so the checker itself is tested).
 // Writes test-results/site-health/report.json and screenshots of each template at both widths.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -71,7 +76,7 @@ const ANNOUNCEMENT_KEY = 'migrainz-announcement:studio-transmission-001';
 const WIDTHS = [{ name: 'phone', width: 390, height: 844, isMobile: true, hasTouch: true }, { name: 'desktop', width: 1366, height: 768 }];
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'];
 
-const seeds = selfTest ? ['/', '/self-test-broken-link'] : SEEDS;
+const seeds = selfTest ? ['/', '/projects', '/self-test-broken-link'] : SEEDS;
 const notFound = selfTest ? ['/projects'] : NOT_FOUND;
 const baseline = selfTest ? { axe: { 'self-test-stale .never-present': 'planted by --self-test' } } : savedBaseline;
 
@@ -86,9 +91,10 @@ const template = pathname => {
   if (parts[0] === 'comics' && parts.length >= 3) { parts[1] = ':comic'; parts[2] = ':chapter'; }
   return '/' + parts.join('/');
 };
-// Stable key for an axe node: drop positional pseudo-classes and keep only the first word of attribute values, so
-// "Close PROJECT: BLUSHLAND" and "Close COMIC READER" are the same finding.
-const axeKey = (rule, target) => `${rule} ${String(target).replace(/:nth-(child|of-type)\(\d+\)/g, '').replace(/="([^"\s]*)[^"]*"/g, '="$1"')}`;
+// Key for an axe node: rule, route template and element. Positional pseudo-classes are dropped and attribute values cut
+// to their first word, so "Close PROJECT: BLUSHLAND" and "Close COMIC READER" match, but only on the template where the
+// finding was seen.
+const axeKey = (rule, routeTemplate, target) => `${rule} ${routeTemplate} ${String(target).replace(/:nth-(child|of-type)\(\d+\)/g, '').replace(/="([^"\s]*)[^"]*"/g, '="$1"')}`;
 const internalPath = (href, from) => {
   try {
     const url = new URL(href.replace(/&amp;/g, '&'), base + from);
@@ -100,10 +106,19 @@ const internalPath = (href, from) => {
 const browser = await playwright.chromium.launch({ executablePath: process.env.BROWSER_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: true });
 try {
   const api = await browser.newContext();
-  const get = (p, headers) => {
-    const url = new URL(p, base);
-    if (url.origin !== origin) throw new Error(`refusing to request ${url.origin}`);
-    return api.request.get(url.href, { headers, timeout: 90000, maxRedirects: 5 });
+  // Redirects are followed by hand so a same-origin URL can never lead the script to another site.
+  const get = async (p, headers) => {
+    let url = new URL(p, base);
+    for (let hops = 0; ; hops++) {
+      if (url.origin !== origin) throw new Error(`refusing to request ${url.origin}`);
+      const response = await api.request.get(url.href, { headers, timeout: 90000, maxRedirects: 0 });
+      const location = response.headers().location;
+      if (response.status() < 300 || response.status() >= 400 || !location) return response;
+      const next = new URL(location, url);
+      if (next.origin !== origin) { fail(`${p} redirects to another site (${next.origin})`); return response; }
+      if (hops >= 5) { fail(`${p} redirects more than 5 times`); return response; }
+      url = next;
+    }
   };
 
   const status = new Map(); // path -> { status, from }
@@ -144,6 +159,14 @@ try {
         if (dismiss) sessionStorage.setItem(key, key.split(':')[1]);
       } catch {}
     }, [ANNOUNCEMENT_KEY, !firstVisit]);
+    if (selfTest) await context.addInitScript(() => addEventListener('load', () => setTimeout(() => {
+      if (location.pathname !== '/') return;
+      const plant = html => document.body.insertAdjacentHTML('beforeend', html);
+      plant('<button class="self-test-nameless"></button>');
+      plant('<img alt="" src="https://example.org/self-test.png"><img alt="" src="/self-test-missing.png">');
+      plant('<p hidden>sentinel-phase-title-7q</p><div style="width:4000px;height:1px"></div>');
+      console.error('self-test console error');
+    }, 0)));
     // Tests stay offline and never call third parties; any attempt is recorded as a finding.
     await context.route(url => url.origin !== origin && /^https?:$/.test(url.protocol), route => {
       findings.externalRequests.add(new URL(route.request().url()).origin);
@@ -162,9 +185,13 @@ try {
     page.on('console', message => {
       if (message.type() === 'error' && !/Failed to load resource/.test(message.text())) problems.push('console error: ' + message.text().split('\n')[0].slice(0, 200));
     });
+    const bodies = [];
     page.on('response', response => {
       const url = new URL(response.url());
-      if (url.origin === origin && response.status() >= 400 && url.pathname + url.search !== p && !/hmr/i.test(url.pathname)) findings.failedRequests.add(url.pathname);
+      if (url.origin !== origin) return;
+      if (response.status() >= 400 && url.pathname + url.search !== p && !/hmr/i.test(url.pathname)) findings.failedRequests.add(url.pathname);
+      // Data fetched after hydration (JSON APIs, RSC payloads) is checked for classified text too.
+      if (/json|x-component/.test(response.headers()['content-type'] ?? '')) bodies.push(response.text().then(text => [url.pathname, text]).catch(() => [url.pathname, '']));
     });
     try {
       const response = await page.goto(base + p, { waitUntil: 'load' });
@@ -172,6 +199,7 @@ try {
       if (firstVisit) await page.getByRole('button', { name: 'ENTER' }).waitFor();
       else await page.locator('.startup-sequence').waitFor({ state: 'hidden' });
       await page.waitForLoadState('networkidle').catch(() => {});
+      if (selfTest && p === '/projects') await page.evaluate(title => { document.title = title; }, homeTitle);
       const info = await page.evaluate(() => ({
         overflow: document.documentElement.scrollWidth - window.innerWidth,
         title: document.title,
@@ -181,7 +209,10 @@ try {
       if (info.overflow > 0) problems.push(`scrolls sideways by ${info.overflow}px`);
       if (!info.title.trim()) problems.push('empty <title>');
       else if (!firstVisit && p !== '/' && info.title === homeTitle) findings.genericTitle.add(template(p));
-      for (const sentinel of SENTINELS) if (info.html.includes(sentinel)) problems.push(`classified fixture text "${sentinel}" is in the page`);
+      const lower = info.html.toLowerCase();
+      for (const sentinel of SENTINELS) if (lower.includes(sentinel.toLowerCase())) problems.push(`classified fixture text "${sentinel}" is in the page`);
+      for (const [from, text] of await Promise.all(bodies)) for (const sentinel of SENTINELS)
+        if (text.toLowerCase().includes(sentinel.toLowerCase())) problems.push(`classified fixture text "${sentinel}" is in the response from ${from}`);
       if (full) {
         await page.addScriptTag({ content: axeSource });
         if (!axeChecked) {
@@ -192,7 +223,7 @@ try {
         const violations = await page.evaluate(async tags => (await window.axe.run(document, { runOnly: { type: 'tag', values: tags } })).violations
           .map(v => ({ id: v.id, impact: v.impact, help: v.help, targets: v.nodes.map(n => n.target.join(' ')) })), AXE_TAGS);
         for (const v of violations) for (const target of v.targets) {
-          const key = axeKey(v.id, target);
+          const key = axeKey(v.id, template(p), target);
           if (!findings.axe.has(key)) findings.axe.set(key, { impact: v.impact, help: v.help, pages: new Set() });
           findings.axe.get(key).pages.add(`${size.width}px ${p}`);
         }
@@ -272,7 +303,7 @@ try {
     const next = { _readme: savedBaseline._readme ?? 'Known findings for scripts/verify-site-health.mjs. Each entry says why it is accepted for now and which roadmap item removes it. Entries that stop occurring must be deleted (the check fails on stale entries).' };
     for (const kind of Object.keys(current)) {
       next[kind] = {};
-      for (const key of current[kind]) next[kind][key] = savedBaseline[kind]?.[key] ?? `${today}: pre-existing; ${kind === 'axe' ? findings.axe.get(key).impact + ', ' + findings.axe.get(key).help : labels[kind]}`;
+      for (const key of current[kind]) next[kind][key] = savedBaseline[kind]?.[key] ?? `${today}: TODO write why this is accepted and which Roadmap item removes it (${kind === 'axe' ? findings.axe.get(key).impact + ', ' + findings.axe.get(key).help : labels[kind]})`;
     }
     writeFileSync(baselineFile, JSON.stringify(next, null, 2) + '\n');
     console.log(`Baseline written to ${path.relative(process.cwd(), baselineFile)}; review the diff.`);
@@ -284,6 +315,7 @@ try {
         fail(`new ${labels[kind]}: ${key}${detail}`);
       }
       for (const key of Object.keys(known)) if (!current[kind].includes(key)) fail(`stale baseline entry (fixed? delete it from ${path.basename(baselineFile)}): ${kind} ${key}`);
+      if (!selfTest) for (const [key, reason] of Object.entries(known)) if (!/Roadmap \d/.test(reason) || /TODO/.test(reason)) fail(`baseline entry without a reason and roadmap item: ${kind} ${key}`);
     }
   }
   const open = Object.entries(current).reduce((sum, [kind, list]) => sum + list.filter(key => key in (baseline[kind] ?? {})).length, 0);
@@ -294,8 +326,14 @@ try {
     const expected = {
       'broken link': /link to \/self-test-broken-link is broken/,
       'wrong status for a missing record': /\/projects should be 404, returned 200/,
-      'new accessibility violation (empty baseline)': /new accessibility violation/,
+      'new accessibility violation': /new accessibility violation: button-name \/ \.self-test-nameless/,
       'stale baseline entry': /stale baseline entry .*self-test-stale/,
+      'request to another site': /new request to another site: https:\/\/example\.org/,
+      'classified text (any case)': /classified fixture text "SENTINEL-PHASE-TITLE-7Q" is in the page/,
+      'console error': /console error: self-test console error/,
+      'sideways scroll': /1366px \/: scrolls sideways/,
+      'generic title': /new page uses the generic site title: \/projects$/,
+      'failed same-origin request': /new same-origin request failed: \/self-test-missing\.png/,
     };
     const missed = Object.entries(expected).filter(([, pattern]) => !failures.some(message => pattern.test(message))).map(([name]) => name);
     if (missed.length) { console.log(`FAIL self-test: the checker did not report: ${missed.join(', ')}`); process.exitCode = 1; }

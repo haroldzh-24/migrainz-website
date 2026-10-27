@@ -3,7 +3,7 @@
 ## Implemented - 2026-10-27 / One check command and site-health checks (batch 1)
 
 - `npm run check` runs typecheck, build and every test script with a saved log; required before every commit (AGENTS.md).
-- Site-health crawl in the regression suite: links, status codes, 404s, errors, third-party requests, overflow, titles, classified text and accessibility at phone and desktop width, with a reviewed baseline that can only shrink.
+- Site-health crawl in the regression suite: links, status codes, 404s, errors, third-party requests, overflow, titles, classified text and accessibility at phone and desktop width, with a reviewed baseline: new findings, stale entries and entries without a roadmap reason all fail.
 - AGENTS.md holds all working and safety rules for every agent; docs/roadmap.md orders the work.
 
 ## Implemented - 2026-10-26 / CRT glow pass (fix/crt-glow)
