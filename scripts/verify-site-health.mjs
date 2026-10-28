@@ -86,10 +86,20 @@ const NOT_FOUND = [
   '/projects/blushland/characters/no-such-character',
   '/projects/blushland/equipment/no-such-item',
   '/projects/blushland/factions/no-such-faction',
-  '/projects/stalker/characters/the-observer',
+  '/projects/stalker/characters/the-observer', // a BLUSHLAND character asked for under another project
+  // REDACTED records (scripts/seed-desktop-fixture.ts) answer like missing ones.
+  '/projects/blushland/characters/redacted-dossier',
+  '/projects/blushland/equipment/redacted-equipment',
+  '/projects/blushland/factions/redacted-faction',
 ];
+// A PATRON record answers 200 with the locked page (and none of its protected text; see SENTINELS).
+const PATRON_LOCKED = '/projects/blushland/characters/patron-dossier';
 // Titles of REDACTED fixture records: they must never reach any page (scripts/seed-desktop-fixture.ts).
-const SENTINELS = ['SENTINEL-PHASE-TITLE-7Q', 'SENTINEL-CHAPTER-TITLE-7Q', 'sentinel-chapter-7q'];
+const SENTINELS = ['SENTINEL-PHASE-TITLE-7Q', 'SENTINEL-CHAPTER-TITLE-7Q', 'sentinel-chapter-7q',
+  'SENTINEL-PATRON-NAME-7Q', 'SENTINEL-PATRON-ROLE-7Q', 'SENTINEL-PATRON-DESC-7Q',
+  'SENTINEL-REDACTED-CHARACTER-7Q', 'SENTINEL-REDACTED-DESC-7Q', 'SENTINEL-REDACTED-EQUIPMENT-7Q', 'SENTINEL-REDACTED-FACTION-7Q',
+  'redacted-dossier', 'redacted-equipment', 'redacted-faction'];
+const sentinelIn = text => { const lower = text.toLowerCase(); return SENTINELS.filter(sentinel => lower.includes(sentinel.toLowerCase())); };
 const SKIP = /^\/(admin|api|auth|_next)(\/|$)/;
 const MEDIA = /^\/api\/media\/file\//;
 const ANNOUNCEMENT_KEY = 'migrainz-announcement:studio-transmission-001';
@@ -306,6 +316,12 @@ try {
     const expected = expectRequest && page.waitForRequest(request => expectRequest.test(new URL(request.url()).pathname), { timeout: 60000 })
       .then(() => true, () => { problems.push(`never requested ${expectRequest}`); return false; });
     const bodies = [];
+    // Each image is fetched once per page load: the hidden first copy of a route window must not fetch it too.
+    const imageRequests = new Map();
+    page.on('request', request => {
+      const url = new URL(request.url());
+      if (url.origin === origin && MEDIA.test(url.pathname) && request.resourceType() === 'image') imageRequests.set(url.pathname + url.search, (imageRequests.get(url.pathname + url.search) ?? 0) + 1);
+    });
     page.on('response', response => {
       const url = new URL(response.url());
       if (url.origin !== origin) return;
@@ -322,14 +338,18 @@ try {
       else await page.locator('.startup-sequence').waitFor({ state: 'hidden' });
       if (expected) await expected;
       await page.waitForLoadState('networkidle').catch(() => {});
+      for (const [url, count] of imageRequests) if (count > 1) problems.push(`image ${url} fetched ${count} times in one page load`);
       if (selfTest && p === '/projects') await page.evaluate(title => { document.title = title; }, homeTitle);
       const info = await page.evaluate(() => ({
         overflow: document.documentElement.scrollWidth - window.innerWidth,
+        pending: document.querySelectorAll('.retro-window-pending').length,
         title: document.title,
         html: document.documentElement.outerHTML,
         links: [...document.querySelectorAll('a[href]')].map(a => a.getAttribute('href')),
       }));
       if (info.overflow > 0) problems.push(`scrolls sideways by ${info.overflow}px`);
+      // A route window renders its content hidden until its workspace exists (roadmap 2.2); after load it must be gone.
+      if (info.pending) problems.push(`route window content still hidden (${info.pending} .retro-window-pending)`);
       if (!info.title.trim()) problems.push('empty <title>');
       else if (!firstVisit && p !== '/' && info.title === homeTitle) findings.genericTitle.add(template(p));
       const lower = info.html.toLowerCase();
@@ -381,6 +401,8 @@ try {
     const full = list.length < 2;
     const links = await visit(desktop, p, { full, label: list.length ? t + '-2' : t });
     status.set(p, { status: links ? 200 : 'error', from });
+    // The server HTML itself (route windows render their content hidden in it; roadmap 2.2), not only the hydrated page.
+    if (links) for (const sentinel of sentinelIn(await (await get(p)).text())) fail(`${p}: classified fixture text "${sentinel}" is in the server HTML`);
     if (!links) fail(`link to ${p} is broken (linked from ${from})`);
     if (full && links) scanned.set(t, [...list, p]);
     if (links) await addLinks(links, p);
@@ -411,7 +433,11 @@ try {
   // RSC payload carries that boundary.
   for (const p of notFound) {
     const response = await get(p);
-    if (response.status() === 404) continue;
+    if (response.status() === 404) {
+      // Nothing of a REDACTED record may reach its 404 (the requested slug itself is in the URL, so it doesn't count).
+      for (const sentinel of sentinelIn(await response.text()).filter(sentinel => !p.toLowerCase().includes(sentinel.toLowerCase()))) fail(`${p}: classified fixture text "${sentinel}" is in the 404 response`);
+      continue;
+    }
     let missingPage = false;
     if (response.status() === 200) {
       const page = await (await contextFor(desktop, false)).newPage();
@@ -423,6 +449,30 @@ try {
     }
     if (missingPage) findings.softNotFound.add(p);
     else fail(`${p} should be 404, returned ${response.status()}`);
+  }
+  // A #fragment on a full page load scrolls the route window to that section (its content only appears after
+  // hydration, so the browser can't do it; components/WindowManager.tsx).
+  if (!selfTest) for (const size of WIDTHS) {
+    const page = await (await contextFor(size, false)).newPage();
+    try {
+      await page.goto(base + '/projects/blushland#factions', { waitUntil: 'load' });
+      await page.locator('.startup-sequence').waitFor({ state: 'hidden' });
+      const offset = await page.waitForFunction(() => {
+        const content = document.querySelector('.project-app-content'), target = document.getElementById('factions');
+        if (!content || !target) return null;
+        const gap = target.getBoundingClientRect().top - content.getBoundingClientRect().top;
+        return Math.abs(gap) <= 40 ? gap : null;
+      }, null, { timeout: 5000 }).then(handle => handle.jsonValue()).catch(() => null);
+      if (offset === null) fail(`${size.width}px /projects/blushland#factions: the window did not scroll to #factions`);
+    } finally { await page.close(); }
+  }
+  // A PATRON record: 200 with the locked page, none of its protected text (also checked as SENTINELS everywhere).
+  if (!selfTest) {
+    const response = await get(PATRON_LOCKED);
+    const body = await response.text();
+    if (response.status() !== 200) fail(`${PATRON_LOCKED} (PATRON) should be 200 with the locked page, returned ${response.status()}`);
+    else if (!/CLASSIFIED STUDIO MATERIAL|sealed patron dossier/i.test(body)) fail(`${PATRON_LOCKED} (PATRON) does not show the locked page`);
+    for (const sentinel of sentinelIn(body)) fail(`${PATRON_LOCKED}: classified fixture text "${sentinel}" is in the locked page`);
   }
   // 4. Site metadata (roadmap 2.3): favicon, robots.txt and link-preview tags on the homepage.
   if (!selfTest) {

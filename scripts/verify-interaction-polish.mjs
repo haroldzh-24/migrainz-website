@@ -49,7 +49,8 @@ const bootSnapshot = page => page.waitForFunction(() => {
 }).then(handle => handle.jsonValue());
 // The server renders the opaque boot gate; a dismissed session only drops it after hydration. Wait for that before
 // interacting, or a press can land on the gate (seen on the slower regression server).
-const visit = async (page, url) => { await page.goto(url); await page.locator('.startup-sequence').waitFor({ state: 'hidden' }); };
+// Route windows also render a hidden first copy until hydration (roadmap 2.2): wait until it is replaced.
+const visit = async (page, url) => { await page.goto(url); await page.locator('.startup-sequence').waitFor({ state: 'hidden' }); await page.locator('.retro-window-pending').waitFor({ state: 'detached' }); };
 
 try {
   // 1. Classified records: safe labels in the checklist, titles nowhere in HTML or RSC.

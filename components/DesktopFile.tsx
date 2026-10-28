@@ -77,7 +77,9 @@ function PublicDesktopFile({ label, fileName, type, href, subtitle, viewerTab, o
   return <div ref={root} className={`desktop-file${viewerTab ? " artwork-file" : ""}${imagePreview ? " faction-file" : ""}`}
     onPointerEnter={event => { if (event.pointerType === "mouse") reveal(); }}
     onPointerLeave={() => { cancel(); if (!pinned && !root.current?.contains(document.activeElement)) setOpen(false); }}
-    onFocus={reveal}
+    // Keyboard focus only: focus that a click (or the Art Viewer handing focus back after a click) puts here must not
+    // pop the Properties panel.
+    onFocus={event => { if ((event.target as Element).matches(":focus-visible")) reveal(); }}
     onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget) && (!pinned || event.relatedTarget)) dismiss(); }}>
     <Link className="desktop-file-open" href={href} prefetch={false} aria-describedby={open ? id : undefined}
       onClick={event => {

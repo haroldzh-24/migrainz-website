@@ -454,6 +454,8 @@ const { chromium } = require(
       await touch.setViewportSize({ width, height: 844 });
       for (const route of ['/', '/archive', '/about', '/projects', '/projects/blushland/characters']) {
         await touch.goto(route);
+        // Route windows render a hidden first copy until hydration (roadmap 2.2): measure after it is replaced.
+        await touch.locator('.retro-window-pending').waitFor({ state: 'detached' });
         assert.equal(await touch.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, route + ' at ' + width);
       }
     }

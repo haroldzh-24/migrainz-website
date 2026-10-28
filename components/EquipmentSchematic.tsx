@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useBeforeWorkspace } from '@/components/WindowManager';
 
 /**
  * Looping schematic that behaves like an animated image: no controls, no pause, no menu.
@@ -24,6 +25,7 @@ export default function EquipmentSchematic({ src, poster, ratio, name, children 
   const [posterFailed, setPosterFailed] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [measured, setMeasured] = useState<number>();
+  const hidden = useBeforeWorkspace(); // a route window's hidden first copy: the poster must not load from there
 
   const shape = measured ?? ratio ?? 16 / 9;
   const hasPoster = Boolean(poster) && !posterFailed;
@@ -118,7 +120,7 @@ export default function EquipmentSchematic({ src, poster, ratio, name, children 
     style={hasMedia ? { '--schematic-ratio': shape } as CSSProperties : undefined}>
     {hasMedia && <div className="equipment-schematic-display" role="img" aria-label={`${name} rotating schematic`}
       style={{ aspectRatio: shape }} data-playing={playing || undefined}>
-      {hasPoster && <img src={poster} alt="" draggable={false} onError={() => setPosterFailed(true)}
+      {hasPoster && <img src={poster} alt="" draggable={false} loading={hidden ? "lazy" : undefined} onError={() => setPosterFailed(true)}
         onLoad={event => { if (!ratio && event.currentTarget.naturalHeight) setMeasured(event.currentTarget.naturalWidth / event.currentTarget.naturalHeight); }} />}
       {showVideo && <video ref={video} src={load || firstFrame ? src : undefined} muted loop playsInline tabIndex={-1} aria-hidden="true"
         disablePictureInPicture disableRemotePlayback controlsList="nodownload nofullscreen noremoteplayback"
