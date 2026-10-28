@@ -1,6 +1,6 @@
 # Roadmap: migrainz-website
 
-Proposed 2026-10-26 after an audit (claude.ai Project doc `claude/project-audit-2026-10-26.md`); approved by Harold 2026-10-27. **Status (2026-10-27): M1, M2 and M3 built (batches 1 to 3d), except 2.2 (waiting for Harold's decision on `proxy.ts`), 2.6 (waiting for the store URL) and 2.7 (waiting for Harold: Art Viewer tab strip). Committed locally, not pushed yet. Next: M4 (production lane, each step with Harold) and the M5 plan.**
+Proposed 2026-10-26 after an audit (claude.ai Project doc `claude/project-audit-2026-10-26.md`); approved by Harold 2026-10-27. **Status (2026-10-27): M1, M2 and M3 built (batches 1 to 3e), except 2.2 (waiting for Harold's decision on `proxy.ts`), 2.6 (waiting for the store URL) and 2.7 (waiting for Harold: Art Viewer tab strip). Committed locally, not pushed yet. Next: M4 (production lane, each step with Harold) and the M5 plan.**
 
 This file is the repo copy; the Project copy (`claude/roadmap-<date>.md`) is kept in sync. Each item is ticked with its batch and commit when done. docs/redesign-plan.md stays the source of truth for design decisions and for Harold's agreed order of production work (Preview isolation, then the Payload upgrade, then the phase 2 plan); this roadmap fits the code-only batches around that order and gets Harold's OK where it changes it.
 

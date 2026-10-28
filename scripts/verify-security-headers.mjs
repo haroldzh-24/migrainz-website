@@ -143,8 +143,11 @@ for (const [pathname, csp] of cases) {
 }
 pass(`production build (${builtAt}): ${cases.length} sample paths get the right final headers (admin policy only under /admin, no-referrer under /auth)`);
 
-// 5. Eval-like calls in the last build's browser code: eval (also indirect, or through window/self/globalThis), the
-// Function constructor (also through apply/call, Reflect.construct or `.constructor("...")`), and string timers. A
+// 5. Eval-like calls in the last build's browser code: eval (also indirect, optional `eval?.()`, through
+// window/self/globalThis or Reflect.apply), the Function constructor (also through apply/call, `(0,Function)()`,
+// Reflect.construct or Reflect.apply, or `.constructor("...")`), `["eval"]`/`["Function"]` access, WebAssembly
+// compiling (`WebAssembly.compile*`, `instantiate*`, `new WebAssembly.Module`; needs 'wasm-unsafe-eval'), and string
+// timers. A
 // chunk counts as the site's if a public route's server output names it; a chunk with a known site-only string must
 // be classified as the site's, so the split can't silently put everything under "admin". Allowed in site code: the
 // global-object fallback `Function("return this")()`, which browsers never reach (they have globalThis/self first).
@@ -152,8 +155,8 @@ pass(`production build (${builtAt}): ${cases.length} sample paths get the right 
 const PREFIX = '(?:(?:window|self|globalThis)\\.)?';
 const EVAL = new RegExp([
   `(?<![\\w$.])${PREFIX}eval(?:\\?\\.)?\\(`, '\\(0,\\s*(?:eval|Function)\\)\\(',
-  '(?<![\\w$.])Function(?:\\.(?:apply|call))?\\(', 'Reflect\\.(?:construct|apply)\\(\\s*(?:eval|Function)\\b', '\\.constructor\\(\\s*["\'`]',
-  '\\[\\s*["\'`](?:eval|Function)["\'`]\\s*\\]', 'WebAssembly\\.(?:compile|instantiate)',
+  '(?<![\\w$.])Function(?:\\.(?:apply|call))?\\(', 'Reflect\\.(?:construct|apply)\\(\\s*(?:eval|Function)\\s*[,)]', '\\.constructor\\(\\s*["\'`]',
+  '\\[\\s*["\'`](?:eval|Function)["\'`]\\s*\\]', 'WebAssembly\\.(?:compile|instantiate|Module\\()',
   `(?<![\\w$.])${PREFIX}(?:setTimeout|setInterval)\\(\\s*["'\`]`,
 ].join('|'), 'g');
 const ALLOWED = /^Function\("return this"\)/;
@@ -164,8 +167,8 @@ const KNOWN_ADMIN_EVAL = [
 const count = text => [...text.matchAll(EVAL)].length;
 assert.equal(count('a=eval(b);c=new Function("d");e=Function(`f`,g);(0,eval)(h);(0, eval)(i);window.eval(j);self.eval(k);globalThis.eval(l);setTimeout("m",1);setInterval(\'n\',1)'), 10, 'the scan finds every eval form');
 assert.equal(count('window.setTimeout("a");self.setInterval(`b`);Function.apply(null,["c"]);Function.call(null,"d");Reflect.construct(Function,["e"]);x.constructor.constructor("return this")'), 6, 'the scan finds prefixed timers and indirect Function use');
-assert.equal(count('eval?.(a);(0,Function)(b);globalThis["eval"](c);window[\'Function\'](d);Reflect.apply(eval,null,[e]);WebAssembly.instantiate(f)'), 6, 'the scan finds optional calls, bracket access, Reflect.apply and WebAssembly (which needs wasm-unsafe-eval)');
-assert.equal(count('isFunction(a);b.eval(c);$Function(d);typeof e=="function";setTimeout(f,1);setInterval(()=>g,1);x.Function(y);o.constructor(p);Reflect.construct(Foo,[])'), 0, 'the scan ignores look-alikes');
+assert.equal(count('eval?.(a);(0,Function)(b);globalThis["eval"](c);window[\'Function\'](d);Reflect.apply(eval,null,[e]);WebAssembly.instantiate(f);new WebAssembly.Module(g);Reflect.construct(Function)'), 8, 'the scan finds optional calls, bracket access, Reflect.apply/construct and WebAssembly (which needs wasm-unsafe-eval)');
+assert.equal(count('isFunction(a);b.eval(c);$Function(d);typeof e=="function";setTimeout(f,1);setInterval(()=>g,1);x.Function(y);o.constructor(p);Reflect.construct(Foo,[]);Reflect.apply(Function.prototype.toString,f,[]);WebAssembly.validate(b);o["evaluate"]'), 0, 'the scan ignores look-alikes');
 const SITE_ONLY = 'migrainz-announcement'; // the announcement's storage key, used only by the public site
 const frontendRefs = files(path.join(root, '.next/server/app/(frontend)')).filter(file => /\.(js|json)$/.test(file)).map(file => readFileSync(file, 'utf8')).join('\n');
 const siteUses = [];
@@ -189,8 +192,10 @@ assert.ok(anchors.length > 0, `no browser chunk contains "${SITE_ONLY}"; pick an
 assert.deepEqual(anchors.filter(([, site]) => !site), [], `chunks with "${SITE_ONLY}" must count as site code`);
 assert.deepEqual(siteUses, [], `eval-like calls in the site's production code (the production policy has no 'unsafe-eval'; enforcing it would break them):\n${siteUses.join('\n')}`);
 pass(`site production code (build ${builtAt}, ${siteChunks} site chunks): no eval-like calls`);
-for (const known of KNOWN_ADMIN_EVAL) assert.ok(adminUses.some(use => known.pattern.test(use.split(': ').slice(1).join(': '))), `KNOWN_ADMIN_EVAL entry no longer found (${known.what}): remove it, or update it after a Payload upgrade`);
+// Unknown uses first, so a changed form (e.g. after the Payload upgrade) is shown before the missing known entry.
 const unknownAdmin = adminUses.filter(use => !KNOWN_ADMIN_EVAL.some(known => known.pattern.test(use.split(': ').slice(1).join(': '))));
-assert.deepEqual(unknownAdmin, [], 'new eval-like call(s) in admin code: find out what each is, add it to KNOWN_ADMIN_EVAL, and note it for roadmap 4.6');
+assert.deepEqual(unknownAdmin, [], `new eval-like call(s) in admin code: find out what each is, add it to KNOWN_ADMIN_EVAL, and note it for roadmap 4.6:\n${unknownAdmin.join('\n')}`);
+for (const known of KNOWN_ADMIN_EVAL) assert.ok(adminUses.some(use => known.pattern.test(use.split(': ').slice(1).join(': '))),
+  `KNOWN_ADMIN_EVAL entry no longer found (${known.what}): remove it, or update it after a Payload upgrade. Admin uses found:\n${adminUses.join('\n') || 'none'}`);
 if (adminUses.length) console.log(`INFO admin-only production code has ${adminUses.length} known eval-like call(s); report-only now, check before enforcing (roadmap 4.6):\n  ${adminUses.map(use => `${use} (${KNOWN_ADMIN_EVAL.find(known => known.pattern.test(use.split(': ').slice(1).join(': '))).what})`).join('\n  ')}`);
 console.log(`PASS security headers: ${passed} checks`);
