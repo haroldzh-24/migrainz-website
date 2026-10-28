@@ -86,11 +86,12 @@ try {
   await page.keyboard.press('Escape');
   await page.locator('.startup-sequence').waitFor({ state: 'hidden' });
   assert.ok(await viewer.isVisible(), 'the viewer stays open while Escape closes the announcement');
+  // A restored viewer has no opener: with focus inside it, Escape hands focus to the project window, never the body.
+  await viewer.locator('.art-viewer-tab.is-active > button').first().focus();
   await page.keyboard.press('Escape');
   await viewer.waitFor({ state: 'hidden', timeout: 3000 });
-  // A restored viewer has no opener: focus goes to the project window, never the page body.
-  await page.waitForFunction(() => document.activeElement?.closest('.retro-window, #top') != null, null, { timeout: 3000 })
-    .catch(async () => assert.fail(`a restored viewer closed: focus is on <${await page.evaluate(() => document.activeElement?.tagName)}>, not the project window`));
+  await page.waitForFunction(() => document.activeElement?.matches('.retro-window:not(.art-viewer-window)'), null, { timeout: 3000 })
+    .catch(async () => assert.fail(`a restored viewer closed: focus is on <${await page.evaluate(() => document.activeElement?.tagName + '.' + document.activeElement?.className)}>, not the project window`));
   console.log('PASS the announcement takes the first Escape, the restored viewer the second (focus then on the project window)');
 
   // 6. Closing the viewer gives keyboard focus back to the control that opened it (bugs.md 2026-10-27), by Escape and
@@ -147,16 +148,26 @@ try {
     await file.scrollIntoViewIfNeeded();
     await file.click();
     await viewer.waitFor();
-    const scrollBefore = await page.evaluate(() => document.querySelector('.public-windows')?.scrollTop ?? 0);
+    const scrollBefore = await page.evaluate(() => document.querySelector('.project-app-content')?.scrollTop ?? -1);
+    assert.ok(scrollBefore > 0, `${size.width}px: the window content was scrolled to the file (${scrollBefore})`);
     await viewer.locator('.art-viewer-tab-close').last().click();
     await viewer.waitFor({ state: 'hidden', timeout: 3000 });
     await page.waitForTimeout(600);
     assert.equal(await page.locator('.desktop-inspector').count(), 0, `${size.width}px: no Properties panel after a mouse close`);
     assert.ok(await page.evaluate(() => document.activeElement?.matches('.desktop-file-open')), `${size.width}px: focus back on the file (${await focusedText()})`);
-    const scrollAfter = await page.evaluate(() => document.querySelector('.public-windows')?.scrollTop ?? 0);
-    assert.ok(Math.abs(scrollAfter - scrollBefore) < 2, `${size.width}px: the workspace did not scroll (${scrollBefore} -> ${scrollAfter})`);
+    const scrollAfter = await page.evaluate(() => document.querySelector('.project-app-content')?.scrollTop ?? -1);
+    assert.ok(Math.abs(scrollAfter - scrollBefore) < 2, `${size.width}px: the reader's place in the window stayed (${scrollBefore} -> ${scrollAfter})`);
+    // The same file by keyboard: Enter opens the viewer, Escape hands focus back to the file without its Properties panel.
+    await file.focus();
+    await page.keyboard.press('Enter');
+    await viewer.waitFor();
+    await page.keyboard.press('Escape');
+    await viewer.waitFor({ state: 'hidden', timeout: 3000 });
+    await page.waitForTimeout(600);
+    assert.ok(await page.evaluate(() => document.activeElement?.matches('.desktop-file-open')), `${size.width}px: keyboard close: focus back on the file`);
+    assert.equal(await page.locator('.desktop-inspector').count(), 0, `${size.width}px: no Properties panel after a keyboard close`);
   }
-  console.log('PASS a file opened and closed by mouse gets focus back without its Properties panel or a scroll jump (1366 and 390 px)');
+  console.log('PASS a file opened and closed by mouse or keyboard gets focus back without its Properties panel, keeping the reader\'s place (1366 and 390 px)');
 
   // 7. Tab close buttons and tab titles are at least 24x24 px (WCAG 2.5.8; roadmap 2.7), on desktop and phone widths,
   // and the window controls stay inside the viewer.
