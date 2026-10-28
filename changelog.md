@@ -1,9 +1,16 @@
 # Changelog
 
+## Changed - 2026-10-27 / Batch 3d: fixes from the independent review of batch 3c (fix/batch-3d-review-fixes)
+
+- The build environment moved to `scripts/build-env.mjs` (same values; `scripts/build.mjs` still builds with it locally and on Vercel), so the header check tests the Vercel and local cases directly instead of counting text.
+- Policy watch: settling before a close or check is best effort (one round trip per page, at most 3 s, so a stuck page can't hang a run), and the docs say so. The self-test adds a violation followed straight away by closing its context (24 planted problems).
+- Eval scan: also `eval?.()`, `(0,Function)()`, `globalThis["eval"]`-style access, `Reflect.apply(eval|Function, ...)` and `WebAssembly.compile/instantiate`; the AJV entry tolerates `$` in minified names, and a known entry that no longer occurs fails (so the list is updated after the Payload upgrade).
+- Docs: AGENTS.md and features.md say a plain `npm run dev` still sends Next telemetry until `npx next telemetry disable`; the fixture-env comment says `next dev` still asks npm for Next's latest version.
+
 ## Changed - 2026-10-27 / Batch 3c: fixes from the independent review of batch 3b (fix/batch-3c-review-fixes)
 
 - Next.js usage telemetry off for every build (`scripts/build.mjs`, locally and on Vercel; no dashboard change) and every fixture run (`scripts/fixture-env.mjs`). A plain `npm run dev` still sends it until `npx next telemetry disable` is run once on that machine.
-- Policy watch (`scripts/policy-watch.cjs`): also matches the hyphenated "Content-Security-Policy" wording; `watchBrowser` returns `check()`, which fails if no context was watched, lets reports already on their way arrive before a context closes and before the final check; `verify.cjs` also checks in its boot-only mode. The site-health self-test now runs `watchBrowser` on its own browser with a planted violation, and with nothing watched (23 planted problems).
+- Policy watch (`scripts/policy-watch.cjs`): also matches the hyphenated "Content-Security-Policy" wording; `watchBrowser` returns `check()`, which fails if no context was watched, settles each page before a context closes and before the final check; `verify.cjs` also checks in its boot-only mode. The site-health self-test now runs `watchBrowser` on its own browser with a planted violation, and with nothing watched (23 planted problems).
 - `scripts/verify-security-headers.mjs`: the eval scan also finds prefixed string timers, `Function.apply/call`, `Reflect.construct(Function, ...)` and `.constructor("...")`; admin code may only have the eval-like calls listed in `KNOWN_ADMIN_EVAL` (today AJV), so a new one fails; the config probe passes Windows' temp and profile folders; comments say a standalone run reads whatever the last build left.
 - Docs: the telemetry entry in bugs.md lists what Payload and Next.js send.
 

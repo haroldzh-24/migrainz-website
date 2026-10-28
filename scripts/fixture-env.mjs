@@ -33,7 +33,8 @@ export function fixtureEnv(fixture, { base = process.env, dir = process.cwd(), e
     PAYLOAD_SECRET: randomBytes(32).toString('hex'),
     BOOT_ONLY: '0',
     DESKTOP_TEST_FIXTURE: fixture,
-    // next dev sends usage telemetry to telemetry.nextjs.org unless this is set; tests contact no outside services.
+    // next dev sends usage telemetry to telemetry.nextjs.org unless this is set (it still asks npm for Next's latest
+    // version; that request carries no project data).
     NEXT_TELEMETRY_DISABLED: '1',
     ...extra,
   };
