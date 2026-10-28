@@ -12,6 +12,7 @@ import { patreonConfig, patreonJoinURL } from '@/lib/patreon/server';
 import localFont from "next/font/local";
 import InlineScript from "@/components/InlineScript";
 import HighlightEffects from "@/components/HighlightEffects";
+import { site } from "@/data/site";
 import "./globals.css";
 
 // Bundled locally (SIL OFL, app/fonts/IBM-Plex-Mono-OFL.txt) so the build never reaches a font host.
@@ -38,8 +39,9 @@ export const metadata: Metadata = {
   description:
     "Studio Migrainz: a public terminal for projects, artwork, comics, production logs and studio archives.",
   // Link previews. The card image is app/(frontend)/opengraph-image.png (scripts/make-og-image.mjs). Pages set only
-  // their own <title>, so every preview shows the site title. Absolute URLs use Next's default base (the Vercel
-  // production URL on Vercel), so no domain is written here.
+  // their own <title>, so every preview shows the site title. Absolute URLs use the public site address from
+  // data/site.ts (Next's own fallback is localhost unless Vercel exposes its system variables).
+  metadataBase: new URL(site.siteUrl),
   openGraph: {
     type: "website",
     siteName: "MIGRAINZ",

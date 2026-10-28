@@ -1,5 +1,12 @@
 # Changelog
 
+## Changed - 2026-10-27 / Batch 2b: fixes from the independent reviews of batches 2 and 1d (fix/batch-2b-review-fixes)
+
+- Link previews use the public site address from `data/site.ts` as their base (`metadataBase`); before, absolute `og:image` URLs relied on Next's fallback, which is localhost unless Vercel exposes its system variables. In development Next always uses localhost for these URLs, so site health checks that the layout sets this base and that Next's own resolver, asked as a production build, returns the live site.
+- Only the "[ NEW ]" label blinks between two colours (`--crt-text` / `--crt-mid`, 7.85:1 at its dimmest); the decorative "AWAITING INPUT _" cursor keeps its original fade (batch 2 had changed both). Recorded in docs/redesign-plan.md "Theme".
+- From the 1d review: the fixture-env runner test stops a runner that wrongly starts with SIGTERM, then SIGKILL, including every process group it listed, and waits for complete output; comments corrected (browsers are not listed: headless Chrome exits when its Playwright parent dies, checked); the baseline's readme describes the text suffix for bare elements.
+- Logged, not changed: Escape on the viewer leaves focus on the page body (pre-existing); the Art Viewer's tab close buttons are under 24 px (roadmap 2.7, needs a slightly taller tab strip); robots.txt lets search engines index artwork files (question for Harold).
+
 ## Changed - 2026-10-27 / Batch 1d: fixes from the independent review of batch 1c (chore/batch-1d-review-fixes)
 
 - Site health: accessibility keys are built in the page from the failing element (tag, id, sorted classes, aria-label word; for an element with none of those, its first words of text), so a bare `h2` no longer covers every heading on a page type. Off-site and failed requests are recorded for every page in a browser context (the missing-record checks were missed before).

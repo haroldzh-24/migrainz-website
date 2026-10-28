@@ -1,9 +1,11 @@
 // Unit checks for scripts/fixture-env.mjs (no server, no browser, no network). Run by `npm run check`.
 //   node scripts/verify-fixture-env.mjs
-// Fake values only; nothing here reads a real .env file.
+// Fake values only. The only real-file access is reading variable NAMES from the repo's .env* files (envFileNames),
+// never values.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { setTimeout as sleep } from 'node:timers/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { BLANKED, envFileNames, fixtureEnv, fixtureEnvProblems } from './fixture-env.mjs';
@@ -54,14 +56,27 @@ try {
   const planted = 'VERIFY_FIXTURE_NEON_KEY';
   assert.ok(!envFileNames().includes(planted), `${planted} must not appear in a .env file`);
   const fixtures = () => existsSync('test-results') ? readdirSync('test-results').filter(name => name.startsWith('regression-')).length : 0;
-  // Own process group with a short timeout, so a runner that wrongly starts is ended with everything it started.
+  // If a runner wrongly starts, it must not be left running: after 20 s it gets SIGTERM (so it can stop what it
+  // started), then SIGKILL, and every process group it listed in its own CHECK_PGID_FILE is killed too.
+  const pgids = path.join(tmp, 'runner.pgids');
+  const killGroup = (pid, signal) => { try { process.kill(-pid, signal); } catch {} };
   const runRefusing = args => new Promise(resolve => {
-    const child = spawn(process.execPath, args, { env: { ...process.env, [planted]: 'fake-for-test' }, detached: process.platform !== 'win32', windowsHide: true });
+    const child = spawn(process.execPath, args, { env: { ...process.env, [planted]: 'fake-for-test', CHECK_PGID_FILE: pgids }, detached: process.platform !== 'win32', windowsHide: true });
     let stdout = '', stderr = '';
     child.stdout.on('data', chunk => { stdout += chunk; });
     child.stderr.on('data', chunk => { stderr += chunk; });
-    const timer = setTimeout(() => { try { process.platform === 'win32' ? child.kill('SIGKILL') : process.kill(-child.pid, 'SIGKILL'); } catch {} }, 20000);
-    child.once('exit', status => { clearTimeout(timer); resolve({ status, stdout, stderr }); });
+    const timer = setTimeout(async () => {
+      if (process.platform === 'win32') { child.kill('SIGKILL'); return; }
+      killGroup(child.pid, 'SIGTERM');
+      await sleep(6000);
+      killGroup(child.pid, 'SIGKILL');
+      for (const group of existsSync(pgids) ? readFileSync(pgids, 'utf8').split('\n').map(Number).filter(Boolean) : []) killGroup(group, 'SIGKILL');
+    }, 20000);
+    // Wait for the output to be complete ('close'), with a fallback in case a leftover process holds the pipes.
+    let exitStatus;
+    const finish = () => { clearTimeout(timer); resolve({ status: exitStatus, stdout, stderr }); };
+    child.once('exit', status => { exitStatus = status; setTimeout(finish, 3000).unref(); });
+    child.once('close', status => { exitStatus ??= status; finish(); });
   });
   for (const args of [['scripts/regression.mjs'], ['scripts/serve-fixture.mjs', '0']]) {
     const before = fixtures();
