@@ -41,6 +41,7 @@
 // response, off-site redirect for the script's own requests, CSP report, missing security headers) and passes only if
 // every one is reported (run by test:regression, so the checker itself is tested).
 // Writes test-results/site-health/report.json and screenshots of each template at both widths.
+import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { createServer } from 'node:http';
@@ -100,18 +101,46 @@ const SENTINELS = ['SENTINEL-PHASE-TITLE-7Q', 'SENTINEL-CHAPTER-TITLE-7Q', 'sent
   'SENTINEL-REDACTED-CHARACTER-7Q', 'SENTINEL-REDACTED-DESC-7Q', 'SENTINEL-REDACTED-EQUIPMENT-7Q', 'SENTINEL-REDACTED-FACTION-7Q',
   'redacted-dossier', 'redacted-equipment', 'redacted-faction'];
 const sentinelIn = text => { const lower = text.toLowerCase(); return SENTINELS.filter(sentinel => lower.includes(sentinel.toLowerCase())); };
-// The hidden first copy of a route window (class retro-window-pending) in server HTML: its media must not load.
-const hiddenCopyMediaProblems = html => {
-  const start = html.indexOf('class="retro-window-pending"');
-  if (start < 0) return [];
-  let depth = 0, end = html.length;
-  const tags = /<\/?div\b/g;
-  tags.lastIndex = html.lastIndexOf('<div', start);
-  for (let match; (match = tags.exec(html));) { depth += match[0] === '<div' ? 1 : -1; if (!depth) { end = match.index; break; } }
-  const block = html.slice(start, end);
-  return [...[...block.matchAll(/<img\b[^>]*>/g)].filter(([tag]) => !/\bloading="lazy"/.test(tag)).map(([tag]) => `hidden route-window copy has an image that loads: ${tag.slice(0, 120)}`),
-    ...[...block.matchAll(/<video\b[^>]*>/g)].filter(([tag]) => /\ssrc="/.test(tag)).map(([tag]) => `hidden route-window copy has a video with a source: ${tag.slice(0, 120)}`)];
+// The hidden first copy of a route window (class retro-window-pending) in server HTML: its media must not load. Every
+// such block: images only lazy; no video or audio with a source, poster or <source>; no iframe, embed, object or SVG
+// <image>; and no <link rel="preload"> anywhere in the page for a file used in a block. Returns the number of blocks
+// too, so a page that must have one can say so.
+const hiddenCopyMedia = html => {
+  const problems = [];
+  const urls = new Set();
+  const blocks = [...html.matchAll(/<div\b[^>]*\bclass="retro-window-pending"[^>]*>/g)].map(({ index }) => {
+    let depth = 0, end = html.length;
+    const tags = /<\/?div\b/g;
+    tags.lastIndex = index;
+    for (let match; (match = tags.exec(html));) { depth += match[0] === '<div' ? 1 : -1; if (!depth) { end = match.index; break; } }
+    return html.slice(index, end);
+  });
+  const short = tag => tag.slice(0, 120);
+  for (const block of blocks) {
+    for (const [tag] of block.matchAll(/<(?:img|source|video|audio|image)\b[^>]*>/g)) {
+      for (const [, , value] of tag.matchAll(/\s(src|srcset|poster|href|xlink:href)="([^"]*)"/g)) for (const part of value.split(',')) if (part.trim()) urls.add(part.trim().split(/\s+/)[0].replaceAll('&amp;', '&'));
+    }
+    for (const [tag] of block.matchAll(/<img\b[^>]*>/g)) if (!/\sloading="lazy"/.test(tag)) problems.push(`hidden route-window copy has an image that loads: ${short(tag)}`);
+    for (const [tag] of block.matchAll(/<(?:video|audio)\b[^>]*>/g)) if (/\s(src|poster)="/.test(tag)) problems.push(`hidden route-window copy has media that loads: ${short(tag)}`);
+    for (const [tag] of block.matchAll(/<source\b[^>]*>/g)) if (/<(video|audio)\b(?:(?!<\/\1>)[\s\S])*$/.test(block.slice(0, block.indexOf(tag)))) problems.push(`hidden route-window copy has a video/audio <source>: ${short(tag)}`);
+    for (const [tag] of block.matchAll(/<(?:iframe|embed|object|image)\b[^>]*>/g)) problems.push(`hidden route-window copy has an embedded resource: ${short(tag)}`);
+  }
+  for (const [tag] of html.matchAll(/<link\b[^>]*\brel="preload"[^>]*>/g)) {
+    const targets = [...tag.matchAll(/\s(href|imagesrcset)="([^"]*)"/g)].flatMap(([, , value]) => value.split(',').map(part => part.trim().split(/\s+/)[0].replaceAll('&amp;', '&')));
+    if (targets.some(target => urls.has(target))) problems.push(`a file in the hidden route-window copy is preloaded: ${short(tag)}`);
+  }
+  return { blocks: blocks.length, problems };
 };
+// The checker itself, on sample HTML (each pattern must be reported; a clean block must not).
+{
+  const wrap = inner => `<head><link rel="preload" as="image" href="/p.webp"/></head><main><div class="retro-window-pending" hidden=""><div>${inner}</div></div><img src="/outside.webp"/></main>`;
+  assert.deepEqual(hiddenCopyMedia(wrap('<img loading="lazy" src="/a.webp" srcset="/a.webp 1x, /a2.webp 2x"/><picture><source srcset="/b.webp"/><img loading="lazy" src="/b.jpg"/></picture>')), { blocks: 1, problems: [] });
+  for (const inner of ['<img src="/a.webp"/>', '<video poster="/v.webp"></video>', '<video preload="metadata"><source src="/v.mp4"/></video>', '<audio src="/s.mp3"></audio>',
+    '<iframe src="/x"></iframe>', '<svg><image href="/i.png"></image></svg>', '<img loading="lazy" src="/p.webp"/>']) {
+    assert.equal(hiddenCopyMedia(wrap(inner)).problems.length, 1, `hidden-copy check reports ${inner}`);
+  }
+  assert.equal(hiddenCopyMedia(wrap('') + wrap('<img src="/second.webp"/>')).problems.length, 1, 'hidden-copy check reads every block');
+}
 const SKIP = /^\/(admin|api|auth|_next)(\/|$)/;
 const MEDIA = /^\/api\/media\/file\//;
 const ANNOUNCEMENT_KEY = 'migrainz-announcement:studio-transmission-001';
@@ -418,7 +447,9 @@ try {
     if (links) {
       const html = await (await get(p)).text();
       for (const sentinel of sentinelIn(html)) fail(`${p}: classified fixture text "${sentinel}" is in the server HTML`);
-      for (const problem of hiddenCopyMediaProblems(html)) fail(`${p}: ${problem}`);
+      const hidden = hiddenCopyMedia(html);
+      for (const problem of hidden.problems) fail(`${p}: ${problem}`);
+      if (p === '/projects/blushland' && !hidden.blocks) fail(`${p}: no hidden route-window copy in the server HTML (has its class changed? the media check above found nothing to check)`);
     }
     if (!links) fail(`link to ${p} is broken (linked from ${from})`);
     if (full && links) scanned.set(t, [...list, p]);

@@ -79,7 +79,7 @@ function PublicDesktopFile({ label, fileName, type, href, subtitle, viewerTab, o
     onPointerLeave={() => { cancel(); if (!pinned && !root.current?.contains(document.activeElement)) setOpen(false); }}
     // Keyboard focus only, and not when the window manager hands focus back after the Art Viewer closed: neither a click
     // nor closing the viewer should pop the Properties panel.
-    onFocus={event => { if (!isQuietFocus() && (event.target as Element).matches(":focus-visible")) reveal(); }}
+    onFocus={event => { if (!isQuietFocus(event.target) && (event.target as Element).matches(":focus-visible")) reveal(); }}
     onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget) && (!pinned || event.relatedTarget)) dismiss(); }}>
     <Link className="desktop-file-open" href={href} prefetch={false} aria-describedby={open ? id : undefined}
       onClick={event => {

@@ -136,38 +136,80 @@ try {
   await viewer.waitFor({ state: 'hidden', timeout: 3000 });
   console.log('PASS closing the viewer returns focus to the button that opened it (Escape and close button); a stale opener is not used; closing one tab focuses the active tab');
 
-  // 6b. A file in a project window opened by mouse: closing the viewer by mouse hands focus back without popping the
-  // file's Properties panel (it only opens for keyboard focus), at desktop and phone widths, and without scrolling the
-  // window workspace.
+  // 6b. Focus handed back to a file in a project window, at desktop and phone widths: by mouse (the file clipped at the
+  // bottom edge, so a hand-back that scrolled would move the reader's place), by keyboard, after minimizing and restoring
+  // the viewer, and with the file scrolled out of view (then it is brought into view). The Properties panel never pops
+  // open on a hand-back, but does for the very next keyboard focus.
+  const focusIsOn = async (handle, what) => page.waitForFunction(element => document.activeElement === element, handle, { timeout: 3000 })
+    .catch(async () => assert.fail(`${what}: focus is on ${await focusedText()}, not the file`));
+  const panelStaysShut = async what => { await page.waitForTimeout(450); assert.equal(await page.locator('.desktop-inspector').count(), 0, `${what}: no Properties panel`); };
+  const contentScroll = () => page.evaluate(() => document.querySelector('.project-app-content')?.scrollTop ?? -1);
   for (const size of [{ width: 1366, height: 768 }, { width: 390, height: 844 }]) {
+    const at = `${size.width}px`;
     await page.setViewportSize(size);
     await page.evaluate(() => sessionStorage.removeItem('migrainz-art-viewer-tabs-v2')); // one tab: its × closes the viewer
     await page.goto(base + '/projects/blushland');
     await page.locator('.startup-sequence').waitFor({ state: 'hidden' });
+    await page.locator('.retro-window-pending').waitFor({ state: 'detached' });
     const file = page.locator('.desktop-file.artwork-file .desktop-file-open').first();
-    await file.scrollIntoViewIfNeeded();
-    await file.click();
+    const handle = await file.elementHandle();
+    // Mouse: put the file's top 14 px at the bottom edge of the scrolling window content and click that strip.
+    const strip = await file.evaluate(element => {
+      const content = element.closest('.project-app-content');
+      content.scrollTop += element.getBoundingClientRect().top - (content.getBoundingClientRect().bottom - 14);
+      const box = element.getBoundingClientRect(), clip = content.getBoundingClientRect();
+      return { x: box.left + Math.min(40, box.width / 2), y: (box.top + Math.min(box.bottom, clip.bottom)) / 2, hidden: box.bottom - clip.bottom };
+    });
+    assert.ok(strip.hidden > 20, `${at}: the file is clipped at the bottom edge (${strip.hidden}px hidden)`);
+    const scrollBefore = await contentScroll();
+    assert.ok(scrollBefore > 0, `${at}: the window content is scrolled (${scrollBefore})`);
+    await page.mouse.click(strip.x, strip.y);
     await viewer.waitFor();
-    const scrollBefore = await page.evaluate(() => document.querySelector('.project-app-content')?.scrollTop ?? -1);
-    assert.ok(scrollBefore > 0, `${size.width}px: the window content was scrolled to the file (${scrollBefore})`);
     await viewer.locator('.art-viewer-tab-close').last().click();
     await viewer.waitFor({ state: 'hidden', timeout: 3000 });
-    await page.waitForTimeout(600);
-    assert.equal(await page.locator('.desktop-inspector').count(), 0, `${size.width}px: no Properties panel after a mouse close`);
-    assert.ok(await page.evaluate(() => document.activeElement?.matches('.desktop-file-open')), `${size.width}px: focus back on the file (${await focusedText()})`);
-    const scrollAfter = await page.evaluate(() => document.querySelector('.project-app-content')?.scrollTop ?? -1);
-    assert.ok(Math.abs(scrollAfter - scrollBefore) < 2, `${size.width}px: the reader's place in the window stayed (${scrollBefore} -> ${scrollAfter})`);
-    // The same file by keyboard: Enter opens the viewer, Escape hands focus back to the file without its Properties panel.
+    await focusIsOn(handle, `${at} mouse close`);
+    await panelStaysShut(`${at} mouse close`);
+    assert.ok(Math.abs(await contentScroll() - scrollBefore) < 2, `${at}: the reader's place stayed (${scrollBefore} -> ${await contentScroll()})`);
+    // Keyboard: Enter opens, Escape closes; focus back on this file, no panel; the next Tab is ordinary keyboard focus.
     await file.focus();
     await page.keyboard.press('Enter');
     await viewer.waitFor();
     await page.keyboard.press('Escape');
     await viewer.waitFor({ state: 'hidden', timeout: 3000 });
-    await page.waitForTimeout(600);
-    assert.ok(await page.evaluate(() => document.activeElement?.matches('.desktop-file-open')), `${size.width}px: keyboard close: focus back on the file`);
-    assert.equal(await page.locator('.desktop-inspector').count(), 0, `${size.width}px: no Properties panel after a keyboard close`);
+    await focusIsOn(handle, `${at} keyboard close`);
+    await page.keyboard.press('Tab');
+    await page.locator('.desktop-inspector').waitFor({ timeout: 2000 })
+      .catch(async () => assert.fail(`${at}: the Tab straight after a hand-back opens the Properties panel as usual (focus on ${await focusedText()})`));
+    await page.keyboard.press('Escape'); // closes the panel
+    // Minimize by keyboard: focus back on the file, no panel; restore from the dock, Escape: back on the file again.
+    await file.focus();
+    await page.keyboard.press('Enter');
+    await viewer.waitFor();
+    await viewer.locator('button[aria-label^="Minimize"]').focus();
+    await page.keyboard.press('Enter');
+    await viewer.waitFor({ state: 'hidden', timeout: 3000 });
+    await focusIsOn(handle, `${at} minimize`);
+    await panelStaysShut(`${at} minimize`);
+    await page.locator('.window-taskbar button', { hasText: 'ART VIEWER' }).click();
+    await viewer.waitFor();
+    await page.keyboard.press('Escape');
+    await viewer.waitFor({ state: 'hidden', timeout: 3000 });
+    await focusIsOn(handle, `${at} restore then Escape`);
+    // Scrolled out of view while the viewer was open: the hand-back brings the file into view.
+    await file.focus();
+    await page.keyboard.press('Enter');
+    await viewer.waitFor();
+    await page.evaluate(() => { const content = document.querySelector('.project-app-content'); content.scrollTop = 0; });
+    assert.ok(await file.evaluate(element => element.getBoundingClientRect().top >= element.closest('.project-app-content').getBoundingClientRect().bottom),
+      `${at}: the file is out of view before the viewer closes`);
+    await page.evaluate(() => document.querySelector('.art-viewer-window .art-viewer-tab-close')?.focus());
+    await page.keyboard.press('Enter');
+    await viewer.waitFor({ state: 'hidden', timeout: 3000 });
+    await focusIsOn(handle, `${at} out of view`);
+    assert.ok(await file.evaluate(element => { const box = element.getBoundingClientRect(), clip = element.closest('.project-app-content').getBoundingClientRect();
+      return box.bottom > clip.top && box.top < clip.bottom; }), `${at}: a file scrolled out of view is brought into view when focus returns`);
   }
-  console.log('PASS a file opened and closed by mouse or keyboard gets focus back without its Properties panel, keeping the reader\'s place (1366 and 390 px)');
+  console.log('PASS focus handed back to a file (mouse close with the file clipped at the edge, keyboard close, minimize and restore, scrolled out of view) at 1366 and 390 px: right file, no Properties panel, reader\'s place kept unless the file was out of view; the next Tab opens the panel as usual');
 
   // 7. Tab close buttons and tab titles are at least 24x24 px (WCAG 2.5.8; roadmap 2.7), on desktop and phone widths,
   // and the window controls stay inside the viewer.
