@@ -81,6 +81,11 @@
 
 ## Resolved Bugs
 
+### 2026-10-26 - No security headers on the live site; X-Powered-By sent (audit)
+
+- Evidence (read-only audit, claude/project-audit-2026-10-26.md): live responses carried only HSTS (set by Vercel); no Content-Security-Policy, X-Frame-Options, X-Content-Type-Options, Referrer-Policy or Permissions-Policy; `x-powered-by: Next.js, Payload` on every response. The admin also loaded the administrator's Gravatar from gravatar.com (Payload's default avatar).
+- Fix (batch 3, roadmap 3.1/3.2): `security-headers.mjs` served by `next.config.mjs` (`poweredByHeader: false`); CSP report-only; admin avatar 'default'. Found in the plan review: Next applies config headers before a route handler and never replaces them, so the Patreon routes' `Referrer-Policy: no-referrer` needed its own `/auth/:path*` rule. Tests: scripts/verify-security-headers.mjs, site-health header and CSP checks with self-test plants. Status: Resolved in code; live after the next push (check `/`, `/admin`, a media file and `/auth/patreon/start` after it).
+
 ### 2026-10-27 - Closed Art Viewer reopened on the next full page load (found while testing batch 2)
 
 - Closing the viewer kept its tabs in sessionStorage (by design), and on the next full load the restored tabs registered the window as open, so a viewer the visitor had closed came back. Client-side navigation was not affected.

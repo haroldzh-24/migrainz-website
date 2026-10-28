@@ -1,5 +1,14 @@
 # Changelog
 
+## Changed - 2026-10-27 / Batch 3: security headers (feat/batch-3-security-headers)
+
+- Every response now sends `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `X-Frame-Options: SAMEORIGIN` and `Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()`; the `X-Powered-By: Next.js, Payload` header is gone. HSTS stays with Vercel. The Patreon routes under `/auth/` keep `Referrer-Policy: no-referrer` (a config header would otherwise have replaced the routes' own value).
+- `Content-Security-Policy-Report-Only` for the site (only this site's own scripts, styles, images, fonts, media and connections; no framing by other sites; no plugins) and a slightly wider one for `/admin` (upload previews, and Payload's JSON field editor from one versioned jsDelivr folder). Report-only blocks nothing: violations appear in the browser console only. No reporting endpoint or service. Development adds `'unsafe-eval'` and `ws:` for React's dev tools and hot reload.
+- Payload admin avatar: the built-in icon instead of Gravatar, so admin pages no longer send a hash of the administrator's email to gravatar.com.
+- The headers live in `security-headers.mjs`, served by `next.config.mjs`.
+- Tests: new `scripts/verify-security-headers.mjs` (a `npm run check` step after the build, now 14 steps): the policies, the config, the production build's routes manifest (final headers for 13 sample paths, admin policy only under `/admin`), the Monaco version Payload loads, and no eval-like calls in the site's production browser code. Site health checks the exact headers on every page load and 13 other responses (API, media, 404, admin, the Patreon redirect, metadata), fails on any CSP report or CSP / Permissions-Policy console message, visits 7 admin pages (first-user page, then logged in as a throwaway administrator in the fixture) and plays the equipment schematic video with motion allowed. The self-test plants a CSP violation and a response without security headers (19 planted problems).
+- Not checked in a browser: the production policy (the fixture runs `next dev`); Monaco (needs jsDelivr, blocked in the offline test browser); the live site (after the push, roadmap 4.6).
+
 ## Changed - 2026-10-27 / Batch 2b: fixes from the independent reviews of batches 2 and 1d (fix/batch-2b-review-fixes)
 
 - Link previews use the public site address from `data/site.ts` as their base (`metadataBase`); before, absolute `og:image` URLs relied on Next's fallback, which is localhost unless Vercel exposes its system variables. In development Next always uses localhost for these URLs, so site health checks that the layout sets this base and that Next's own resolver, asked as a production build, returns the live site.
