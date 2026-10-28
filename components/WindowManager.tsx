@@ -59,7 +59,7 @@ type WindowManagerValue = {
   switchViewerTab: (id: string) => void;
   closeViewerTab: (id: string) => void;
   // True briefly while the window manager itself hands focus back (no sound, no phone scroll).
-  isQuietFocus: () => boolean;
+  isQuietFocus: (element?: Element | null) => boolean;
 };
 
 const WindowManagerContext = createContext<WindowManagerValue | null>(null);
@@ -128,19 +128,28 @@ export function WindowManagerProvider({ children }: { children: ReactNode }) {
   const nextZIndex = useRef(10);
   // The control that opened the Art Viewer, so closing the viewer gives keyboard focus back to it (bugs.md 2026-10-27).
   const viewerOpener = useRef<HTMLElement | null>(null);
-  // Until this time, focusing a window (focus handed back by the window manager itself) plays no sound and doesn't
-  // scroll phones to the window's top.
-  const quietFocusUntil = useRef(0);
-  const quiet = () => performance.now() < quietFocusUntil.current;
-  // Hands focus back after the viewer or one of its tabs closed, if focus fell to <body> (or is stuck in the closing
-  // viewer); left alone when focus moved somewhere on purpose.
+  // The element the window manager last handed focus back to. While focus sits on it (until the next key or pointer
+  // press), it is "quiet": its window plays no sound and isn't scrolled to on phones, and a file doesn't open its
+  // Properties panel. Anything the user focuses next behaves normally.
+  const handedBackTo = useRef<Element | null>(null);
+  const quiet = (element: Element | null = document.activeElement) => element != null && element === handedBackTo.current;
+  useEffect(() => {
+    const clear = () => { handedBackTo.current = null; };
+    document.addEventListener("keydown", clear, true);
+    document.addEventListener("pointerdown", clear, true);
+    return () => { document.removeEventListener("keydown", clear, true); document.removeEventListener("pointerdown", clear, true); };
+  }, []);
+  // Hands focus back after the viewer or one of its tabs closed or the viewer was minimized, if focus fell to <body> (or
+  // is stuck in the closing viewer); left alone when focus moved somewhere on purpose. An element still at least partly
+  // in view keeps the reader's place (no scroll); one scrolled out of view is brought into view so focus is visible.
   const handBackFocus = (target: () => HTMLElement | null | undefined) => requestAnimationFrame(() => {
     const active = document.activeElement;
     if (active && active !== document.body && active.isConnected && !active.closest(".art-viewer-window")) return;
     const element = target();
     if (!element) return;
-    quietFocusUntil.current = performance.now() + 400;
+    handedBackTo.current = element;
     element.focus({ preventScroll: true });
+    if (!partlyInView(element)) element.scrollIntoView({ block: "nearest" });
   });
   const { playSound } = useSound();
 
@@ -198,8 +207,17 @@ export function WindowManagerProvider({ children }: { children: ReactNode }) {
     })));
     if (!handedBack) playSound(sound);
   };
+  // Where focus goes when the viewer goes away: its opener, else the topmost other window, else the page's main section.
+  const viewerHandBack = (opener: HTMLElement | null) => () => {
+    if (document.querySelector(".art-viewer-window")) return null; // reopened or restored meanwhile
+    if (opener?.isConnected && !opener.closest("[inert]")) return opener;
+    return [...document.querySelectorAll<HTMLElement>(".retro-window:not(.art-viewer-window)")].sort((a, b) => Number(b.style.zIndex) - Number(a.style.zIndex))[0]
+      ?? document.getElementById("top");
+  };
   const minimizeWindow = (id: string) => {
     if (id === "system") hideDesktop();
+    // The opener is kept: restoring and then closing the viewer still returns there.
+    if (id === viewerWindowId && !desktopVisible) handBackFocus(viewerHandBack(viewerOpener.current));
     setWindows((current) => current.map((window) => window.id === id ? { ...window, minimized: true, focused: false } : window));
     playSound("close");
   };
@@ -212,16 +230,10 @@ export function WindowManagerProvider({ children }: { children: ReactNode }) {
     if (id === "system") hideDesktop();
     if (id === viewerWindowId) {
       try { window.sessionStorage.setItem(viewerClosedKey, "1"); } catch { /* Optional storage. */ }
-      // Back to the opener, else the topmost other window, else the page's main section. Not while the SYSTEM monitor
-      // is showing (it manages its own focus).
+      // Not while the SYSTEM monitor is showing (it manages its own focus).
       const opener = viewerOpener.current;
       viewerOpener.current = null;
-      if (!desktopVisible) handBackFocus(() => {
-        if (document.querySelector(".art-viewer-window")) return null; // reopened meanwhile
-        if (opener?.isConnected && !opener.closest("[inert]")) return opener;
-        return [...document.querySelectorAll<HTMLElement>(".retro-window:not(.art-viewer-window)")].sort((a, b) => Number(b.style.zIndex) - Number(a.style.zIndex))[0]
-          ?? document.getElementById("top");
-      });
+      if (!desktopVisible) handBackFocus(viewerHandBack(opener));
     }
     setWindows((current) => current.map((window) => window.id === id ? { ...window, open: false, minimized: false, focused: false } : window));
     playSound("close");
@@ -284,6 +296,21 @@ export function WindowManagerProvider({ children }: { children: ReactNode }) {
   return <WindowManagerContext.Provider value={{ workspace, setWorkspace, systemWorkspace, setSystemWorkspace, desktopVisible, hideDesktop, windows, registerWindow, unregisterWindow, focusWindow, minimizeWindow, restoreWindow, closeWindow, moveWindow, toggleMaximizeWindow, viewerTabs, activeViewerTab, openViewerTab, switchViewerTab, closeViewerTab, isQuietFocus: quiet }}>{children}</WindowManagerContext.Provider>;
 }
 
+// At least part of the element shows: inside the viewport and inside every clipping (scrolling) ancestor.
+function partlyInView(element: HTMLElement) {
+  let { top, bottom, left, right } = element.getBoundingClientRect();
+  top = Math.max(top, 0); left = Math.max(left, 0);
+  bottom = Math.min(bottom, window.innerHeight); right = Math.min(right, window.innerWidth);
+  for (let parent = element.parentElement; parent && bottom > top && right > left; parent = parent.parentElement) {
+    const style = getComputedStyle(parent);
+    if (!/(auto|scroll|hidden|clip)/.test(style.overflowX + style.overflowY)) continue;
+    const box = parent.getBoundingClientRect();
+    top = Math.max(top, box.top); left = Math.max(left, box.left);
+    bottom = Math.min(bottom, box.bottom); right = Math.min(right, box.right);
+  }
+  return bottom > top && right > left;
+}
+
 export function useWindowManager() {
   const context = useContext(WindowManagerContext);
   if (!context) throw new Error("useWindowManager must be used within WindowManagerProvider");
@@ -324,7 +351,7 @@ export function RetroWindow({ id, title, defaultPosition, defaultSize, defaultOp
   }, [record?.focused, record?.open, record?.minimized]);
 
   useEffect(() => {
-    if (manager.isQuietFocus()) return; // focus handed back after the viewer closed: keep the reader's place
+    if (manager.isQuietFocus()) return; // focus handed back after the viewer closed or minimized: keep the reader's place
     if ((id !== "system" || manager.desktopVisible) && record?.open && !record.minimized && record.focused && window.matchMedia("(max-width: 700px)").matches) {
       const element = windowElement.current;
       if (element && targetWorkspace) targetWorkspace.scrollTop = element.offsetTop;

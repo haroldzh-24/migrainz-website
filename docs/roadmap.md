@@ -1,6 +1,6 @@
 # Roadmap: migrainz-website
 
-Proposed 2026-10-26 after an audit (claude.ai Project doc `claude/project-audit-2026-10-26.md`); approved by Harold 2026-10-27. **Status (2026-10-28): M1, M2 and M3 built; batches 1 to 3e live since 2026-10-28 (`03ed3c5`, pushed with Harold's OK). Batch 4 (2.2 real 404s, 2.7 Art Viewer tab strip) built, not pushed yet. Waiting for Harold: 2.6 (store URL). Harold, 2026-10-28: "complete the road map ... all the way through". So next, within the agreed order: the Payload upgrade prepared locally only, on its own branch (rehearsed on in-memory Postgres; no Neon, Blob or Vercel access; not merged). Its version is confirmed against Vercel's Node during Preview isolation (M4.1, with Harold at the dashboards), and applying it follows the runbook with Harold's OK per step. Then the M5 (phase 2) plan for his approval. Batch 4b (review fixes for batch 4) built.**
+Proposed 2026-10-26 after an audit (claude.ai Project doc `claude/project-audit-2026-10-26.md`); approved by Harold 2026-10-27. **Status (2026-10-28): M1, M2 and M3 built; batches 1 to 3e live since 2026-10-28 (`03ed3c5`, pushed with Harold's OK). Batch 4 (2.2 real 404s, 2.7 Art Viewer tab strip) built, not pushed yet. Waiting for Harold: 2.6 (store URL). Harold, 2026-10-28: "complete the road map ... all the way through". So next, within the agreed order: the Payload upgrade prepared locally only, on its own branch (rehearsed on in-memory Postgres; no Neon, Blob or Vercel access; not merged). Its version is confirmed against Vercel's Node during Preview isolation (M4.1, with Harold at the dashboards), and applying it follows the runbook with Harold's OK per step. Then the M5 (phase 2) plan for his approval. Batches 4b and 4c (review fixes for batch 4 and 4b) built.**
 
 This file is the repo copy; the Project copy (`claude/roadmap-<date>.md`) is kept in sync. Each item is ticked with its batch and commit when done. docs/redesign-plan.md stays the source of truth for design decisions and for Harold's agreed order of production work (Preview isolation, then the Payload upgrade, then the phase 2 plan); this roadmap fits the code-only batches around that order and gets Harold's OK where it changes it.
 
@@ -78,6 +78,8 @@ This file is the repo copy; the Project copy (`claude/roadmap-<date>.md`) is kep
 Per docs/redesign-plan.md: terminal ↔ desktop mode switch, window-vs-page rule, page templates, new homepage (menu bar, directory-listing menu, Watcher with orbiting windows, Transmissions and clearance panels, one navigation, 1366x768 fit, phone tab bar), comic reader sizing (fit to height on desktop, clearer zoom on phones), phone windows to the bottom edge.
 
 Done when: the phase 2 plan is approved, built, reviewed, checked by Harold on the review server and phone, and shipped; everything in the redesign plan's "Decided" sections met.
+
+Plan: written 2026-10-28 as the Project doc `claude/phase-2-plan.md` (five batches with "done when" lines, where each homepage panel's data comes from, which route uses which mode, three questions with recommendations). **Waiting for Harold's approval**; building starts after the Payload upgrade ships (M4.2).
 
 ## M6 — Phase 3 system files, then backlog
 
