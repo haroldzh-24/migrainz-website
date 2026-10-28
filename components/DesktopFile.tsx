@@ -32,7 +32,7 @@ export default function DesktopFile(props: Props) {
 }
 
 function PublicDesktopFile({ label, fileName, type, href, subtitle, viewerTab, opensPage, thumbnail, imagePreview, schematicThumbnail, metadata = [] }: Props) {
-  const { openViewerTab } = useWindowManager();
+  const { openViewerTab, isQuietFocus } = useWindowManager();
   const id = useId();
   const root = useRef<HTMLDivElement>(null);
   const panel = useRef<HTMLDivElement>(null);
@@ -77,9 +77,9 @@ function PublicDesktopFile({ label, fileName, type, href, subtitle, viewerTab, o
   return <div ref={root} className={`desktop-file${viewerTab ? " artwork-file" : ""}${imagePreview ? " faction-file" : ""}`}
     onPointerEnter={event => { if (event.pointerType === "mouse") reveal(); }}
     onPointerLeave={() => { cancel(); if (!pinned && !root.current?.contains(document.activeElement)) setOpen(false); }}
-    // Keyboard focus only: focus that a click (or the Art Viewer handing focus back after a click) puts here must not
-    // pop the Properties panel.
-    onFocus={event => { if ((event.target as Element).matches(":focus-visible")) reveal(); }}
+    // Keyboard focus only, and not when the window manager hands focus back after the Art Viewer closed: neither a click
+    // nor closing the viewer should pop the Properties panel.
+    onFocus={event => { if (!isQuietFocus() && (event.target as Element).matches(":focus-visible")) reveal(); }}
     onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget) && (!pinned || event.relatedTarget)) dismiss(); }}>
     <Link className="desktop-file-open" href={href} prefetch={false} aria-describedby={open ? id : undefined}
       onClick={event => {

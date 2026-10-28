@@ -100,6 +100,18 @@ const SENTINELS = ['SENTINEL-PHASE-TITLE-7Q', 'SENTINEL-CHAPTER-TITLE-7Q', 'sent
   'SENTINEL-REDACTED-CHARACTER-7Q', 'SENTINEL-REDACTED-DESC-7Q', 'SENTINEL-REDACTED-EQUIPMENT-7Q', 'SENTINEL-REDACTED-FACTION-7Q',
   'redacted-dossier', 'redacted-equipment', 'redacted-faction'];
 const sentinelIn = text => { const lower = text.toLowerCase(); return SENTINELS.filter(sentinel => lower.includes(sentinel.toLowerCase())); };
+// The hidden first copy of a route window (class retro-window-pending) in server HTML: its media must not load.
+const hiddenCopyMediaProblems = html => {
+  const start = html.indexOf('class="retro-window-pending"');
+  if (start < 0) return [];
+  let depth = 0, end = html.length;
+  const tags = /<\/?div\b/g;
+  tags.lastIndex = html.lastIndexOf('<div', start);
+  for (let match; (match = tags.exec(html));) { depth += match[0] === '<div' ? 1 : -1; if (!depth) { end = match.index; break; } }
+  const block = html.slice(start, end);
+  return [...[...block.matchAll(/<img\b[^>]*>/g)].filter(([tag]) => !/\bloading="lazy"/.test(tag)).map(([tag]) => `hidden route-window copy has an image that loads: ${tag.slice(0, 120)}`),
+    ...[...block.matchAll(/<video\b[^>]*>/g)].filter(([tag]) => /\ssrc="/.test(tag)).map(([tag]) => `hidden route-window copy has a video with a source: ${tag.slice(0, 120)}`)];
+};
 const SKIP = /^\/(admin|api|auth|_next)(\/|$)/;
 const MEDIA = /^\/api\/media\/file\//;
 const ANNOUNCEMENT_KEY = 'migrainz-announcement:studio-transmission-001';
@@ -401,8 +413,13 @@ try {
     const full = list.length < 2;
     const links = await visit(desktop, p, { full, label: list.length ? t + '-2' : t });
     status.set(p, { status: links ? 200 : 'error', from });
-    // The server HTML itself (route windows render their content hidden in it; roadmap 2.2), not only the hydrated page.
-    if (links) for (const sentinel of sentinelIn(await (await get(p)).text())) fail(`${p}: classified fixture text "${sentinel}" is in the server HTML`);
+    // The server HTML itself (route windows render their content hidden in it; roadmap 2.2), not only the hydrated page:
+    // no classified text, and the hidden copy must not load media (every <img> lazy, no <video> source).
+    if (links) {
+      const html = await (await get(p)).text();
+      for (const sentinel of sentinelIn(html)) fail(`${p}: classified fixture text "${sentinel}" is in the server HTML`);
+      for (const problem of hiddenCopyMediaProblems(html)) fail(`${p}: ${problem}`);
+    }
     if (!links) fail(`link to ${p} is broken (linked from ${from})`);
     if (full && links) scanned.set(t, [...list, p]);
     if (links) await addLinks(links, p);
@@ -449,6 +466,19 @@ try {
     }
     if (missingPage) findings.softNotFound.add(p);
     else fail(`${p} should be 404, returned ${response.status()}`);
+  }
+  // A malformed #fragment must not break the page (decodeURIComponent throws on "#%").
+  if (!selfTest) {
+    const page = await (await contextFor(desktop, false)).newPage();
+    const problems = [];
+    watch(page, problems);
+    try {
+      await page.goto(base + '/projects/blushland#%', { waitUntil: 'load' });
+      await page.locator('.startup-sequence').waitFor({ state: 'hidden' });
+      await page.locator('.retro-window.project-application').waitFor();
+      await page.waitForTimeout(500);
+    } catch (error) { problems.push(error.message.split('\n')[0]); }
+    finally { policyProblems.delete(page); for (const problem of problems) fail(`/projects/blushland#%: ${problem}`); await page.close(); }
   }
   // A #fragment on a full page load scrolls the route window to that section (its content only appears after
   // hydration, so the browser can't do it; components/WindowManager.tsx).

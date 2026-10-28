@@ -335,7 +335,9 @@ export function RetroWindow({ id, title, defaultPosition, defaultSize, defaultOp
   // #fragment itself (it found, at most, the hidden copy): do it once the window's content is in place.
   useEffect(() => {
     if (!renderBeforeWorkspace || !targetWorkspace) return;
-    const id = decodeURIComponent(window.location.hash.slice(1));
+    const raw = window.location.hash.slice(1);
+    let id = raw;
+    try { id = decodeURIComponent(raw); } catch { /* a malformed escape (#%, #50%) is used as written */ }
     if (!id) return;
     const frame = requestAnimationFrame(() => windowElement.current?.querySelector(`#${CSS.escape(id)}`)?.scrollIntoView({ block: "start" }));
     return () => cancelAnimationFrame(frame);
