@@ -1,6 +1,6 @@
 # Roadmap: migrainz-website
 
-Proposed 2026-10-26 after an audit (claude.ai Project doc `claude/project-audit-2026-10-26.md`); approved by Harold 2026-10-27. **Status (2026-10-27): M1 built (batches 1, 1b, 1c); M2 built except 2.2 (waiting for Harold's decision on `proxy.ts`) and 2.6 (waiting for the store URL). Committed locally, not pushed yet.**
+Proposed 2026-10-26 after an audit (claude.ai Project doc `claude/project-audit-2026-10-26.md`); approved by Harold 2026-10-27. **Status (2026-10-28): M1, M2 and M3 built (batches 1 to 3b), except 2.2 (waiting for Harold's decision on `proxy.ts`), 2.6 (waiting for the store URL) and 2.7 (waiting for Harold: Art Viewer tab strip). Committed locally, not pushed yet. Next: M4 (production lane, each step with Harold) and the M5 plan.**
 
 This file is the repo copy; the Project copy (`claude/roadmap-<date>.md`) is kept in sync. Each item is ticked with its batch and commit when done. docs/redesign-plan.md stays the source of truth for design decisions and for Harold's agreed order of production work (Preview isolation, then the Payload upgrade, then the phase 2 plan); this roadmap fits the code-only batches around that order and gets Harold's OK where it changes it.
 
@@ -52,7 +52,7 @@ This file is the repo copy; the Project copy (`claude/roadmap-<date>.md`) is kep
 | # | Item | Done when |
 |---|---|---|
 | 3.1 | Add X-Content-Type-Options, Referrer-Policy, frame-ancestors / X-Frame-Options, Permissions-Policy; turn off `x-powered-by`. | Test checks headers on fixture pages, `/api` and `/admin`; regression passes; admin login page still loads. **Done** batch 3: `security-headers.mjs`, served by `next.config.mjs`; `/auth/*` keeps `Referrer-Policy: no-referrer`. Checked in the built routes manifest (production values) and on 47 fixture page loads plus 13 other responses (dev values). |
-| 3.2 | Content-Security-Policy drafted as report-only and checked in the regression suite by reading browser console violations (no reporting endpoint or service). Turning it on live, and later enforcing it, are separate production-lane steps. | Report-only header present on the fixture; zero violations across the suite, including `/admin`. **Done** batch 3: zero reports on every crawled page, 7 admin pages (logged out and in) and the equipment video; the self-test proves a planted violation is caught. Admin avatar switched from Gravatar to Payload's built-in icon (no third-party request). Only the development policy runs in a browser here; the production policy is checked statically (build manifest, no eval in the site's code). |
+| 3.2 | Content-Security-Policy drafted as report-only and checked in the regression suite by reading browser console violations (no reporting endpoint or service). Turning it on live, and later enforcing it, are separate production-lane steps. | Report-only header present on the fixture; zero violations across the suite, including `/admin`. **Done** batches 3 and 3b: zero CSP reports and policy console messages in every regression browser script that runs against the fixture (the crawl, 7 admin pages logged out and in, the equipment video request, plus the reader, menus, amber/CRT modes, factions and Art Viewer scripts); the self-test proves a planted CSP violation (event and console message) and a blocked geolocation call are caught. The other check steps serve their own pages without the site's headers, so they can't show CSP reports. Admin: Payload's built-in avatar instead of Gravatar, Payload telemetry off. Only the development policy runs in a browser here; the production policy is checked statically (build manifest, every source listed, no eval in the site's code). |
 
 ## M4 — Production lane (each step needs Harold's OK)
 
@@ -70,6 +70,8 @@ This file is the repo copy; the Project copy (`claude/roadmap-<date>.md`) is kep
 - Admin: Payload's production admin code compiles JSON schemas with `Function` (AJV, found by `scripts/verify-security-headers.mjs`), and the JSON field editor (Monaco, for Patreon tier IDs) loads from jsDelivr; open a patron-level record and check whether either reports before deciding on `'unsafe-eval'` for `/admin` only.
 - Enforcing through `next.config.mjs` would replace the stricter `Content-Security-Policy: script-src 'none'` that SVG media sends (`cms/range-response.ts`): exclude `/api/media/file/` or keep that rule.
 - After the Payload upgrade (4.2), the Monaco version changes; `scripts/verify-security-headers.mjs` fails until `MONACO_CDN` in `security-headers.mjs` matches.
+- jsDelivr (Monaco) is the policy's only outside source. Payload already loaded it before batch 3; whether to keep allowing it once enforced (or host Monaco ourselves) is Harold's decision.
+- The tests don't see CSP reports from inside Web Workers (Monaco uses workers); check those in the browser's console by hand.
 
 ## M5 — Redesign phase 2 (design lane; plan first, Harold's approval)
 
