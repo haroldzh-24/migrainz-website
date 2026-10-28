@@ -31,8 +31,12 @@ if (database === 'sqlite' && !url.startsWith('file:')) throw new Error('Developm
 export default buildConfig({
   secret,
   // avatar 'default': Payload's default (Gravatar) would send a hash of the admin's email to gravatar.com on every
-  // admin page; the built-in icon keeps the admin free of third-party requests (roadmap 3.2).
+  // admin page; the built-in icon avoids that request. (Payload's JSON field editor still loads from jsDelivr: see
+  // security-headers.mjs.)
   admin: { user: 'users', avatar: 'default', importMap: { baseDir: path.resolve(/* turbopackIgnore: true */ '.') } },
+  // Payload's anonymous usage telemetry (on by default) posts to telemetry.payloadcms.com when the server and the admin
+  // start; off, so the site sends nothing to outside services on its own.
+  telemetry: false,
   db: database === 'postgres'
     ? postgresAdapter({ pool: { connectionString: url }, push: false, migrationDir: path.resolve('migrations/postgres') })
     : sqliteAdapter({ client: { url }, migrationDir: path.resolve('migrations/sqlite') }),

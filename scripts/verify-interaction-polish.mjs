@@ -20,6 +20,7 @@ const playwright = process.env.PLAYWRIGHT_MODULE
 const out = path.resolve('test-results/interaction-screens');
 await mkdir(out, { recursive: true });
 const browser = await playwright.chromium.launch({ executablePath: process.env.BROWSER_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: true });
+const policyProblems = require('./policy-watch.cjs').watchBrowser(browser); // report-only CSP; see policy-watch.cjs
 const SENTINELS = ['SENTINEL-PHASE-TITLE-7Q', 'SENTINEL-CHAPTER-TITLE-7Q', 'sentinel-chapter-7q'];
 const announcementKey = 'migrainz-announcement:studio-transmission-001';
 const errors = [];
@@ -340,6 +341,8 @@ try {
   }
   pass('screenshots written to ' + out);
   assert.deepEqual(errors, [], 'no page errors');
+  assert.deepEqual(policyProblems, [], 'no CSP reports or policy console messages');
+  pass('no CSP or Permissions-Policy reports in any of the above (menus, amber, CRT modes, forced colours, touch)');
 } finally {
   await browser.close();
 }

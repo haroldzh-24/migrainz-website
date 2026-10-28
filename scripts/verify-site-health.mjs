@@ -1,5 +1,7 @@
-// Site health check against a running seeded fixture (npm run test:regression starts one; so does
-// node scripts/serve-fixture.mjs). Never point it at production: BASE_URL must be a local address, the script's own
+// Site health check against a running, freshly seeded fixture (npm run test:regression starts one). It creates a
+// throwaway administrator in that fixture (section 6), so each run needs a fresh fixture: against the review server
+// (node scripts/serve-fixture.mjs), restart it before every run, and don't log in there yourself first; the
+// administrator it leaves has a random password nobody knows. Never point it at production: BASE_URL must be a local address, the script's own
 // requests go only to that origin (redirects elsewhere are refused and reported), and Chrome runs with every other host
 // unresolvable and other origins blocked (any attempt is reported).
 //   BASE_URL=http://127.0.0.1:<port> node scripts/verify-site-health.mjs [--write-baseline | --self-test]
@@ -56,6 +58,7 @@ const writeBaseline = process.argv.includes('--write-baseline');
 const selfTest = process.argv.includes('--self-test');
 const require = createRequire(import.meta.url);
 const { contentSecurityPolicy, PERMISSIONS_POLICY } = await import(pathToFileURL(path.resolve('security-headers.mjs')).href);
+const { POLICY_MESSAGE, watchPolicies } = require('./policy-watch.cjs');
 const searchPaths = process.env.PATH.split(path.delimiter).map(entry => path.dirname(entry));
 const playwright = process.env.PLAYWRIGHT_MODULE
   ? await import(pathToFileURL(process.env.PLAYWRIGHT_MODULE).href)
@@ -201,16 +204,15 @@ try {
   const homeTitle = (await (await get('/')).text()).match(/<title>([^<]*)<\/title>/)?.[1] ?? '';
 
   const contexts = {};
-  // CSP reports go to the visit that owns the page; a report from any other page fails on its own.
-  const cspReports = new Map(); // page -> report handler
-  // Shared by every browser context: CSP reports, the offline rule and request tracking.
+  // CSP reports and policy console messages (scripts/policy-watch.cjs) go to the visit that owns the page; one from
+  // any other page fails on its own.
+  const policyProblems = new Map(); // page -> problem list of its visit
+  // Shared by every browser context: policy watch, the offline rule and request tracking.
   const instrument = async context => {
-    await context.exposeBinding('__siteHealthCsp', ({ page }, report) => {
-      const handler = cspReports.get(page);
-      if (handler) handler(report); else fail(`CSP report on ${page.url()}: ${report}`);
+    await watchPolicies(context, (message, page) => {
+      const problems = policyProblems.get(page);
+      if (problems) problems.push(message); else fail(`${page?.url() ?? '(no page)'}: ${message}`);
     });
-    await context.addInitScript(() => addEventListener('securitypolicyviolation', event =>
-      window.__siteHealthCsp?.(`${event.effectiveDirective} ${event.blockedURI || '(inline)'} (${event.disposition})`)));
     // Tests stay offline and never call third parties; any attempt is recorded as a finding. Chrome is also launched
     // with every host but the local one unresolvable, which covers redirect hops that routing doesn't see.
     await context.route(url => url.origin !== origin && /^https?:$/.test(url.protocol), route => route.abort('blockedbyclient'));
@@ -226,15 +228,14 @@ try {
     });
     return context;
   };
-  // Console messages that fail a visit: errors (missing files are tracked as failed requests instead), and any CSP or
-  // Permissions-Policy message whatever its level (Chrome logs report-only violations as "info").
+  // What fails a visit besides the policy watch: page errors and console errors (missing files are tracked as failed
+  // requests instead; policy messages are already reported by the watch).
   const watch = (page, problems) => {
-    cspReports.set(page, report => problems.push('CSP report: ' + report));
+    policyProblems.set(page, problems);
     page.on('pageerror', error => problems.push('page error: ' + error.message.split('\n')[0]));
     page.on('console', message => {
       const text = message.text();
-      if (/Content Security Policy|Permissions[- ]Policy/i.test(text)) problems.push(`policy console message (${message.type()}): ${text.split('\n')[0].slice(0, 200)}`);
-      else if (message.type() === 'error' && !/Failed to load resource/.test(text)) problems.push('console error: ' + text.split('\n')[0].slice(0, 200));
+      if (message.type() === 'error' && !POLICY_MESSAGE.test(text) && !/Failed to load resource/.test(text)) problems.push('console error: ' + text.split('\n')[0].slice(0, 200));
     });
   };
   const contextFor = async (size, firstVisit, motion = false) => {
@@ -259,6 +260,7 @@ try {
       plant('<img alt="" src="/self-test-redirect.png"><img alt="" src="/self-test-abort.png">');
       plant('<p hidden>sentinel-phase-title-7q</p><div style="width:4000px;height:1px"></div>');
       fetch('/self-test-data.json').catch(() => {});
+      navigator.geolocation?.getCurrentPosition(() => {}, () => {}); // blocked by Permissions-Policy geolocation=()
       console.error('self-test console error');
     }, 0)));
     // A JSON response carrying classified text, as data fetched after hydration would.
@@ -338,7 +340,7 @@ try {
       visits++;
       return info.links;
     } finally {
-      cspReports.delete(page);
+      policyProblems.delete(page);
       for (const problem of problems) fail(`${size.width}px ${p}: ${problem}`);
       await page.close();
     }
@@ -454,7 +456,7 @@ try {
     const before = failures.length;
     const context = await instrument(await browser.newContext({ viewport: { width: 1366, height: 768 } }));
     let adminPages = 0;
-    const adminVisit = async (p, ready) => {
+    const adminVisit = async (p, ready, { image = false } = {}) => {
       const page = await context.newPage();
       page.setDefaultTimeout(90000);
       const problems = [];
@@ -464,11 +466,13 @@ try {
         if (!response || response.status() >= 400) problems.push(`returned ${response?.status()}`);
         else for (const problem of headerProblems(await response.allHeaders(), new URL(response.url()).pathname)) problems.push('security header: ' + problem);
         await page.locator(ready).first().waitFor();
+        // A thumbnail must actually load (img-src is the admin list's main CSP case).
+        if (image) await page.locator(ready).first().evaluate(img => img.decode());
         await page.waitForLoadState('networkidle').catch(() => {});
         adminPages++;
       } catch (error) { problems.push(error.message.split('\n')[0]); }
       finally {
-        cspReports.delete(page);
+        policyProblems.delete(page);
         for (const problem of problems) fail(`admin ${p}: ${problem}`);
         await page.close();
       }
@@ -485,10 +489,10 @@ try {
         const project = await first('projects');
         const equipment = await first('equipment');
         await adminVisit('/admin', 'a[href="/admin/collections/projects"]');
-        await adminVisit('/admin/collections/projects', 'a[href^="/admin/collections/projects/"]');
+        await adminVisit('/admin/collections/projects', 'a[href^="/admin/collections/projects/"]:not([href$="/create"])');
         if (project) await adminVisit(`/admin/collections/projects/${project}`, '#field-title'); else fail('admin: no project to open');
         if (equipment) await adminVisit(`/admin/collections/equipment/${equipment}`, '#field-name'); else fail('admin: no equipment to open');
-        await adminVisit('/admin/collections/media', 'a[href^="/admin/collections/media/"]');
+        await adminVisit('/admin/collections/media', 'img[src*="/api/media/file/"]', { image: true });
         await adminVisit('/admin/account', '#field-email');
       }
     }
@@ -553,7 +557,9 @@ try {
       'off-site redirect refused': /\/off-site redirects to another site \(https:\/\/example\.org\)/,
       'off-site redirect hop in the browser': /new request to another site: https:\/\/example\.net/,
       'request failed without a response': /new same-origin request failed: \/self-test-abort\.png/,
-      'CSP report': /CSP report: img-src https:\/\/example\.org\/self-test\.png/,
+      'CSP report (event)': /1366px \/: CSP report: img-src https:\/\/example\.org\/self-test\.png/,
+      'CSP report (console message)': /1366px \/: policy console message \(\w+\): .*example\.org\/self-test\.png.*Content Security Policy/,
+      'Permissions-Policy (served and reported)': /1366px \/: policy console message \(\w+\): Permissions policy violation: Geolocation/i,
       'missing security headers': /self-test headers: x-content-type-options is missing/,
       'X-Powered-By header': /self-test headers: x-powered-by is set/,
     };

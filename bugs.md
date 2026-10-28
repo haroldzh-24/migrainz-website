@@ -81,6 +81,11 @@
 
 ## Resolved Bugs
 
+### 2026-10-28 - Payload sent usage telemetry to payloadcms.com (found in the batch 3 review)
+
+- Payload's `telemetry` option is on by default (node_modules/payload/dist/config/defaults.js); `sendEvent` (utilities/telemetry/index.js) posts an anonymous event (hashed project ID, Node/Payload versions, database and upload adapters) to https://telemetry.payloadcms.com/events when the server starts and when the admin initialises. Not observed on the live site; read from the package code.
+- Fix (batch 3b): `telemetry: false` in payload.config.ts; scripts/verify-security-headers.mjs loads the config and fails if telemetry is on (checked by switching it back on). Status: Resolved in code; live after the next push.
+
 ### 2026-10-26 - No security headers on the live site; X-Powered-By sent (audit)
 
 - Evidence (read-only audit, claude/project-audit-2026-10-26.md): live responses carried only HSTS (set by Vercel); no Content-Security-Policy, X-Frame-Options, X-Content-Type-Options, Referrer-Policy or Permissions-Policy; `x-powered-by: Next.js, Payload` on every response. The admin also loaded the administrator's Gravatar from gravatar.com (Payload's default avatar).
