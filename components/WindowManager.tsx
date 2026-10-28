@@ -58,9 +58,15 @@ type WindowManagerValue = {
   openViewerTab: (tab: ViewerTab) => void;
   switchViewerTab: (id: string) => void;
   closeViewerTab: (id: string) => void;
+  // True briefly while the window manager itself hands focus back (no sound, no phone scroll).
+  isQuietFocus: () => boolean;
 };
 
 const WindowManagerContext = createContext<WindowManagerValue | null>(null);
+// True inside a route window's hidden copy (before its workspace exists): images there load lazily, so the hidden copy
+// never fetches them (the visible copy does). Same value on the server and during hydration, so no mismatch.
+const BeforeWorkspace = createContext(false);
+export const useBeforeWorkspace = () => useContext(BeforeWorkspace);
 const viewerWindowId = "art-viewer";
 const viewerStorageKey = "migrainz-art-viewer-tabs-v2";
 // Set when the viewer is closed, cleared when it opens: a page reload keeps the tabs but must not reopen a closed viewer.
@@ -120,6 +126,22 @@ export function WindowManagerProvider({ children }: { children: ReactNode }) {
   const [activeViewerTab, setActiveViewerTab] = useState<string | null>(null);
   const [viewerHydrated, setViewerHydrated] = useState(false);
   const nextZIndex = useRef(10);
+  // The control that opened the Art Viewer, so closing the viewer gives keyboard focus back to it (bugs.md 2026-10-27).
+  const viewerOpener = useRef<HTMLElement | null>(null);
+  // Until this time, focusing a window (focus handed back by the window manager itself) plays no sound and doesn't
+  // scroll phones to the window's top.
+  const quietFocusUntil = useRef(0);
+  const quiet = () => performance.now() < quietFocusUntil.current;
+  // Hands focus back after the viewer or one of its tabs closed, if focus fell to <body> (or is stuck in the closing
+  // viewer); left alone when focus moved somewhere on purpose.
+  const handBackFocus = (target: () => HTMLElement | null | undefined) => requestAnimationFrame(() => {
+    const active = document.activeElement;
+    if (active && active !== document.body && active.isConnected && !active.closest(".art-viewer-window")) return;
+    const element = target();
+    if (!element) return;
+    quietFocusUntil.current = performance.now() + 400;
+    element.focus({ preventScroll: true });
+  });
   const { playSound } = useSound();
 
   useEffect(() => {
@@ -166,6 +188,7 @@ export function WindowManagerProvider({ children }: { children: ReactNode }) {
     });
   };
   const focusWindow = (id: string, sound: "click" | "open" = "open") => {
+    const handedBack = quiet();
     window.dispatchEvent(new Event('migrainz:window-activated'));
     nextZIndex.current += 1;
     setWindows((current) => current.map((window) => ({
@@ -173,7 +196,7 @@ export function WindowManagerProvider({ children }: { children: ReactNode }) {
       focused: window.id === id,
       zIndex: window.id === id ? nextZIndex.current : window.zIndex,
     })));
-    playSound(sound);
+    if (!handedBack) playSound(sound);
   };
   const minimizeWindow = (id: string) => {
     if (id === "system") hideDesktop();
@@ -187,7 +210,19 @@ export function WindowManagerProvider({ children }: { children: ReactNode }) {
   };
   const closeWindow = (id: string) => {
     if (id === "system") hideDesktop();
-    if (id === viewerWindowId) { try { window.sessionStorage.setItem(viewerClosedKey, "1"); } catch { /* Optional storage. */ } }
+    if (id === viewerWindowId) {
+      try { window.sessionStorage.setItem(viewerClosedKey, "1"); } catch { /* Optional storage. */ }
+      // Back to the opener, else the topmost other window, else the page's main section. Not while the SYSTEM monitor
+      // is showing (it manages its own focus).
+      const opener = viewerOpener.current;
+      viewerOpener.current = null;
+      if (!desktopVisible) handBackFocus(() => {
+        if (document.querySelector(".art-viewer-window")) return null; // reopened meanwhile
+        if (opener?.isConnected && !opener.closest("[inert]")) return opener;
+        return [...document.querySelectorAll<HTMLElement>(".retro-window:not(.art-viewer-window)")].sort((a, b) => Number(b.style.zIndex) - Number(a.style.zIndex))[0]
+          ?? document.getElementById("top");
+      });
+    }
     setWindows((current) => current.map((window) => window.id === id ? { ...window, open: false, minimized: false, focused: false } : window));
     playSound("close");
   };
@@ -219,6 +254,9 @@ export function WindowManagerProvider({ children }: { children: ReactNode }) {
     });
   };
   const openViewerTab = (tab: ViewerTab) => {
+    // Remembered fresh on every open; cleared when nothing outside the viewer has focus (e.g. Safari after a click).
+    const active = document.activeElement;
+    if (!active?.closest(".art-viewer-window")) viewerOpener.current = active instanceof HTMLElement && active !== document.body ? active : null;
     setViewerTabs((current) => current.some((entry) => entry.id === tab.id) ? current : [...current, tab]);
     setActiveViewerTab(tab.id);
     ensureViewerWindow();
@@ -236,10 +274,14 @@ export function WindowManagerProvider({ children }: { children: ReactNode }) {
       return remaining;
     });
     if (viewerTabs.length <= 1) closeWindow(viewerWindowId);
-    else playSound("close");
+    else {
+      playSound("close");
+      // The closed tab's button is gone: focus the tab that is now active.
+      handBackFocus(() => document.querySelector<HTMLElement>(".art-viewer-tab.is-active > button:first-child"));
+    }
   };
 
-  return <WindowManagerContext.Provider value={{ workspace, setWorkspace, systemWorkspace, setSystemWorkspace, desktopVisible, hideDesktop, windows, registerWindow, unregisterWindow, focusWindow, minimizeWindow, restoreWindow, closeWindow, moveWindow, toggleMaximizeWindow, viewerTabs, activeViewerTab, openViewerTab, switchViewerTab, closeViewerTab }}>{children}</WindowManagerContext.Provider>;
+  return <WindowManagerContext.Provider value={{ workspace, setWorkspace, systemWorkspace, setSystemWorkspace, desktopVisible, hideDesktop, windows, registerWindow, unregisterWindow, focusWindow, minimizeWindow, restoreWindow, closeWindow, moveWindow, toggleMaximizeWindow, viewerTabs, activeViewerTab, openViewerTab, switchViewerTab, closeViewerTab, isQuietFocus: quiet }}>{children}</WindowManagerContext.Provider>;
 }
 
 export function useWindowManager() {
@@ -248,7 +290,7 @@ export function useWindowManager() {
   return context;
 }
 
-export function RetroWindow({ id, title, defaultPosition, defaultSize, defaultOpen = true, defaultMaximized = false, className, children, titlebarContent, onToggleMaximize }: {
+export function RetroWindow({ id, title, defaultPosition, defaultSize, defaultOpen = true, defaultMaximized = false, className, children, titlebarContent, onToggleMaximize, renderBeforeWorkspace = false }: {
   id: string;
   title: string;
   defaultPosition: WindowPosition;
@@ -259,6 +301,12 @@ export function RetroWindow({ id, title, defaultPosition, defaultSize, defaultOp
   children: ReactNode;
   titlebarContent?: ReactNode;
   onToggleMaximize?: () => void;
+  // Route windows: render the content, hidden, until the workspace exists (server rendering and hydration). The page
+  // then really renders on the server, so a missing record's notFound() sets HTTP 404 (bugs.md 2026-10-27, roadmap 2.2).
+  // This relies on nothing deferring the window's content during the server render: no Suspense boundary or
+  // loading.tsx between the root layout and route windows, and `cacheComponents` off (it wraps segments in
+  // <Activity>). If either changes, scripts/verify-site-health.mjs's 404 list fails.
+  renderBeforeWorkspace?: boolean;
 }) {
   const manager = useWindowManager();
   const targetWorkspace = id === "system" ? manager.systemWorkspace : manager.workspace;
@@ -276,11 +324,22 @@ export function RetroWindow({ id, title, defaultPosition, defaultSize, defaultOp
   }, [record?.focused, record?.open, record?.minimized]);
 
   useEffect(() => {
+    if (manager.isQuietFocus()) return; // focus handed back after the viewer closed: keep the reader's place
     if ((id !== "system" || manager.desktopVisible) && record?.open && !record.minimized && record.focused && window.matchMedia("(max-width: 700px)").matches) {
       const element = windowElement.current;
       if (element && targetWorkspace) targetWorkspace.scrollTop = element.offsetTop;
     }
   }, [id, manager.desktopVisible, targetWorkspace, record?.open, record?.minimized, record?.focused]);
+
+  // A route window's content appears only after hydration, so on a full page load the browser can't scroll to a
+  // #fragment itself (it found, at most, the hidden copy): do it once the window's content is in place.
+  useEffect(() => {
+    if (!renderBeforeWorkspace || !targetWorkspace) return;
+    const id = decodeURIComponent(window.location.hash.slice(1));
+    if (!id) return;
+    const frame = requestAnimationFrame(() => windowElement.current?.querySelector(`#${CSS.escape(id)}`)?.scrollIntoView({ block: "start" }));
+    return () => cancelAnimationFrame(frame);
+  }, [renderBeforeWorkspace, targetWorkspace]);
 
   const current = record ?? { id, title, open: defaultOpen, minimized: false, focused: false, zIndex: 1, position: defaultPosition, size: defaultSize };
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -307,7 +366,8 @@ export function RetroWindow({ id, title, defaultPosition, defaultSize, defaultOp
     if (drag.current?.pointerId === event.pointerId && event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
     drag.current = null;
   };
-  if (!current.open || current.minimized || !targetWorkspace) return null;
+  if (!current.open || current.minimized) return null;
+  if (!targetWorkspace) return renderBeforeWorkspace ? <BeforeWorkspace.Provider value={true}><div className="retro-window-pending" hidden>{children}</div></BeforeWorkspace.Provider> : null;
   const size = windowSize(id, current.size, targetWorkspace);
   return createPortal(<section ref={windowElement} tabIndex={-1} className={`retro-window${className ? ` ${className}` : ""}`} data-maximized={current.maximized || undefined} data-focused={current.focused} style={{ left: current.position.x, top: current.position.y, width: size.width, height: size.height, zIndex: current.zIndex }} onFocusCapture={() => { if (!current.focused) manager.focusWindow(id, "click"); }} onPointerDown={() => manager.focusWindow(id)} aria-label={`${title} window`}>
     <div className="retro-window-titlebar" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={stopDragging} onPointerCancel={stopDragging}>

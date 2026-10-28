@@ -2,19 +2,10 @@
 
 ## Open Bugs
 
-### 2026-10-27 - Closing the Art Viewer leaves keyboard focus on the page body (minor, pre-existing)
+### 2026-10-27 - The store link is a placeholder
 
-- Found in the batch 2 review: when the viewer has focus and closes (Escape or ×), `closeWindow` focuses nothing, so keyboard focus falls to `<body>` instead of the control that opened the viewer or the next window.
-- Fix idea: remember the opener when a viewer tab opens and return focus to it (or to the topmost remaining window) on close.
-- Status: Open, minor; not scheduled.
-
-### 2026-10-27 - Missing records return HTTP 200 (soft 404) and the store link is a placeholder
-
-- Found by the 2026-10-26 audit; recorded in `scripts/site-health-baseline.json`. Missing project, character, equipment and faction records (and a character under the wrong project) return HTTP 200 with the in-world "RECORD NOT FOUND" page instead of 404. Unknown top-level paths and missing comics already return 404.
-- Cause (found in batch 2 by experiment): project pages render inside a Win95 window that only exists in the browser, so during server rendering the page is never rendered and its `notFound()` never reaches the status code. A probe page that called `notFound()` at once under the project layout still returned 200; with a plain layout it returned 404.
-- Proposed fix (needs Harold's OK because it adds a small Vercel proxy invocation per /projects request): `proxy.ts` copies the path into a request header so the project layout can check the record and call `notFound()` before rendering the window.
-- The store link points at `example.com` (labelled as a placeholder) until the real store URL exists.
-- Status: Open; roadmap 2.2 and 2.6. The other audit findings in this entry (headings, titles, accessibility) were fixed in batch 2.
+- The store link points at `example.com` (labelled as a placeholder) until the real store URL exists. Recorded in `scripts/site-health-baseline.json`.
+- Status: Open; roadmap 2.6 (needs the real URL from Harold). The soft-404 part of this entry was fixed in batch 4 (see Resolved).
 
 ### 2026-10-21 - Art Viewer close button off-screen and page shifted left at about 669px (not reproducible; simulated check only)
 
@@ -46,15 +37,6 @@
 - A SQLite-aware backup exists at ignored `test-results/recovery.db`. The separate recovery server could not start alongside the existing Next dev lock; the existing process was left untouched.
 - Status: Runtime validation blocked. Reconcile local development schema against a backup before retrying; this is not evidence of production PostgreSQL schema status. No production writes or migrations performed.
 
-### 2026-09-10 - Vercel production admin initialization
-
-- Evidence: public GET `/admin` returns HTTP 500; reported runtime error indicates one or more missing CMS environment variables.
-- Confirmed code issue: build fallbacks masked missing hosted configuration, and runtime validation did not name the missing variable.
-- Fix: hosted builds now validate supplied production configuration; runtime errors identify missing names without exposing values.
-- Verification: typecheck, production guard and production build pass. Local SQLite `/admin` returns HTTP 200 with first-user setup; live production still returns HTTP 500 before deployment of these changes.
-- Status: Code fix verified locally; deployment variable scopes, database connectivity and migration status require authenticated Vercel access. No CLI, token or project link is available in this workspace.
-- Update 2026-10-25 (Harold, live check): `/admin` on the live site returns 200 with the Payload login page. Login page loads; logged-in use not verified.
-
 ### 2026-09-09 - Upstream CMS dependency advisories
 
 - Description (state on 2026-09-09): npm audit reported 12 moderate package entries inherited from Payload/Drizzle dependencies, and no high or critical entries after updating Sharp and DOMPurify. That is no longer true; see the 2026-10-26 update below.
@@ -80,6 +62,26 @@
 - Status: Open
 
 ## Resolved Bugs
+
+### 2026-10-27 - Missing records returned HTTP 200 (soft 404) (audit)
+
+- Found by the 2026-10-26 audit: missing project, character, equipment and faction records (and a character asked for under the wrong project) returned HTTP 200 with the in-world "RECORD NOT FOUND" page. Cause (batch 2, by experiment): project pages render inside a Win95 window that only exists in the browser, so during server rendering the page never rendered and its `notFound()` never reached the status code.
+- Fix (batch 4, roadmap 2.2): `RetroWindow` renders a route window's content hidden until the workspace exists (server render and hydration), so the page renders on the server and `notFound()` sets 404. No `proxy.ts`, no extra Vercel invocations. REDACTED records answer 404 the same way; PATRON records keep their 200 locked page. Tests: site health requires 404 for all six paths and for REDACTED fixture records, 200 with no protected text for a PATRON one, scans server HTML and 404 bodies for sentinel text, and fails if hidden content is left after load. Status: Resolved in code; live after the next push.
+
+### 2026-10-27 - Closing the Art Viewer left keyboard focus on the page body (minor)
+
+- Found in the batch 2 review: when the viewer closed (Escape or ×), focus fell to `<body>`.
+- Fix (batch 4): the window manager remembers the control that opened the viewer (fresh on every open) and returns focus to it on close, else to the topmost other window or `#top`; closing one of several tabs focuses the now-active tab. Found in the plan review and fixed too: focus returning after a mouse close popped open the file's Properties panel (it now opens on keyboard focus only), played a second sound and could scroll phones. Tests: cases 5, 6 and 6b of scripts/verify-art-viewer-keys.mjs (6 and 6b failed before the fixes). Status: Resolved; not tried with a screen reader or on Safari.
+
+### 2026-09-10 - Vercel production admin initialization
+
+- Evidence: public GET `/admin` returns HTTP 500; reported runtime error indicates one or more missing CMS environment variables.
+- Confirmed code issue: build fallbacks masked missing hosted configuration, and runtime validation did not name the missing variable.
+- Fix: hosted builds now validate supplied production configuration; runtime errors identify missing names without exposing values.
+- Verification: typecheck, production guard and production build pass. Local SQLite `/admin` returns HTTP 200 with first-user setup; live production still returns HTTP 500 before deployment of these changes.
+- Status: Code fix verified locally; deployment variable scopes, database connectivity and migration status require authenticated Vercel access. No CLI, token or project link is available in this workspace.
+- Update 2026-10-25 (Harold, live check): `/admin` on the live site returns 200 with the Payload login page. Login page loads; logged-in use not verified.
+- Update 2026-10-28: the live `/admin` redirects to the Payload login page (read-only check after the push). Status: Resolved for the 500; logged-in use on the live site not verified by Claude.
 
 ### 2026-10-27 - Payload and Next.js sent usage telemetry (found in the reviews of batches 3 and 3b)
 

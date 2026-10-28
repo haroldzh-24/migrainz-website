@@ -31,10 +31,11 @@ export function PatreonActions({ enabled, joinURL, signedIn }: { enabled: boolea
   </div>;
 }
 
-export function PatronLocked({ children, className }: { children: ReactNode; className: string }) {
+// `label` is the visible text: the accessible name starts with it (WCAG 2.5.3, axe label-content-name-mismatch).
+export function PatronLocked({ children, className, label = 'CLASSIFIED' }: { children: ReactNode; className: string; label?: string }) {
   const context = useContext(PatreonContext);
   const manager = useWindowManager();
-  return <button type="button" className={`${className} patron-locked-trigger`} aria-label="Patron content — access denied" onClick={() => {
+  return <button type="button" className={`${className} patron-locked-trigger`} aria-label={`${label} — patron content, access denied`} onClick={() => {
     context?.showDenied();
     manager.restoreWindow(deniedID);
   }}>{children}</button>;

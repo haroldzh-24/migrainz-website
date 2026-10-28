@@ -1,5 +1,10 @@
 # Features
 
+## Implemented - 2026-10-28 / Real 404s, Art Viewer touch targets and focus (batch 4)
+
+- Missing records answer HTTP 404 with the in-world "RECORD NOT FOUND" page (no extra Vercel functions).
+- Art Viewer tab close buttons are 24x24 px; closing the viewer returns keyboard focus to the button that opened it.
+
 ## Implemented - 2026-10-27 / Security headers (batch 3)
 
 - Standard security headers on every response, no `X-Powered-By`, and a report-only Content-Security-Policy for the site and the admin (`security-headers.mjs`); nothing is blocked yet, violations show in the browser console. Enforcing it is roadmap 4.6.

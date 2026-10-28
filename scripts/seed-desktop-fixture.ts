@@ -46,6 +46,16 @@ try {
   const satchel = await cms.create({ collection: 'equipment', data: { name: 'Fixture Satchel', slug: 'fixture-satchel', project: project.id, category: 'Carry', images: [{ media: media.id, caption: 'Synthetic satchel' }], ...pub } });
   await cms.create({ collection: 'characters', data: { name: 'Fixture Operative', slug: 'fixture-operative', project: project.id,
     equipmentAssignments: [{ equipment: scanner.id, designation: 'Unit 7', quantity: 1, notes: 'Synthetic assignment', order: 1 }, { equipment: satchel.id, order: 2 }], ...pub } });
+  // Access-control fixtures for route windows (scripts/verify-site-health.mjs): a PATRON character answers 200 with the
+  // locked page and none of its protected text; REDACTED character, equipment and faction answer 404 like missing
+  // records. Their SENTINEL-* text must never reach any page or response.
+  await cms.create({ collection: 'characters', data: { name: 'SENTINEL-PATRON-NAME-7Q', slug: 'patron-dossier', project: project.id,
+    role: 'SENTINEL-PATRON-ROLE-7Q', description: 'SENTINEL-PATRON-DESC-7Q', listingSummary: 'sealed patron dossier',
+    _status: 'published', accessLevel: 'patron', listingVisibility: 'public' } });
+  const sealed = { _status: 'published' as const, accessLevel: 'redacted' as const, listingVisibility: 'public' as const };
+  await cms.create({ collection: 'characters', data: { name: 'SENTINEL-REDACTED-CHARACTER-7Q', slug: 'redacted-dossier', project: project.id, description: 'SENTINEL-REDACTED-DESC-7Q', ...sealed } });
+  await cms.create({ collection: 'equipment', data: { name: 'SENTINEL-REDACTED-EQUIPMENT-7Q', slug: 'redacted-equipment', project: project.id, category: 'Sealed', ...sealed } });
+  await cms.create({ collection: 'factions', data: { name: 'SENTINEL-REDACTED-FACTION-7Q', slug: 'redacted-faction', project: project.id, type: 'Faction', order: 9, ...sealed } });
   // Classified sentinels for scripts/verify-interaction-polish.mjs: the newest tracker phase and the newest chapter are
   // REDACTED, so the boot checklist must print their safe labels and never these titles or slugs.
   const comic = (await cms.find({ collection: 'comics', depth: 0, where: { project: { equals: project.id } } })).docs[0];
