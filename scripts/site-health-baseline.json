@@ -1,5 +1,5 @@
 {
-  "_readme": "Known findings for scripts/verify-site-health.mjs. Accessibility entries are keyed \"rule, route template, element\" (tag, id, sorted classes, first word of aria-label). Each entry says why it is accepted for now and which roadmap item removes it; entries without a \"Roadmap\" reason fail the check, and entries that stop occurring fail as stale.",
+  "_readme": "Known findings for scripts/verify-site-health.mjs. Accessibility entries are keyed \"rule, route template, element\" (tag, id, sorted classes, first word of aria-label; for an element with none of those, its first words of text). Each entry says why it is accepted for now and which roadmap item removes it; entries without a \"Roadmap\" reason fail the check, and entries that stop occurring fail as stale.",
   "softNotFound": {
     "/projects/blushland/characters/no-such-character": "2026-10-27: missing record renders \"Record not found\" with HTTP 200 (audit B2). Roadmap 2.2.",
     "/projects/blushland/equipment/no-such-item": "2026-10-27: missing record renders \"Record not found\" with HTTP 200 (audit B2). Roadmap 2.2.",

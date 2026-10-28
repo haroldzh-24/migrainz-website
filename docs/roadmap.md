@@ -22,6 +22,7 @@ This file is the repo copy; the Project copy (`claude/roadmap-<date>.md`) is kep
 | 0.6 | Public repo: keep public, make private, or move the sensitive ops notes out. Either way they stay in public history and existing clones unless history is rewritten (destructive, separate approval). | Open; Harold decides; done in M4.3. |
 | 0.7 | OK to add GitHub Actions CI later (free for public repos; a new service). | Open (yes/no); done in M4.4. |
 | 0.8 | The real store URL, if it exists yet. | Open: Harold gives it, or the placeholder stays. |
+| 0.9 | robots.txt lets search engines fetch artwork files under `/api/media/file/` (image search). Keep, or block all of `/api/`? Access control is unaffected either way. | Open: Harold decides; default stays as built (allowed). |
 
 ## M1 — Batch 1: working rules, docs, test harness (code-only)
 
@@ -44,6 +45,7 @@ This file is the repo copy; the Project copy (`claude/roadmap-<date>.md`) is kep
 | 2.4 | Accessibility: brand link name includes "MIGRAINZ"; no `aria-label` on a plain div; tracker heading order; 24 px hit area for Win95 window buttons and "i" buttons without changing how they look; "AWAITING FILES" and cursor contrast. | No serious axe violations left in the baseline (or each remaining one has a written reason); screenshots unchanged except the fixes. **Done** batch 2. Deviation: Win95 window controls keep 21x19 and get 4px spacing (WCAG 2.5.8 spacing rule) instead of a 24px box, which would make titlebars taller; the "i" buttons have a real 25x25 hit area. Cursor contrast: the blinking "[ NEW ]" alternates two readable colours. |
 | 2.5 | Art Viewer: Escape closes it after focus has moved to another window (bugs.md 10-22). | A test reproduces the bug first, then passes. **Done** batch 2 (also: a closed viewer no longer reopens on reload). |
 | 2.6 | Store link: real URL if given (M0.8). | No example.com link in the build. **Waiting for Harold:** needs the real store URL. |
+| 2.7 | Art Viewer tab close buttons (about 15x16 px, no gap to the tab title) reach 24 px: needs a slightly taller tab strip in the viewer's title bar. Found in the batch 2 review. | **Waiting for Harold** (small look change to the viewer title bar). Then: a size check in verify-art-viewer-keys.mjs. |
 
 ## M3 — Batch 3: security headers (code-only; live check is production lane)
 

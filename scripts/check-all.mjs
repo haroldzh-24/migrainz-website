@@ -54,8 +54,9 @@ if (!env.PLAYWRIGHT_MODULE) {
 mkdirSync('test-results', { recursive: true });
 const stamp = new Date().toISOString().replace(/[-:]/g, '').replace('T', '-').slice(0, 15);
 const logPath = path.resolve(`test-results/check-${stamp}.txt`);
-// Steps that start their own process groups (the regression runner: dev server, browsers) list them here, so a forced
-// stop can reach them too.
+// Steps that start their own process groups (the regression runner: dev server and test scripts) list them here, so a
+// forced stop can reach them too. Browsers need no entry: headless Chrome exits when its Playwright parent dies (its
+// debugging pipe closes; checked 2026-10-27).
 const pgidFile = path.resolve(`test-results/check-${stamp}.pgids`);
 env.CHECK_PGID_FILE = pgidFile;
 const log = createWriteStream(logPath);

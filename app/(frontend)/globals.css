@@ -1903,10 +1903,12 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
 .startup-announcement-image { display: block; width: 100%; height: 180px; object-fit: contain; image-rendering: pixelated; }
 .startup-ad-placeholder { border: 2px dashed var(--green); padding: 20px 8px; text-align: center; font-size: clamp(18px, 5vw, 30px); line-height: 1.2; font-weight: bold; }
 .startup-status { font-size: 14px; }
-/* The blink alternates two readable colours instead of fading to .35 opacity, which dropped "[ NEW ]" below 4.5:1. */
 .startup-blink { animation: startup-blink 1.6s step-end infinite; }
-@keyframes startup-blink { 50% { color: var(--crt-dim); } }
-.eyebrow .startup-blink { color: var(--crt-text); }
+@keyframes startup-blink { 50% { opacity: .35; } }
+/* "[ NEW ]" is text, so it blinks between two readable colours (7.85:1 at its dimmest) instead of fading to .35 opacity,
+   which dropped it below 4.5:1. The decorative cursor keeps the fade. */
+.eyebrow .startup-blink { color: var(--crt-text); animation-name: startup-blink-colour; }
+@keyframes startup-blink-colour { 50% { color: var(--crt-mid); } }
 
 .startup-window { pointer-events: auto; }
 .startup-sequence[data-phase="announcement"] { overflow: visible; }

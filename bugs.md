@@ -2,6 +2,12 @@
 
 ## Open Bugs
 
+### 2026-10-27 - Closing the Art Viewer leaves keyboard focus on the page body (minor, pre-existing)
+
+- Found in the batch 2 review: when the viewer has focus and closes (Escape or ×), `closeWindow` focuses nothing, so keyboard focus falls to `<body>` instead of the control that opened the viewer or the next window.
+- Fix idea: remember the opener when a viewer tab opens and return focus to it (or to the topmost remaining window) on close.
+- Status: Open, minor; not scheduled.
+
 ### 2026-10-27 - Missing records return HTTP 200 (soft 404) and the store link is a placeholder
 
 - Found by the 2026-10-26 audit; recorded in `scripts/site-health-baseline.json`. Missing project, character, equipment and faction records (and a character under the wrong project) return HTTP 200 with the in-world "RECORD NOT FOUND" page instead of 404. Unknown top-level paths and missing comics already return 404.

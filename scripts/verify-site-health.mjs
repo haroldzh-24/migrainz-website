@@ -353,6 +353,24 @@ try {
       if (robots.status() !== 200 || !robotsText.includes(rule)) fail(`robots.txt lacks "${rule}" (status ${robots.status()})`);
     const meta = Object.fromEntries(tags('meta').map(tag => [tag.property ?? tag.name, tag.content]).filter(([key]) => key));
     for (const key of ['og:title', 'og:description', 'og:image', 'og:site_name', 'twitter:card']) if (!meta[key]) fail(`homepage has no ${key} meta tag`);
+    // Absolute preview URLs. In development Next always uses localhost for them, so the fixture can only show that they
+    // stay local; for production, the layout must set metadataBase from data/site.ts, and Next's own resolver (asked
+    // as a production build would) must then return the live site, not localhost.
+    for (const key of ['og:image', 'og:url']) if (meta[key] && !['localhost', '127.0.0.1'].includes(new URL(meta[key], base).hostname)) fail(`${key} points at ${new URL(meta[key], base).origin} in development`);
+    const siteUrl = /siteUrl:\s*"([^"]+)"/.exec(readFileSync('data/site.ts', 'utf8'))?.[1];
+    if (!siteUrl || !/metadataBase:\s*new URL\(site\.siteUrl\)/.test(readFileSync('app/(frontend)/layout.tsx', 'utf8'))) fail('app/(frontend)/layout.tsx does not set metadataBase from data/site.ts');
+    else {
+      const { getSocialImageMetadataBaseFallback } = require(path.resolve('node_modules/next/dist/lib/metadata/resolvers/resolve-url.js'));
+      const saved = { NODE_ENV: process.env.NODE_ENV, VERCEL_ENV: process.env.VERCEL_ENV };
+      try {
+        process.env.NODE_ENV = 'production'; delete process.env.VERCEL_ENV;
+        const resolved = getSocialImageMetadataBaseFallback(new URL(siteUrl)).origin;
+        if (resolved !== new URL(siteUrl).origin) fail(`in production, preview images would resolve against ${resolved}, not ${siteUrl}`);
+      } finally {
+        process.env.NODE_ENV = saved.NODE_ENV;
+        if (saved.VERCEL_ENV === undefined) delete process.env.VERCEL_ENV; else process.env.VERCEL_ENV = saved.VERCEL_ENV;
+      }
+    }
     if (meta['og:image']) {
       const response = await get(local(meta['og:image']));
       if (response.status() !== 200 || !/^image\//.test(response.headers()['content-type'] ?? '')) fail(`og:image ${local(meta['og:image'])} returned ${response.status()} ${response.headers()['content-type']}`);
