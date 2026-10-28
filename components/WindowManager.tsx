@@ -58,7 +58,8 @@ type WindowManagerValue = {
   openViewerTab: (tab: ViewerTab) => void;
   switchViewerTab: (id: string) => void;
   closeViewerTab: (id: string) => void;
-  // True briefly while the window manager itself hands focus back (no sound, no phone scroll).
+  // True for the element the window manager just handed focus back to, while focus stays there (no sound, no phone
+  // scroll, no Properties panel); defaults to the focused element.
   isQuietFocus: (element?: Element | null) => boolean;
 };
 
@@ -129,15 +130,17 @@ export function WindowManagerProvider({ children }: { children: ReactNode }) {
   // The control that opened the Art Viewer, so closing the viewer gives keyboard focus back to it (bugs.md 2026-10-27).
   const viewerOpener = useRef<HTMLElement | null>(null);
   // The element the window manager last handed focus back to. While focus sits on it (until the next key or pointer
-  // press), it is "quiet": its window plays no sound and isn't scrolled to on phones, and a file doesn't open its
-  // Properties panel. Anything the user focuses next behaves normally.
+  // press, or until focus leaves it), it is "quiet": its window plays no sound and isn't scrolled to on phones, and a
+  // file doesn't open its Properties panel. Anything the user focuses next, or this element later, behaves normally.
   const handedBackTo = useRef<Element | null>(null);
   const quiet = (element: Element | null = document.activeElement) => element != null && element === handedBackTo.current;
   useEffect(() => {
     const clear = () => { handedBackTo.current = null; };
+    const left = (event: FocusEvent) => { if (event.target === handedBackTo.current) clear(); };
     document.addEventListener("keydown", clear, true);
     document.addEventListener("pointerdown", clear, true);
-    return () => { document.removeEventListener("keydown", clear, true); document.removeEventListener("pointerdown", clear, true); };
+    document.addEventListener("focusout", left, true);
+    return () => { document.removeEventListener("keydown", clear, true); document.removeEventListener("pointerdown", clear, true); document.removeEventListener("focusout", left, true); };
   }, []);
   // Hands focus back after the viewer or one of its tabs closed or the viewer was minimized, if focus fell to <body> (or
   // is stuck in the closing viewer); left alone when focus moved somewhere on purpose. An element still at least partly
@@ -296,17 +299,21 @@ export function WindowManagerProvider({ children }: { children: ReactNode }) {
   return <WindowManagerContext.Provider value={{ workspace, setWorkspace, systemWorkspace, setSystemWorkspace, desktopVisible, hideDesktop, windows, registerWindow, unregisterWindow, focusWindow, minimizeWindow, restoreWindow, closeWindow, moveWindow, toggleMaximizeWindow, viewerTabs, activeViewerTab, openViewerTab, switchViewerTab, closeViewerTab, isQuietFocus: quiet }}>{children}</WindowManagerContext.Provider>;
 }
 
-// At least part of the element shows: inside the viewport and inside every clipping (scrolling) ancestor.
+// At least part of the element shows: inside the viewport and inside the content box (borders and scrollbars excluded)
+// of every clipping (scrolling) ancestor. A fixed element is clipped by the viewport only. Absolutely positioned
+// elements whose containing block sits inside a clipping ancestor aren't special-cased (none is handed focus today).
 function partlyInView(element: HTMLElement) {
   let { top, bottom, left, right } = element.getBoundingClientRect();
   top = Math.max(top, 0); left = Math.max(left, 0);
   bottom = Math.min(bottom, window.innerHeight); right = Math.min(right, window.innerWidth);
-  for (let parent = element.parentElement; parent && bottom > top && right > left; parent = parent.parentElement) {
+  if (getComputedStyle(element).position === "fixed") return bottom > top && right > left;
+  for (let parent = element.parentElement; parent && parent !== document.documentElement && bottom > top && right > left; parent = parent.parentElement) {
     const style = getComputedStyle(parent);
     if (!/(auto|scroll|hidden|clip)/.test(style.overflowX + style.overflowY)) continue;
     const box = parent.getBoundingClientRect();
-    top = Math.max(top, box.top); left = Math.max(left, box.left);
-    bottom = Math.min(bottom, box.bottom); right = Math.min(right, box.right);
+    const clipTop = box.top + parent.clientTop, clipLeft = box.left + parent.clientLeft;
+    top = Math.max(top, clipTop); left = Math.max(left, clipLeft);
+    bottom = Math.min(bottom, clipTop + parent.clientHeight); right = Math.min(right, clipLeft + parent.clientWidth);
   }
   return bottom > top && right > left;
 }

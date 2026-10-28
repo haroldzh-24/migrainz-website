@@ -195,6 +195,13 @@ try {
     await page.keyboard.press('Escape');
     await viewer.waitFor({ state: 'hidden', timeout: 3000 });
     await focusIsOn(handle, `${at} restore then Escape`);
+    await panelStaysShut(`${at} restore then Escape`);
+    // Quiet only while focus stays: once it leaves and comes back (here by script, no key or pointer press), the file is
+    // an ordinary keyboard focus again and opens its panel.
+    await page.evaluate(() => { const element = document.activeElement; element.blur(); element.focus(); });
+    await page.locator('.desktop-inspector').waitFor({ timeout: 2000 })
+      .catch(async () => assert.fail(`${at}: focus leaving and returning to a handed-back file opens its Properties panel as usual (focus on ${await focusedText()})`));
+    await page.keyboard.press('Escape'); // closes the panel
     // Scrolled out of view while the viewer was open: the hand-back brings the file into view.
     await file.focus();
     await page.keyboard.press('Enter');
