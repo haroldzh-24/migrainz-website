@@ -23,12 +23,22 @@ async function watchPolicies(context, onProblem) {
   });
 }
 
-// One round trip to every page of a context, so reports already on their way arrive before it closes or is checked.
-const settle = async context => { for (const page of context.pages()) await page.evaluate(() => 0).catch(() => {}); };
+// Best effort before a context closes or is checked: one round trip to each of its pages (at most 3 s each), so
+// messages Chrome has already sent arrive first. Chrome logs the console form while it checks the request, so that
+// one is reliably in; a `securitypolicyviolation` event queued just before may still be dropped.
+const settle = async context => {
+  for (const page of context.pages()) {
+    let timer;
+    await Promise.race([page.evaluate(() => 0), new Promise(resolve => { timer = setTimeout(resolve, 3000); })]).catch(() => {});
+    clearTimeout(timer);
+  }
+};
 
 // Watches every context the browser opens from now on (browser.newPage goes through newContext too). Returns
 // { problems, check }: call `await check()` at the end, before closing the browser; it fails unless at least one
-// context was watched and nothing was reported. Closing a watched context settles it first.
+// context was watched and nothing was reported. Closing a watched context settles it first (best effort, see settle).
+// scripts/verify-site-health.mjs --self-test checks both: a violation followed by check(), and one followed straight
+// away by closing its context.
 function watchBrowser(browser) {
   const problems = [];
   const open = new Set();

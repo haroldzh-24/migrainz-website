@@ -190,6 +190,13 @@ try {
       const reported = page.waitForEvent('console', { predicate: message => POLICY_MESSAGE.test(message.text()), timeout: 15000 }).catch(() => {});
       await page.evaluate(() => { const img = new Image(); img.src = 'https://example.org/watch-browser.png'; document.body.append(img); });
       await reported;
+      // A violation straight before its context closes, with no wait: closing must still let it arrive.
+      const closing = await second.newContext();
+      await closing.route(url => url.origin !== origin && /^https?:$/.test(url.protocol), route => route.abort('blockedbyclient'));
+      const closingPage = await closing.newPage();
+      await closingPage.goto(base + '/no-such-page');
+      await closingPage.evaluate(() => { const img = new Image(); img.src = 'https://example.org/watch-close.png'; document.body.append(img); });
+      await closing.close();
       await policies.check();
       fail('self-test watchBrowser: check() passed despite the planted CSP violation');
     } catch (error) { fail(`self-test watchBrowser: ${error.message.split('\n').join(' | ').slice(0, 1500)}`); }
@@ -579,6 +586,7 @@ try {
       'CSP report (console message)': /1366px \/: policy console message \(\w+\): .*example\.org\/self-test\.png.*Content Security Policy/,
       'Permissions-Policy (served and reported)': /1366px \/: policy console message \(\w+\): Permissions policy violation: Geolocation/i,
       'policy watch of the other scripts (watchBrowser)': /self-test watchBrowser: CSP reports or policy console messages:.*watch-browser\.png/,
+      'policy watch when the context closes right away': /self-test watchBrowser: CSP reports or policy console messages:.*watch-close\.png/,
       'policy watch that watched nothing': /self-test watchBrowser \(unused\): policy watch: no browser context was watched/,
       'missing security headers': /self-test headers: x-content-type-options is missing/,
       'X-Powered-By header': /self-test headers: x-powered-by is set/,

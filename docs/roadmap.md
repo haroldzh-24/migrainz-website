@@ -1,6 +1,6 @@
 # Roadmap: migrainz-website
 
-Proposed 2026-10-26 after an audit (claude.ai Project doc `claude/project-audit-2026-10-26.md`); approved by Harold 2026-10-27. **Status (2026-10-27): M1, M2 and M3 built (batches 1 to 3c), except 2.2 (waiting for Harold's decision on `proxy.ts`), 2.6 (waiting for the store URL) and 2.7 (waiting for Harold: Art Viewer tab strip). Committed locally, not pushed yet. Next: M4 (production lane, each step with Harold) and the M5 plan.**
+Proposed 2026-10-26 after an audit (claude.ai Project doc `claude/project-audit-2026-10-26.md`); approved by Harold 2026-10-27. **Status (2026-10-27): M1, M2 and M3 built (batches 1 to 3d), except 2.2 (waiting for Harold's decision on `proxy.ts`), 2.6 (waiting for the store URL) and 2.7 (waiting for Harold: Art Viewer tab strip). Committed locally, not pushed yet. Next: M4 (production lane, each step with Harold) and the M5 plan.**
 
 This file is the repo copy; the Project copy (`claude/roadmap-<date>.md`) is kept in sync. Each item is ticked with its batch and commit when done. docs/redesign-plan.md stays the source of truth for design decisions and for Harold's agreed order of production work (Preview isolation, then the Payload upgrade, then the phase 2 plan); this roadmap fits the code-only batches around that order and gets Harold's OK where it changes it.
 
@@ -69,7 +69,7 @@ This file is the repo copy; the Project copy (`claude/roadmap-<date>.md`) is kep
 - Live console on the key pages (home, a project window, the comic reader, an equipment page with its video, the admin dashboard and an edit page) at phone and desktop width. Noise that doesn't count: browser extensions (password managers, translators, ad blockers inject scripts and styles) and, on Preview deployments only, the Vercel Toolbar (vercel.live).
 - Admin: Payload's production admin code compiles JSON schemas with `Function` (AJV, found by `scripts/verify-security-headers.mjs`), and the JSON field editor (Monaco, for Patreon tier IDs) loads from jsDelivr; open a patron-level record and check whether either reports before deciding on `'unsafe-eval'` for `/admin` only.
 - Enforcing through `next.config.mjs` would replace the stricter `Content-Security-Policy: script-src 'none'` that SVG media sends (`cms/range-response.ts`): exclude `/api/media/file/` or keep that rule.
-- After the Payload upgrade (4.2), the Monaco version changes; `scripts/verify-security-headers.mjs` fails until `MONACO_CDN` in `security-headers.mjs` matches.
+- After the Payload upgrade (4.2), the Monaco version changes; `scripts/verify-security-headers.mjs` fails until `MONACO_CDN` in `security-headers.mjs` matches. Its list of known eval-like calls in the admin (`KNOWN_ADMIN_EVAL`, today only AJV) may need the same update.
 - jsDelivr (Monaco) is the policy's only outside source. Payload already loaded it before batch 3; whether to keep allowing it once enforced (or host Monaco ourselves) is Harold's decision.
 - The tests don't see CSP reports from inside Web Workers (Monaco uses workers); check those in the browser's console by hand.
 

@@ -1,21 +1,11 @@
 import { spawnSync } from 'node:child_process';
-import path from 'node:path';
+import { buildEnv } from './build-env.mjs';
 import { validateProductionEnv } from './production-env.mjs';
 
 // Vercel snapshots dashboard variables into each deployment. Child-process
 // fallbacks cannot configure deployed functions and must not mask missing env.
-const hosted = process.env.VERCEL === '1';
-if (hosted) validateProductionEnv();
+if (process.env.VERCEL === '1') validateProductionEnv();
 
-// Compile against the production PostgreSQL adapter. No database is contacted:
-// CMS routes are dynamic. These build-only values are not production credentials.
-// NEXT_TELEMETRY_DISABLED: `next build` otherwise sends usage telemetry to telemetry.nextjs.org (also on Vercel).
-const result = spawnSync(process.execPath, ['node_modules/next/dist/bin/next', 'build'], {
-  stdio: 'inherit',
-  env: hosted ? { ...process.env, NEXT_TELEMETRY_DISABLED: '1' } : { ...process.env, NEXT_TELEMETRY_DISABLED: '1', CMS_DATABASE: 'postgres',
-    DATABASE_URL: process.env.DATABASE_URL?.startsWith('postgres') ? process.env.DATABASE_URL : 'postgres://build:build@127.0.0.1:1/build',
-    CMS_MEDIA_DIR: process.env.CMS_MEDIA_DIR || path.resolve('.build-media-unused'),
-    PAYLOAD_SECRET: process.env.PAYLOAD_SECRET || 'build-only-placeholder-not-a-runtime-secret',
-  },
-});
+// Environment (local placeholders, telemetry off): scripts/build-env.mjs.
+const result = spawnSync(process.execPath, ['node_modules/next/dist/bin/next', 'build'], { stdio: 'inherit', env: buildEnv() });
 process.exit(result.status ?? 1);
