@@ -1,5 +1,9 @@
 # Changelog
 
+## Changed - 2026-10-27 / Batch 3e: fixes from the independent review of batch 3d (fix/batch-3e-review-fixes)
+
+- Eval scan: `Reflect.apply(Function.prototype.toString, ...)` and similar ordinary code no longer count as eval (the pattern needs `eval`/`Function` itself as the argument); more look-alikes in the self-check. When the known AJV entry stops matching (likely after the Payload upgrade), the check now shows what it found instead of only naming the missing entry. The scan also finds `new WebAssembly.Module(...)`, and the section comment lists every form it finds.
+
 ## Changed - 2026-10-27 / Batch 3d: fixes from the independent review of batch 3c (fix/batch-3d-review-fixes)
 
 - The build environment moved to `scripts/build-env.mjs` (same values; `scripts/build.mjs` still builds with it locally and on Vercel), so the header check tests the Vercel and local cases directly instead of counting text.
