@@ -30,7 +30,9 @@ if (database === 'sqlite' && !url.startsWith('file:')) throw new Error('Developm
 
 export default buildConfig({
   secret,
-  admin: { user: 'users', importMap: { baseDir: path.resolve(/* turbopackIgnore: true */ '.') } },
+  // avatar 'default': Payload's default (Gravatar) would send a hash of the admin's email to gravatar.com on every
+  // admin page; the built-in icon keeps the admin free of third-party requests (roadmap 3.2).
+  admin: { user: 'users', avatar: 'default', importMap: { baseDir: path.resolve(/* turbopackIgnore: true */ '.') } },
   db: database === 'postgres'
     ? postgresAdapter({ pool: { connectionString: url }, push: false, migrationDir: path.resolve('migrations/postgres') })
     : sqliteAdapter({ client: { url }, migrationDir: path.resolve('migrations/sqlite') }),

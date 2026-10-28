@@ -61,7 +61,7 @@ The Vercel build command is `npm run build` and must not run migrations. Migrati
 - `npm.cmd run check`: everything below in one run (typecheck, build, the isolated checks, the regression suite with the site-health crawl, and the browser verify scripts; not `scripts/verify-cms.cjs`, which needs a database with no administrator, see docs/CMS.md); keeps going after a failure, saves `test-results/check-<time>.txt` and exits non-zero if any step failed. `npm.cmd run check -- --list` shows the steps, `--only <step,...>` runs some of them. Stop the review server first.
 - `npm.cmd run typecheck` and `npm.cmd run build` (offline build; does not prove DB or migration state)
 - `npm.cmd run test:regression` (fresh private SQLite fixture plus Playwright; stop the dev server first)
-- Isolated checks that never load `.env.local`: `node --import tsx scripts/verify-equipment.ts`, `node --import tsx scripts/check-blob-storage.mjs`, `node --import tsx scripts/verify-equipment-migration.mjs`, `node scripts/verify-equipment-browser.mjs`
+- Isolated checks that never load `.env.local`: `node scripts/verify-security-headers.mjs` (after a build), `node --import tsx scripts/verify-equipment.ts`, `node --import tsx scripts/check-blob-storage.mjs`, `node --import tsx scripts/verify-equipment-migration.mjs`, `node scripts/verify-equipment-browser.mjs`
 - Browser scripts use Chrome: `BROWSER_PATH` overrides the default Windows path (needed on Linux and macOS). Playwright, axe-core and PGlite are test tools fetched by `npm exec` at pinned versions (see package.json), not app dependencies.
 
 ## Architecture invariants
@@ -70,6 +70,7 @@ The Vercel build command is `npm run build` and must not run migrations. Migrati
 - Listing visibility is never authorization. Full-content queries are server-only with `overrideAccess: false`; only allowlisted placeholder projections bypass access.
 - Media bytes are served only via `/api/media/file/...` after `mediaRead`. No public Blob URLs, signed links or client tokens. Protected originals never enter fallback candidates.
 - `Characters.equipmentAssignments` is the only source of equipment assignments; equipment pages derive the reverse.
+- Security headers and the report-only CSP live in `security-headers.mjs` (served by `next.config.mjs`). A config header replaces a route handler's header of the same name, so a route that needs another value gets its own rule there (later rules win). Enforcing the CSP is roadmap 4.6; read docs/roadmap.md "Before enforcing the CSP" first. No new outside source in the CSP without Harold's OK (it counts as a third-party service).
 
 ## Two lanes
 - **Code-only lane** (UI, styling, components, docs, scripts, fixtures, local tests): get one plan review (the `reviewer` subagent checks the plan against this file and docs/redesign-plan.md), then work and report at the end. Do not stop for approval on reversible, repo-only choices.

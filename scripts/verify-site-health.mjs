@@ -18,6 +18,16 @@
 //    popups are fixed so blinking cursors, flicker and timed windows cannot change the result between runs.
 // 3. Missing records must return 404.
 // 4. The homepage has a working favicon, robots.txt rules and link-preview (Open Graph / Twitter) tags.
+// 5. Security headers (roadmap M3, security-headers.mjs): every page visit, plus API, media, admin, Patreon and metadata
+//    responses (redirects checked without following them), carry exactly the expected headers for the fixture's dev
+//    server, with the admin policy only under /admin and no-referrer under /auth. Every browser visit also fails on
+//    any Content-Security-Policy report (the policy is report-only, so the browser reports instead of blocking) and on
+//    any CSP or Permissions-Policy console message.
+// 6. The Payload admin in the browser: the logged-out first-user page, then (as a throwaway administrator created in
+//    this fresh fixture through the first-register API) the dashboard, a list, edit pages and the account page; no CSP
+//    reports, page or console errors, or outside requests (Gravatar included).
+// 7. The equipment schematic video with motion allowed (the crawl uses reduced motion, which only shows the poster):
+//    the video must be requested from /api/media/file with no CSP report.
 // Known findings are listed in scripts/site-health-baseline.json, keyed by rule, route template and element, each with
 // a reason naming the roadmap item that removes it. Anything outside it fails, a baseline entry that no longer occurs
 // fails ("stale"), and an entry without a "Roadmap" reason fails, so nothing is accepted silently.
@@ -26,10 +36,11 @@
 // --self-test plants one of each problem (broken link, wrong 404, accessibility violation, one on a bare element, stale
 // baseline entry, entry without a reason, third-party request, off-site redirect hop in the browser, classified text in
 // the page and in a JSON response, console error, sideways scroll, generic title, failed request with and without a
-// response, off-site redirect for the script's own requests) and passes only if every one is reported (run by
-// test:regression, so the checker itself is tested).
+// response, off-site redirect for the script's own requests, CSP report, missing security headers) and passes only if
+// every one is reported (run by test:regression, so the checker itself is tested).
 // Writes test-results/site-health/report.json and screenshots of each template at both widths.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
 import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -44,6 +55,7 @@ const origin = new URL(base).origin;
 const writeBaseline = process.argv.includes('--write-baseline');
 const selfTest = process.argv.includes('--self-test');
 const require = createRequire(import.meta.url);
+const { contentSecurityPolicy, PERMISSIONS_POLICY } = await import(pathToFileURL(path.resolve('security-headers.mjs')).href);
 const searchPaths = process.env.PATH.split(path.delimiter).map(entry => path.dirname(entry));
 const playwright = process.env.PLAYWRIGHT_MODULE
   ? await import(pathToFileURL(process.env.PLAYWRIGHT_MODULE).href)
@@ -80,6 +92,22 @@ const MEDIA = /^\/api\/media\/file\//;
 const ANNOUNCEMENT_KEY = 'migrainz-announcement:studio-transmission-001';
 const WIDTHS = [{ name: 'phone', width: 390, height: 844, isMobile: true, hasTouch: true }, { name: 'desktop', width: 1366, height: 768 }];
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'];
+// The fixture always runs `next dev`, so the development policies apply (scripts/verify-security-headers.mjs checks
+// the production ones in the build).
+const SITE_CSP = contentSecurityPolicy({ dev: true });
+const ADMIN_CSP = contentSecurityPolicy({ dev: true, admin: true });
+const SECURITY_HEADERS = { 'x-content-type-options': 'nosniff', 'referrer-policy': 'strict-origin-when-cross-origin', 'x-frame-options': 'SAMEORIGIN', 'permissions-policy': PERMISSIONS_POLICY };
+const headerProblems = (headers, pathname) => {
+  const expected = { ...SECURITY_HEADERS, 'content-security-policy-report-only': /^\/admin(\/|$)/.test(pathname) ? ADMIN_CSP : SITE_CSP };
+  if (/^\/auth\//.test(pathname)) expected['referrer-policy'] = 'no-referrer';
+  const problems = [];
+  for (const [key, value] of Object.entries(expected)) if (headers[key] !== value)
+    problems.push(headers[key] === undefined ? `${key} is missing` : `${key} is "${headers[key].slice(0, 160)}", expected "${value.slice(0, 160)}"`);
+  if ('x-powered-by' in headers) problems.push(`x-powered-by is set ("${headers['x-powered-by']}")`);
+  // Only SVG media sends an enforced policy, its own (cms/range-response.ts).
+  if ('content-security-policy' in headers && !(MEDIA.test(pathname) && headers['content-security-policy'] === "script-src 'none'")) problems.push(`enforced content-security-policy "${headers['content-security-policy']}"`);
+  return problems;
+};
 
 const seeds = selfTest ? ['/', '/projects', '/self-test-broken-link'] : SEEDS;
 const notFound = selfTest ? ['/projects'] : NOT_FOUND;
@@ -135,16 +163,20 @@ try {
     const server = createServer((req, res) => {
       if (req.url === '/off-site') { res.writeHead(302, { location: 'https://example.org/x' }); res.end(); }
       else if (req.url === '/hop') { res.writeHead(302, { location: '/ok' }); res.end(); }
+      else if (req.url === '/headers') { res.writeHead(200, { 'content-type': 'text/plain', 'x-powered-by': 'self-test' }); res.end('no security headers'); }
       else { res.writeHead(200, { 'content-type': 'text/plain' }); res.end('ok'); }
     });
     await new Promise(done => server.listen(0, '127.0.0.1', done));
     const local = makeGet(`http://127.0.0.1:${server.address().port}`);
     if ((await local('/hop')).status() !== 200) fail('self-test: a same-site redirect was not followed');
     await local('/off-site');
+    // The header check, against a response with none of the security headers.
+    for (const problem of headerProblems((await local('/headers')).headers(), '/headers')) fail(`self-test headers: ${problem}`);
     server.close();
   }
 
   const status = new Map(); // path -> { status, from }
+  const mediaLoaded = new Set(); // media files the pages loaded (images, posters, video)
   const external = new Map(); // url -> first page linking to it
   const queue = seeds.map(p => ({ path: p, from: '(start)' }));
   const queued = new Set(seeds);
@@ -169,10 +201,46 @@ try {
   const homeTitle = (await (await get('/')).text()).match(/<title>([^<]*)<\/title>/)?.[1] ?? '';
 
   const contexts = {};
-  const contextFor = async (size, firstVisit) => {
-    const key = size.name + (firstVisit ? '-first' : '');
+  // CSP reports go to the visit that owns the page; a report from any other page fails on its own.
+  const cspReports = new Map(); // page -> report handler
+  // Shared by every browser context: CSP reports, the offline rule and request tracking.
+  const instrument = async context => {
+    await context.exposeBinding('__siteHealthCsp', ({ page }, report) => {
+      const handler = cspReports.get(page);
+      if (handler) handler(report); else fail(`CSP report on ${page.url()}: ${report}`);
+    });
+    await context.addInitScript(() => addEventListener('securitypolicyviolation', event =>
+      window.__siteHealthCsp?.(`${event.effectiveDirective} ${event.blockedURI || '(inline)'} (${event.disposition})`)));
+    // Tests stay offline and never call third parties; any attempt is recorded as a finding. Chrome is also launched
+    // with every host but the local one unresolvable, which covers redirect hops that routing doesn't see.
+    await context.route(url => url.origin !== origin && /^https?:$/.test(url.protocol), route => route.abort('blockedbyclient'));
+    // Recorded for every page in the context (also redirect hops, popups and the missing-record checks).
+    context.on('request', request => {
+      const url = new URL(request.url());
+      if (url.origin !== origin && /^https?:$/.test(url.protocol)) findings.externalRequests.add(url.origin);
+    });
+    // Same-origin requests that fail without an HTTP response (aborted navigations aside).
+    context.on('requestfailed', request => {
+      const url = new URL(request.url());
+      if (url.origin === origin && !/ERR_ABORTED/.test(request.failure()?.errorText ?? '') && !/hmr/i.test(url.pathname)) findings.failedRequests.add(url.pathname);
+    });
+    return context;
+  };
+  // Console messages that fail a visit: errors (missing files are tracked as failed requests instead), and any CSP or
+  // Permissions-Policy message whatever its level (Chrome logs report-only violations as "info").
+  const watch = (page, problems) => {
+    cspReports.set(page, report => problems.push('CSP report: ' + report));
+    page.on('pageerror', error => problems.push('page error: ' + error.message.split('\n')[0]));
+    page.on('console', message => {
+      const text = message.text();
+      if (/Content Security Policy|Permissions[- ]Policy/i.test(text)) problems.push(`policy console message (${message.type()}): ${text.split('\n')[0].slice(0, 200)}`);
+      else if (message.type() === 'error' && !/Failed to load resource/.test(text)) problems.push('console error: ' + text.split('\n')[0].slice(0, 200));
+    });
+  };
+  const contextFor = async (size, firstVisit, motion = false) => {
+    const key = size.name + (firstVisit ? '-first' : '') + (motion ? '-motion' : '');
     if (contexts[key]) return contexts[key];
-    const context = await browser.newContext({ viewport: { width: size.width, height: size.height }, isMobile: size.isMobile, hasTouch: size.hasTouch, reducedMotion: 'reduce' });
+    const context = await browser.newContext({ viewport: { width: size.width, height: size.height }, isMobile: size.isMobile, hasTouch: size.hasTouch, reducedMotion: motion ? 'no-preference' : 'reduce' });
     // Same state on every run: CRT on, green, shop ad already seen; the announcement dismissed except on first visits.
     await context.addInitScript(([key, dismiss]) => {
       try {
@@ -198,36 +266,23 @@ try {
     // A same-origin URL that redirects off-site (the browser follows the hop), and a request that fails without a response.
     if (selfTest) await context.route(url => url.pathname === '/self-test-redirect.png', route => route.fulfill({ status: 302, headers: { location: 'https://example.net/self-test.png' } }));
     if (selfTest) await context.route(url => url.pathname === '/self-test-abort.png', route => route.abort('failed'));
-    // Tests stay offline and never call third parties; any attempt is recorded as a finding. Chrome is also launched
-    // with every host but the local one unresolvable, which covers redirect hops that routing doesn't see.
-    await context.route(url => url.origin !== origin && /^https?:$/.test(url.protocol), route => route.abort('blockedbyclient'));
-    // Recorded for every page in the context (also redirect hops, popups and the missing-record checks).
-    context.on('request', request => {
-      const url = new URL(request.url());
-      if (url.origin !== origin && /^https?:$/.test(url.protocol)) findings.externalRequests.add(url.origin);
-    });
-    // Same-origin requests that fail without an HTTP response (aborted navigations aside).
-    context.on('requestfailed', request => {
-      const url = new URL(request.url());
-      if (url.origin === origin && !/ERR_ABORTED/.test(request.failure()?.errorText ?? '') && !/hmr/i.test(url.pathname)) findings.failedRequests.add(url.pathname);
-    });
-    return (contexts[key] = context);
+    return (contexts[key] = await instrument(context));
   };
 
   let visits = 0;
   let axeChecked = false;
-  const visit = async (size, p, { firstVisit = false, full = false, label = template(p) } = {}) => {
-    const page = await (await contextFor(size, firstVisit)).newPage();
+  const visit = async (size, p, { firstVisit = false, full = false, label = template(p), motion = false, expectRequest } = {}) => {
+    const page = await (await contextFor(size, firstVisit, motion)).newPage();
     page.setDefaultTimeout(90000);
     const problems = [];
-    page.on('pageerror', error => problems.push('page error: ' + error.message.split('\n')[0]));
-    page.on('console', message => {
-      if (message.type() === 'error' && !/Failed to load resource/.test(message.text())) problems.push('console error: ' + message.text().split('\n')[0].slice(0, 200));
-    });
+    watch(page, problems);
+    const expected = expectRequest && page.waitForRequest(request => expectRequest.test(new URL(request.url()).pathname), { timeout: 60000 })
+      .then(() => true, () => { problems.push(`never requested ${expectRequest}`); return false; });
     const bodies = [];
     page.on('response', response => {
       const url = new URL(response.url());
       if (url.origin !== origin) return;
+      if (MEDIA.test(url.pathname) && response.status() < 400) mediaLoaded.add(url.pathname);
       if (response.status() >= 400 && url.pathname + url.search !== p && !/hmr/i.test(url.pathname)) findings.failedRequests.add(url.pathname);
       // Data fetched after hydration (JSON APIs, RSC payloads) is checked for classified text too.
       if (/json|x-component/.test(response.headers()['content-type'] ?? '')) bodies.push(response.text().then(text => [url.pathname, text]).catch(() => [url.pathname, '']));
@@ -235,8 +290,10 @@ try {
     try {
       const response = await page.goto(base + p, { waitUntil: 'load' });
       if (!response || response.status() !== 200) { problems.push(`returned ${response?.status()}`); return null; }
+      for (const problem of headerProblems(await response.allHeaders(), new URL(response.url()).pathname)) problems.push('security header: ' + problem);
       if (firstVisit) await page.getByRole('button', { name: 'ENTER' }).waitFor();
       else await page.locator('.startup-sequence').waitFor({ state: 'hidden' });
+      if (expected) await expected;
       await page.waitForLoadState('networkidle').catch(() => {});
       if (selfTest && p === '/projects') await page.evaluate(title => { document.title = title; }, homeTitle);
       const info = await page.evaluate(() => ({
@@ -281,6 +338,7 @@ try {
       visits++;
       return info.links;
     } finally {
+      cspReports.delete(page);
       for (const problem of problems) fail(`${size.width}px ${p}: ${problem}`);
       await page.close();
     }
@@ -376,6 +434,74 @@ try {
       if (response.status() !== 200 || !/^image\//.test(response.headers()['content-type'] ?? '')) fail(`og:image ${local(meta['og:image'])} returned ${response.status()} ${response.headers()['content-type']}`);
     }
   }
+  // 5. Security headers on responses the crawl doesn't open as pages, read without following redirects.
+  if (!selfTest) {
+    const firstMedia = [...mediaLoaded].find(p => !/\.svg$/i.test(p));
+    if (!firstMedia) fail('no media file was loaded by any page; cannot check media headers');
+    const headerPaths = ['/', '/projects', '/no-such-page', '/api/projects', '/robots.txt', '/opengraph-image.png', '/boot-status',
+      '/admin', '/admin/login', '/admin/create-first-user', '/admin-notes', '/auth/patreon/start', ...(firstMedia ? [firstMedia] : [])];
+    const before = failures.length;
+    for (const p of headerPaths) {
+      const response = await api.request.get(base + p, { timeout: 90000, maxRedirects: 0 });
+      for (const problem of headerProblems(response.headers(), new URL(base + p).pathname)) fail(`${p} (${response.status()}): security header: ${problem}`);
+      // Route headers still apply next to the config's (Patreon's private headers; the media route's own nosniff).
+      if (p === '/auth/patreon/start' && response.headers()['cache-control'] !== 'private, no-store') fail(`${p}: lost its private cache-control (${response.headers()['cache-control']})`);
+    }
+    console.log(`${failures.length > before ? 'FAIL' : 'PASS'} security headers on ${headerPaths.length} responses (pages, 404, API, ${firstMedia ?? 'no media'}, admin, Patreon redirect, metadata)`);
+  }
+  // 6. The Payload admin in the browser.
+  if (!selfTest) {
+    const before = failures.length;
+    const context = await instrument(await browser.newContext({ viewport: { width: 1366, height: 768 } }));
+    let adminPages = 0;
+    const adminVisit = async (p, ready) => {
+      const page = await context.newPage();
+      page.setDefaultTimeout(90000);
+      const problems = [];
+      watch(page, problems);
+      try {
+        const response = await page.goto(base + p, { waitUntil: 'load' });
+        if (!response || response.status() >= 400) problems.push(`returned ${response?.status()}`);
+        else for (const problem of headerProblems(await response.allHeaders(), new URL(response.url()).pathname)) problems.push('security header: ' + problem);
+        await page.locator(ready).first().waitFor();
+        await page.waitForLoadState('networkidle').catch(() => {});
+        adminPages++;
+      } catch (error) { problems.push(error.message.split('\n')[0]); }
+      finally {
+        cspReports.delete(page);
+        for (const problem of problems) fail(`admin ${p}: ${problem}`);
+        await page.close();
+      }
+    };
+    await adminVisit('/admin', 'input[name="email"]'); // redirects to the first-user form
+    const init = await context.request.get(base + '/api/users/init');
+    if ((await init.json()).initialized !== false) fail('admin: the fixture already has an administrator; run against a fresh fixture (npm run test:regression or a new serve-fixture)');
+    else {
+      // A throwaway administrator in this throwaway fixture; the password is random and never printed or stored.
+      const register = await context.request.post(base + '/api/users/first-register', { data: { email: 'site-health@example.com', password: randomBytes(24).toString('base64url') } });
+      if (register.status() !== 200) fail(`admin: first-register returned ${register.status()}`);
+      else {
+        const first = async collection => (await (await context.request.get(`${base}/api/${collection}?limit=1&depth=0`)).json()).docs?.[0]?.id;
+        const project = await first('projects');
+        const equipment = await first('equipment');
+        await adminVisit('/admin', 'a[href="/admin/collections/projects"]');
+        await adminVisit('/admin/collections/projects', 'a[href^="/admin/collections/projects/"]');
+        if (project) await adminVisit(`/admin/collections/projects/${project}`, '#field-title'); else fail('admin: no project to open');
+        if (equipment) await adminVisit(`/admin/collections/equipment/${equipment}`, '#field-name'); else fail('admin: no equipment to open');
+        await adminVisit('/admin/collections/media', 'a[href^="/admin/collections/media/"]');
+        await adminVisit('/admin/account', '#field-email');
+      }
+    }
+    await context.close();
+    if (adminPages !== 7) fail(`admin: ${adminPages} of 7 pages loaded`);
+    console.log(`${failures.length > before ? 'FAIL' : 'PASS'} admin: ${adminPages} pages (first-user page; logged in: dashboard, lists, edit pages, account) without CSP reports, errors or outside requests`);
+  }
+  // 7. The equipment schematic video with motion allowed.
+  if (!selfTest) {
+    const before = failures.length;
+    await visit(desktop, '/projects/blushland/equipment/fixture-scanner', { motion: true, expectRequest: /^\/api\/media\/file\/.*\.mp4$/ });
+    console.log(`${failures.length > before ? 'FAIL' : 'PASS'} equipment schematic video requested with motion allowed, no CSP report`);
+  }
   // External links are never fetched; placeholder destinations are findings.
   for (const url of external.keys()) if (/^https?:\/\/(www\.)?example\.(com|org|net)\b/.test(url)) findings.externalPlaceholder.add(url);
   for (const context of Object.values(contexts)) await context.close();
@@ -427,6 +553,9 @@ try {
       'off-site redirect refused': /\/off-site redirects to another site \(https:\/\/example\.org\)/,
       'off-site redirect hop in the browser': /new request to another site: https:\/\/example\.net/,
       'request failed without a response': /new same-origin request failed: \/self-test-abort\.png/,
+      'CSP report': /CSP report: img-src https:\/\/example\.org\/self-test\.png/,
+      'missing security headers': /self-test headers: x-content-type-options is missing/,
+      'X-Powered-By header': /self-test headers: x-powered-by is set/,
     };
     const missed = Object.entries(expected).filter(([, pattern]) => !failures.some(message => pattern.test(message))).map(([name]) => name);
     if (missed.length) { console.log(`FAIL self-test: the checker did not report: ${missed.join(', ')}`); process.exitCode = 1; }
@@ -434,7 +563,7 @@ try {
   } else if (failures.length) {
     console.log(`FAIL site health: ${failures.length} problem(s); report in test-results/site-health/report.json`);
     process.exitCode = 1;
-  } else console.log(`PASS site health: links, status codes, overflow, titles, console, third-party requests and accessibility (${open} known baseline finding(s) still open)`);
+  } else console.log(`PASS site health: links, status codes, overflow, titles, console, third-party requests, accessibility, security headers and CSP reports (${open} known baseline finding(s) still open)`);
 } finally {
   await browser.close();
 }

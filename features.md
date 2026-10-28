@@ -1,5 +1,11 @@
 # Features
 
+## Implemented - 2026-10-27 / Security headers (batch 3)
+
+- Standard security headers on every response, no `X-Powered-By`, and a report-only Content-Security-Policy for the site and the admin (`security-headers.mjs`); nothing is blocked yet, violations show in the browser console. Enforcing it is roadmap 4.6.
+- The admin shows Payload's built-in avatar instead of loading a Gravatar image.
+- Checks: `scripts/verify-security-headers.mjs` (production build) and site health (headers and CSP reports on the fixture, including logged-in admin pages).
+
 ## Implemented - 2026-10-27 / Audit fixes (batch 2)
 
 - Favicon, robots.txt and link-preview cards (Open Graph / Twitter) with a site-styled 1200x630 image.

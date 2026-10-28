@@ -15,6 +15,7 @@ const minutes = n => n * 60000;
 const STEPS = [
   { name: 'typecheck', args: ['node_modules/typescript/bin/tsc', '--noEmit'], timeout: minutes(5) },
   { name: 'build', args: ['scripts/build.mjs'], timeout: minutes(15) },
+  { name: 'security-headers', args: ['scripts/verify-security-headers.mjs'], timeout: minutes(1) },
   { name: 'fixture-env', args: ['scripts/verify-fixture-env.mjs'], timeout: minutes(1) },
   { name: 'push-guard', args: ['.claude/hooks/guard-git-push.test.mjs'], timeout: minutes(1) },
   { name: 'production-guard', args: ['scripts/verify-production-guard.mjs'], timeout: minutes(3) },
