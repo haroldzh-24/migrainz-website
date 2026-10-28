@@ -34,8 +34,8 @@ export default buildConfig({
   // admin page; the built-in icon avoids that request. (Payload's JSON field editor still loads from jsDelivr: see
   // security-headers.mjs.)
   admin: { user: 'users', avatar: 'default', importMap: { baseDir: path.resolve(/* turbopackIgnore: true */ '.') } },
-  // Payload's anonymous usage telemetry (on by default) posts to telemetry.payloadcms.com when the server and the admin
-  // start; off, so the site sends nothing to outside services on its own.
+  // Payload's usage telemetry (on by default) posts to telemetry.payloadcms.com when the server starts and on admin
+  // access checks; off, so Payload sends nothing to outside services at runtime (bugs.md 2026-10-27).
   telemetry: false,
   db: database === 'postgres'
     ? postgresAdapter({ pool: { connectionString: url }, push: false, migrationDir: path.resolve('migrations/postgres') })

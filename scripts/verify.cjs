@@ -18,7 +18,7 @@ const { chromium } = require(
     headless: true,
   });
   // CSP reports and policy console messages in every context (report-only CSP; see policy-watch.cjs).
-  const policyProblems = watchBrowser(browser);
+  const policies = watchBrowser(browser);
   const baseURL = process.env.BASE_URL || "http://127.0.0.1:3000";
   const context = await browser.newContext({
     viewport: { width: 1440, height: 1000 },
@@ -165,6 +165,7 @@ const { chromium } = require(
       await gatePage.locator('.startup-sequence').waitFor({ state: 'hidden' });
       await mobileGate.close();
       assert.deepEqual(errors, []);
+      await policies.check();
       console.log('Boot gate checks passed: initial HTML, checklist, skip keys, persistent frame, dismissal, session, mobile and reduced motion.');
       return;
     }
@@ -488,7 +489,7 @@ const { chromium } = require(
     });
     await mobile.close();
     assert.deepEqual(errors, []);
-    assert.deepEqual(policyProblems, [], "no CSP reports or policy console messages");
+    await policies.check(); // every watched context, including the ones already closed
     console.log(
       "PASS: exploration, reader controls, project logs, routes, missing records, hover/keyboard/touch promotions, mobile width, reduced motion, runtime console, and no CSP or Permissions-Policy reports.",
     );

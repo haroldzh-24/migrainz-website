@@ -12,7 +12,7 @@ const { chromium } = require(
 (async () => {
   assert.ok(process.env.DESKTOP_TEST_FIXTURE, 'Run through npm run test:regression with isolated CMS fixtures');
   const browser = await chromium.launch({ executablePath: process.env.BROWSER_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: true });
-  const policyProblems = watchBrowser(browser); // report-only CSP; see policy-watch.cjs
+  const policies = watchBrowser(browser); // report-only CSP; see policy-watch.cjs
   try {
     const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, baseURL: process.env.BASE_URL });
     const page = await context.newPage();
@@ -74,7 +74,7 @@ const { chromium } = require(
     await touch.goBack();
     await touch.locator('#factions').waitFor();
     await mobile.close();
-    assert.deepEqual(policyProblems, [], 'no CSP reports or policy console messages');
+    await policies.check();
     console.log('PASS: inline factions, CMS project filtering/order, visible emblems, missing-image cards, keyboard focus, direct destinations, compatibility index, 320px layout, back/forward, and no CSP or Permissions-Policy reports.');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

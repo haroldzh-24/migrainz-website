@@ -4,11 +4,14 @@
 // 2. next.config.mjs serves exactly those rules, with X-Powered-By off;
 // 3. the last production build (.next/routes-manifest.json, the file Next and Vercel route with) carries them, and its
 //    own path patterns give each sample path the right final headers (for the same header, the last matching rule
-//    wins). The header comparison is by content, so a stale build fails here;
+//    wins). Compared by content: a build older than a header change fails here. A build older than other code changes
+//    does not (run standalone, sections 3 and 5 read whatever the last build left; the build time is printed). Under
+//    npm run check the build step runs first;
 // 4. the Monaco CDN folder allowed for the admin matches the version Payload's admin actually loads;
 // 5. the site's production browser code in the last build has no eval-like calls (its production policy has no
 //    'unsafe-eval'; the dev fixture can't show this, because development allows eval). Admin uses are listed for 4.6;
-// 6. admin privacy: Payload's avatar is the built-in icon (no Gravatar) and its telemetry is off.
+// 6. privacy: Payload's avatar is the built-in icon (no Gravatar), Payload's telemetry is off, and the build script
+//    turns off Next's build telemetry.
 // The served headers and browser CSP reports are checked on the dev fixture by scripts/verify-site-health.mjs; the live
 // site is a separate, manual check after a deploy (roadmap 4.6).
 //   npm run build && node scripts/verify-security-headers.mjs      (npm run check runs it right after the build step)
@@ -78,14 +81,18 @@ pass(`admin CSP allows the Monaco folder Payload loads (monaco-editor@${[...load
 const probe = spawnSync(process.execPath, ['--import', 'tsx', '--input-type=module', '-e',
   'const c = await (await import("./payload.config.ts")).default; console.log("CONFIG " + JSON.stringify({ telemetry: c.telemetry, avatar: c.admin.avatar }));'], {
   encoding: 'utf8', cwd: root, timeout: 120000,
-  env: { PATH: process.env.PATH, HOME: process.env.HOME, SYSTEMROOT: process.env.SYSTEMROOT, NODE_ENV: 'development',
+  // Only what Node and tsx need to start (Windows: temp and profile folders), never the shell's other variables.
+  env: { ...Object.fromEntries(['PATH', 'HOME', 'SYSTEMROOT', 'TEMP', 'TMP', 'USERPROFILE', 'LOCALAPPDATA', 'APPDATA']
+    .filter(name => process.env[name] !== undefined).map(name => [name, process.env[name]])), NODE_ENV: 'development',
     CMS_DATABASE: 'postgres', DATABASE_URL: 'postgres://check:check@127.0.0.1:1/check', CMS_MEDIA_DIR: path.join(root, '.build-media-unused'),
     PAYLOAD_SECRET: 'check-only-placeholder-not-a-runtime-secret' },
 });
 const probed = /^CONFIG (.*)$/m.exec(probe.stdout ?? '')?.[1];
 assert.ok(probed, `could not load payload.config.ts: ${(probe.stderr || probe.error?.message || '').split('\n').slice(0, 5).join(' ')}`);
 assert.deepEqual(JSON.parse(probed), { telemetry: false, avatar: 'default' }, 'Payload telemetry off and the built-in avatar (no Gravatar)');
-pass('admin privacy: Payload telemetry off, built-in avatar');
+// Next's build telemetry: scripts/build.mjs sets NEXT_TELEMETRY_DISABLED for both its local and its Vercel build.
+assert.equal((readFileSync(path.join(root, 'scripts/build.mjs'), 'utf8').match(/NEXT_TELEMETRY_DISABLED: '1'/g) ?? []).length, 2, 'scripts/build.mjs turns off Next telemetry for local and Vercel builds');
+pass('privacy: Payload telemetry off, built-in avatar, Next build telemetry off');
 
 // 2. next.config.mjs, as a production build reads it.
 const config = (await import(pathToFileURL(path.join(root, 'next.config.mjs')).href)).default;
@@ -135,15 +142,25 @@ for (const [pathname, csp] of cases) {
 pass(`production build (${builtAt}): ${cases.length} sample paths get the right final headers (admin policy only under /admin, no-referrer under /auth)`);
 
 // 5. Eval-like calls in the last build's browser code: eval (also indirect, or through window/self/globalThis), the
-// Function constructor, and setTimeout/setInterval with a string. A chunk counts as the site's if a public route's
-// server output names it; a chunk with a known site-only string must be classified as the site's, so the split can't
-// silently put everything under "admin". The one allowed use is the global-object fallback `Function("return this")()`,
-// which browsers never reach (they have globalThis/self first).
-const EVAL = /(?<![\w$.])(?:(?:window|self|globalThis)\.)?eval\(|\(0,\s*eval\)\(|(?<![\w$.])Function\(|(?<![\w$.])(?:setTimeout|setInterval)\(\s*["'`]/g;
+// Function constructor (also through apply/call, Reflect.construct or `.constructor("...")`), and string timers. A
+// chunk counts as the site's if a public route's server output names it; a chunk with a known site-only string must
+// be classified as the site's, so the split can't silently put everything under "admin". Allowed in site code: the
+// global-object fallback `Function("return this")()`, which browsers never reach (they have globalThis/self first).
+// Admin code may only have the uses listed in KNOWN_ADMIN_EVAL; a new one fails, so it is looked at before 4.6.
+const PREFIX = '(?:(?:window|self|globalThis)\\.)?';
+const EVAL = new RegExp([
+  `(?<![\\w$.])${PREFIX}eval\\(`, '\\(0,\\s*eval\\)\\(',
+  '(?<![\\w$.])Function(?:\\.(?:apply|call))?\\(', 'Reflect\\.construct\\(\\s*Function\\b', '\\.constructor\\(\\s*["\'`]',
+  `(?<![\\w$.])${PREFIX}(?:setTimeout|setInterval)\\(\\s*["'\`]`,
+].join('|'), 'g');
 const ALLOWED = /^Function\("return this"\)/;
+const KNOWN_ADMIN_EVAL = [
+  { pattern: /^Function\(`\$\{\w+\.default\.self\}`/, what: 'AJV compiling a JSON schema (Payload admin)' },
+];
 const count = text => [...text.matchAll(EVAL)].length;
 assert.equal(count('a=eval(b);c=new Function("d");e=Function(`f`,g);(0,eval)(h);(0, eval)(i);window.eval(j);self.eval(k);globalThis.eval(l);setTimeout("m",1);setInterval(\'n\',1)'), 10, 'the scan finds every eval form');
-assert.equal(count('isFunction(a);b.eval(c);$Function(d);typeof e=="function";setTimeout(f,1);setInterval(()=>g,1);x.Function(y)'), 0, 'the scan ignores look-alikes');
+assert.equal(count('window.setTimeout("a");self.setInterval(`b`);Function.apply(null,["c"]);Function.call(null,"d");Reflect.construct(Function,["e"]);x.constructor.constructor("return this")'), 6, 'the scan finds prefixed timers and indirect Function use');
+assert.equal(count('isFunction(a);b.eval(c);$Function(d);typeof e=="function";setTimeout(f,1);setInterval(()=>g,1);x.Function(y);o.constructor(p);Reflect.construct(Foo,[])'), 0, 'the scan ignores look-alikes');
 const SITE_ONLY = 'migrainz-announcement'; // the announcement's storage key, used only by the public site
 const frontendRefs = files(path.join(root, '.next/server/app/(frontend)')).filter(file => /\.(js|json)$/.test(file)).map(file => readFileSync(file, 'utf8')).join('\n');
 const siteUses = [];
@@ -167,5 +184,7 @@ assert.ok(anchors.length > 0, `no browser chunk contains "${SITE_ONLY}"; pick an
 assert.deepEqual(anchors.filter(([, site]) => !site), [], `chunks with "${SITE_ONLY}" must count as site code`);
 assert.deepEqual(siteUses, [], `eval-like calls in the site's production code (the production policy has no 'unsafe-eval'; enforcing it would break them):\n${siteUses.join('\n')}`);
 pass(`site production code (build ${builtAt}, ${siteChunks} site chunks): no eval-like calls`);
-if (adminUses.length) console.log(`INFO admin-only production code has ${adminUses.length} eval-like call(s) (the Function call is AJV compiling a JSON schema); report-only now, check before enforcing (roadmap 4.6):\n  ${adminUses.join('\n  ')}`);
+const unknownAdmin = adminUses.filter(use => !KNOWN_ADMIN_EVAL.some(known => known.pattern.test(use.split(': ').slice(1).join(': '))));
+assert.deepEqual(unknownAdmin, [], 'new eval-like call(s) in admin code: find out what each is, add it to KNOWN_ADMIN_EVAL, and note it for roadmap 4.6');
+if (adminUses.length) console.log(`INFO admin-only production code has ${adminUses.length} known eval-like call(s); report-only now, check before enforcing (roadmap 4.6):\n  ${adminUses.map(use => `${use} (${KNOWN_ADMIN_EVAL.find(known => known.pattern.test(use.split(': ').slice(1).join(': '))).what})`).join('\n  ')}`);
 console.log(`PASS security headers: ${passed} checks`);

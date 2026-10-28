@@ -26,6 +26,7 @@ try {
   assert.equal(env.CMS_DATABASE, 'sqlite');
   assert.ok(env.DATABASE_URL.startsWith('file:') && env.DATABASE_URL.includes('fixture'), 'database inside the fixture');
   assert.match(env.PAYLOAD_SECRET, /^[0-9a-f]{64}$/, 'random secret, not the one from .env.local');
+  assert.equal(env.NEXT_TELEMETRY_DISABLED, '1', 'Next telemetry off in fixture runs');
   assert.deepEqual(fixtureEnvProblems(env, fixture), [], 'a correct fixture environment passes');
   assert.equal(fixtureEnv(fixture, { base, dir, extra: { DEV_ALLOWED_ORIGINS: 'a,b' } }).DEV_ALLOWED_ORIGINS, 'a,b', 'extras are kept');
 
