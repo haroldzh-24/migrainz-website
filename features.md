@@ -3,7 +3,7 @@
 ## Implemented - 2026-10-28 / Real 404s, Art Viewer touch targets and focus (batch 4)
 
 - Missing records answer HTTP 404 with the in-world "RECORD NOT FOUND" page (no extra Vercel functions).
-- Art Viewer tab close buttons are 24x24 px; closing the viewer returns keyboard focus to the button that opened it.
+- Art Viewer tab close buttons are 24x24 px; closing or minimizing the viewer returns keyboard focus to the button that opened it (batches 4 and 4c), without opening that file's Properties panel or moving the reader's place; a file scrolled out of view meanwhile is brought into view.
 
 ## Implemented - 2026-10-27 / Security headers (batch 3)
 

@@ -42,6 +42,8 @@
 // every one is reported (run by test:regression, so the checker itself is tested).
 // Writes test-results/site-health/report.json and screenshots of each template at both widths.
 import assert from 'node:assert/strict';
+import { createElement as h } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { createServer } from 'node:http';
@@ -108,38 +110,54 @@ const sentinelIn = text => { const lower = text.toLowerCase(); return SENTINELS.
 const hiddenCopyMedia = html => {
   const problems = [];
   const urls = new Set();
-  const blocks = [...html.matchAll(/<div\b[^>]*\bclass="retro-window-pending"[^>]*>/g)].map(({ index }) => {
+  const firstURL = part => part.trim().split(/\s+/)[0].replaceAll('&amp;', '&');
+  // Attribute names case-insensitively: React writes srcSet, imageSrcSet and fetchPriority as typed.
+  const blocks = [...html.matchAll(/<div\b[^>]*\bclass="retro-window-pending"[^>]*>/gi)].map(({ index }) => {
     let depth = 0, end = html.length;
-    const tags = /<\/?div\b/g;
+    const tags = /<\/?div\b/gi;
     tags.lastIndex = index;
-    for (let match; (match = tags.exec(html));) { depth += match[0] === '<div' ? 1 : -1; if (!depth) { end = match.index; break; } }
+    for (let match; (match = tags.exec(html));) { depth += match[0].toLowerCase() === '<div' ? 1 : -1; if (!depth) { end = match.index; break; } }
     return html.slice(index, end);
   });
   const short = tag => tag.slice(0, 120);
   for (const block of blocks) {
-    for (const [tag] of block.matchAll(/<(?:img|source|video|audio|image)\b[^>]*>/g)) {
-      for (const [, , value] of tag.matchAll(/\s(src|srcset|poster|href|xlink:href)="([^"]*)"/g)) for (const part of value.split(',')) if (part.trim()) urls.add(part.trim().split(/\s+/)[0].replaceAll('&amp;', '&'));
+    for (const [tag] of block.matchAll(/<(?:img|source|video|audio|image)\b[^>]*>/gi)) {
+      for (const [, , value] of tag.matchAll(/\s(src|srcset|poster|href|xlink:href)="([^"]*)"/gi)) for (const part of value.split(',')) if (part.trim()) urls.add(firstURL(part));
     }
-    for (const [tag] of block.matchAll(/<img\b[^>]*>/g)) if (!/\sloading="lazy"/.test(tag)) problems.push(`hidden route-window copy has an image that loads: ${short(tag)}`);
-    for (const [tag] of block.matchAll(/<(?:video|audio)\b[^>]*>/g)) if (/\s(src|poster)="/.test(tag)) problems.push(`hidden route-window copy has media that loads: ${short(tag)}`);
-    for (const [tag] of block.matchAll(/<source\b[^>]*>/g)) if (/<(video|audio)\b(?:(?!<\/\1>)[\s\S])*$/.test(block.slice(0, block.indexOf(tag)))) problems.push(`hidden route-window copy has a video/audio <source>: ${short(tag)}`);
-    for (const [tag] of block.matchAll(/<(?:iframe|embed|object|image)\b[^>]*>/g)) problems.push(`hidden route-window copy has an embedded resource: ${short(tag)}`);
+    for (const [tag] of block.matchAll(/<img\b[^>]*>/gi)) if (!/\sloading="lazy"/i.test(tag)) problems.push(`hidden route-window copy has an image that loads: ${short(tag)}`);
+    for (const [tag] of block.matchAll(/<(?:video|audio)\b[^>]*>/gi)) if (/\s(src|poster)="/i.test(tag)) problems.push(`hidden route-window copy has media that loads: ${short(tag)}`);
+    for (const { 0: tag, index } of block.matchAll(/<source\b[^>]*>/gi)) if (/<(video|audio)\b(?:(?!<\/\1>)[\s\S])*$/i.test(block.slice(0, index))) problems.push(`hidden route-window copy has a video/audio <source>: ${short(tag)}`);
+    for (const [tag] of block.matchAll(/<(?:iframe|embed|object|image)\b[^>]*>/gi)) problems.push(`hidden route-window copy has an embedded resource: ${short(tag)}`);
   }
-  for (const [tag] of html.matchAll(/<link\b[^>]*\brel="preload"[^>]*>/g)) {
-    const targets = [...tag.matchAll(/\s(href|imagesrcset)="([^"]*)"/g)].flatMap(([, , value]) => value.split(',').map(part => part.trim().split(/\s+/)[0].replaceAll('&amp;', '&')));
+  for (const [tag] of html.matchAll(/<link\b[^>]*\brel="preload"[^>]*>/gi)) {
+    const targets = [...tag.matchAll(/\s(href|imagesrcset)="([^"]*)"/gi)].flatMap(([, , value]) => value.split(',').filter(part => part.trim()).map(firstURL));
     if (targets.some(target => urls.has(target))) problems.push(`a file in the hidden route-window copy is preloaded: ${short(tag)}`);
   }
   return { blocks: blocks.length, problems };
 };
-// The checker itself, on sample HTML (each pattern must be reported; a clean block must not).
+// The checker itself, on React's own server output (attribute names and automatic image preloads as React writes them):
+// each pattern must be reported; a clean block must not.
 {
-  const wrap = inner => `<head><link rel="preload" as="image" href="/p.webp"/></head><main><div class="retro-window-pending" hidden=""><div>${inner}</div></div><img src="/outside.webp"/></main>`;
-  assert.deepEqual(hiddenCopyMedia(wrap('<img loading="lazy" src="/a.webp" srcset="/a.webp 1x, /a2.webp 2x"/><picture><source srcset="/b.webp"/><img loading="lazy" src="/b.jpg"/></picture>')), { blocks: 1, problems: [] });
-  for (const inner of ['<img src="/a.webp"/>', '<video poster="/v.webp"></video>', '<video preload="metadata"><source src="/v.mp4"/></video>', '<audio src="/s.mp3"></audio>',
-    '<iframe src="/x"></iframe>', '<svg><image href="/i.png"></image></svg>', '<img loading="lazy" src="/p.webp"/>']) {
-    assert.equal(hiddenCopyMedia(wrap(inner)).problems.length, 1, `hidden-copy check reports ${inner}`);
+  const page = (...inner) => renderToStaticMarkup(h('html', null, h('head'), h('body', null,
+    h('div', { className: 'retro-window-pending', hidden: true }, h('div', null, ...inner)), h('img', { src: '/outside.webp', alt: '' }))));
+  const clean = page(h('img', { loading: 'lazy', src: '/a.webp', srcSet: '/a.webp 1x, /a2.webp 2x', alt: '' }),
+    h('picture', null, h('source', { srcSet: '/b.webp' }), h('img', { loading: 'lazy', src: '/b.jpg', alt: '' })));
+  assert.deepEqual(hiddenCopyMedia(clean), { blocks: 1, problems: [] });
+  for (const [what, element] of [['eager image', h('img', { src: '/a.webp', alt: '' })],
+
+    ['video poster', h('video', { poster: '/v.webp', preload: 'none' })], ['video source', h('video', { preload: 'metadata' }, h('source', { src: '/v.mp4' }))],
+    ['audio', h('audio', { src: '/s.mp3' })], ['iframe', h('iframe', { src: '/x', title: 'x' })], ['SVG image', h('svg', null, h('image', { href: '/i.png' }))]]) {
+    const result = hiddenCopyMedia(page(element));
+    assert.ok(result.problems.length >= 1, `hidden-copy check reports the ${what}: ${JSON.stringify(result)}`);
   }
-  assert.equal(hiddenCopyMedia(wrap('') + wrap('<img src="/second.webp"/>')).problems.length, 1, 'hidden-copy check reads every block');
+  // React itself preloads an eager high-priority image in <head> by imageSrcSet (no href).
+  const preloaded = page(h('img', { src: '/p.webp', srcSet: '/p.webp 1x', fetchPriority: 'high', alt: '' }));
+  assert.match(preloaded, /<link rel="preload" as="image" imageSrcSet="\/p\.webp 1x"/);
+  assert.ok(hiddenCopyMedia(preloaded).problems.some(problem => problem.includes('preloaded')), 'hidden-copy check reports React\'s preload of a hidden image');
+  const second = hiddenCopyMedia(page() + page(h('img', { src: '/second.webp', alt: '' })));
+  assert.ok(second.blocks === 2 && second.problems.some(problem => problem.includes('image that loads') && problem.includes('/second.webp')), 'hidden-copy check reads every block');
+  assert.equal(hiddenCopyMedia(page(h('picture', null, h('source', { srcSet: '/c.webp' }), h('img', { loading: 'lazy', src: '/c.jpg', alt: '' })),
+    h('video', { preload: 'none' }, h('source', { srcSet: '/c.webp' })))).problems.length, 1, 'hidden-copy check places each <source> by its own position');
 }
 const SKIP = /^\/(admin|api|auth|_next)(\/|$)/;
 const MEDIA = /^\/api\/media\/file\//;
@@ -456,6 +474,8 @@ try {
     if (links) await addLinks(links, p);
     if (status.size >= MAX_PAGES) { fail(`crawl stopped at ${MAX_PAGES} pages; is a link generating endless URLs?`); queue.length = 0; }
   }
+  // The hidden-copy media check needs a project page with a hidden copy: the crawl must have reached one.
+  if (!selfTest && !status.has('/projects/blushland')) fail('the crawl never reached /projects/blushland, so the hidden route-window copy went unchecked');
   // 2. The same template pages at phone width, then pages linked only there, then the first visit at both widths.
   if (!selfTest) {
     for (const [t, list] of scanned) for (const [i, p] of list.entries()) { const links = await visit(phone, p, { full: true, label: i ? t + '-2' : t }); if (links) await addLinks(links, p); }

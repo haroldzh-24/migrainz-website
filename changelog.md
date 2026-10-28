@@ -1,8 +1,15 @@
 # Changelog
 
+## Changed - 2026-10-28 / Batch 4d: fixes from the independent review of batch 4c (fix/batch-4d-review-fixes)
+
+- Focus handed back by the window manager also stops being "quiet" when focus leaves that element (not only on the next key or pointer press), so coming back to it later is an ordinary focus again.
+- `partlyInView` (decides whether a handed-back element needs scrolling into view) measures each scrolling ancestor's inner box, without borders and scrollbars, and treats fixed elements as clipped by the viewport only.
+- Tests: site health's hidden-copy check matches attribute names in any case (React writes `srcSet`, `imageSrcSet`, `fetchPriority`), places each `<source>` by its own position, fails if the crawl never reaches `/projects/blushland`, and checks itself on React's own server output, including React's automatic `<link rel="preload">` for eager images (found while writing this: React's server render adds a preload link for eager images, seen in its static output, so a hidden eager image would also be fetched through `<head>`). The Art Viewer test checks the panel stays shut after restore and Escape, and that focus leaving and returning to a handed-back file opens its panel as usual (fails without the fix).
+- Docs: features.md (focus return on minimize); the 4c changelog line now says the next Tab lands on the file's own Properties button in the test, and no longer claims an untested sound.
+
 ## Changed - 2026-10-28 / Batch 4c: fixes from the independent review of batch 4b (fix/batch-4c-review-fixes)
 
-- Focus handed back by the window manager is quiet only for the element it went to, until the next key or pointer press: the Tab straight after closing the viewer opens the next item's Properties panel as usual, and a window focused that way plays its sound (batch 4b used a 400 ms window for every element).
+- Focus handed back by the window manager is quiet only for the element it went to, until the next key or pointer press: the Tab straight after closing the viewer is an ordinary keyboard focus again (in the test it lands on the same file's Properties button, which opens the panel; batch 4b used a 400 ms window for every element).
 - Minimizing the Art Viewer hands focus back to the control that opened it (it fell to the page before); restoring it from the dock and closing it returns there again.
 - A handed-back element that was scrolled out of view is brought into view (so keyboard focus is visible); one still at least partly in view keeps the reader's place as before.
 - Tests: `verify-art-viewer-keys.mjs` case 6b now clips the file at the bottom edge of the window before a mouse open and close (a hand-back that scrolled would move the reader's place), waits for focus on that exact file instead of fixed delays, and adds the next-Tab, minimize and restore, and scrolled-out-of-view cases at 1366 and 390 px. Each of the four fails with its fix removed (logs `test-results/mutation-4c-*.txt`). Site health's hidden-copy check reads every hidden block, fails if `/projects/blushland` has none, also catches video/audio sources and posters, iframes, embeds, SVG images and preload links for hidden files, and checks itself on sample HTML at start.
