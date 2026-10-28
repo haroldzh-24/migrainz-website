@@ -1,6 +1,13 @@
 # Changelog
 
-## Changed - 2026-10-28 / Batch 3b: fixes from the independent review of batch 3 (fix/batch-3b-review-fixes)
+## Changed - 2026-10-27 / Batch 3c: fixes from the independent review of batch 3b (fix/batch-3c-review-fixes)
+
+- Next.js usage telemetry off for every build (`scripts/build.mjs`, locally and on Vercel; no dashboard change) and every fixture run (`scripts/fixture-env.mjs`). A plain `npm run dev` still sends it until `npx next telemetry disable` is run once on that machine.
+- Policy watch (`scripts/policy-watch.cjs`): also matches the hyphenated "Content-Security-Policy" wording; `watchBrowser` returns `check()`, which fails if no context was watched, lets reports already on their way arrive before a context closes and before the final check; `verify.cjs` also checks in its boot-only mode. The site-health self-test now runs `watchBrowser` on its own browser with a planted violation, and with nothing watched (23 planted problems).
+- `scripts/verify-security-headers.mjs`: the eval scan also finds prefixed string timers, `Function.apply/call`, `Reflect.construct(Function, ...)` and `.constructor("...")`; admin code may only have the eval-like calls listed in `KNOWN_ADMIN_EVAL` (today AJV), so a new one fails; the config probe passes Windows' temp and profile folders; comments say a standalone run reads whatever the last build left.
+- Docs: the telemetry entry in bugs.md lists what Payload and Next.js send.
+
+## Changed - 2026-10-27 / Batch 3b: fixes from the independent review of batch 3 (fix/batch-3b-review-fixes)
 
 - Payload telemetry off (`telemetry: false`): Payload no longer posts anonymous usage data to telemetry.payloadcms.com when the server or the admin starts. Found in the review.
 - CSP watch for the whole suite: `scripts/policy-watch.cjs` (shared) fails on CSP reports and on CSP / Permissions-Policy console messages; besides site health it now runs in `verify.cjs`, `verify-factions.cjs`, `verify-interaction-polish.mjs` and `verify-art-viewer-keys.mjs`, which open the reader, menus, amber and CRT modes and the Art Viewer that the crawl doesn't.

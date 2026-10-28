@@ -9,9 +9,10 @@ if (hosted) validateProductionEnv();
 
 // Compile against the production PostgreSQL adapter. No database is contacted:
 // CMS routes are dynamic. These build-only values are not production credentials.
+// NEXT_TELEMETRY_DISABLED: `next build` otherwise sends usage telemetry to telemetry.nextjs.org (also on Vercel).
 const result = spawnSync(process.execPath, ['node_modules/next/dist/bin/next', 'build'], {
   stdio: 'inherit',
-  env: hosted ? { ...process.env } : { ...process.env, CMS_DATABASE: 'postgres',
+  env: hosted ? { ...process.env, NEXT_TELEMETRY_DISABLED: '1' } : { ...process.env, NEXT_TELEMETRY_DISABLED: '1', CMS_DATABASE: 'postgres',
     DATABASE_URL: process.env.DATABASE_URL?.startsWith('postgres') ? process.env.DATABASE_URL : 'postgres://build:build@127.0.0.1:1/build',
     CMS_MEDIA_DIR: process.env.CMS_MEDIA_DIR || path.resolve('.build-media-unused'),
     PAYLOAD_SECRET: process.env.PAYLOAD_SECRET || 'build-only-placeholder-not-a-runtime-secret',

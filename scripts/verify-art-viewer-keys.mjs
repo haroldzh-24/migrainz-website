@@ -16,7 +16,7 @@ const playwright = process.env.PLAYWRIGHT_MODULE
   ? await import(pathToFileURL(process.env.PLAYWRIGHT_MODULE).href)
   : require(require.resolve('playwright', { paths: process.env.PATH.split(path.delimiter).map(entry => path.dirname(entry)) }));
 const browser = await playwright.chromium.launch({ executablePath: process.env.BROWSER_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: true });
-const policyProblems = require('./policy-watch.cjs').watchBrowser(browser); // report-only CSP; see policy-watch.cjs
+const policies = require('./policy-watch.cjs').watchBrowser(browser); // report-only CSP; see policy-watch.cjs
 const errors = [];
 try {
   const context = await browser.newContext({ viewport: { width: 1366, height: 768 } });
@@ -90,7 +90,7 @@ try {
   console.log('PASS the announcement takes the first Escape, the restored viewer the second');
 
   assert.deepEqual(errors, [], 'no page errors');
-  assert.deepEqual(policyProblems, [], 'no CSP reports or policy console messages');
+  await policies.check();
   console.log('PASS no CSP or Permissions-Policy reports in the Art Viewer cases');
 } finally {
   await browser.close();

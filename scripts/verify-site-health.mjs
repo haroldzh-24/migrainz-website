@@ -58,7 +58,7 @@ const writeBaseline = process.argv.includes('--write-baseline');
 const selfTest = process.argv.includes('--self-test');
 const require = createRequire(import.meta.url);
 const { contentSecurityPolicy, PERMISSIONS_POLICY } = await import(pathToFileURL(path.resolve('security-headers.mjs')).href);
-const { POLICY_MESSAGE, watchPolicies } = require('./policy-watch.cjs');
+const { POLICY_MESSAGE, watchPolicies, watchBrowser } = require('./policy-watch.cjs');
 const searchPaths = process.env.PATH.split(path.delimiter).map(entry => path.dirname(entry));
 const playwright = process.env.PLAYWRIGHT_MODULE
   ? await import(pathToFileURL(process.env.PLAYWRIGHT_MODULE).href)
@@ -142,8 +142,9 @@ const internalPath = (href, from) => {
   } catch { return {}; }
 };
 
-const browser = await playwright.chromium.launch({ executablePath: process.env.BROWSER_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: true,
-  args: ['--no-proxy-server', `--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE ${new URL(base).hostname}`] });
+const launchOptions = { executablePath: process.env.BROWSER_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: true,
+  args: ['--no-proxy-server', `--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE ${new URL(base).hostname}`] };
+const browser = await playwright.chromium.launch(launchOptions);
 try {
   const api = await browser.newContext();
   // Redirects are followed by hand so a same-origin URL can never lead the script to another site.
@@ -176,6 +177,23 @@ try {
     // The header check, against a response with none of the security headers.
     for (const problem of headerProblems((await local('/headers')).headers(), '/headers')) fail(`self-test headers: ${problem}`);
     server.close();
+    // The policy watch the other browser scripts use (watchBrowser), on its own offline browser: check() must fail with
+    // a planted CSP report, and must fail when no context was watched at all.
+    try { await watchBrowser({ newContext: async () => ({}) }).check(); } catch (error) { fail(`self-test watchBrowser (unused): ${error.message}`); }
+    const second = await playwright.chromium.launch(launchOptions);
+    try {
+      const policies = watchBrowser(second);
+      const context = await second.newContext();
+      await context.route(url => url.origin !== origin && /^https?:$/.test(url.protocol), route => route.abort('blockedbyclient'));
+      const page = await context.newPage();
+      await page.goto(base + '/no-such-page');
+      const reported = page.waitForEvent('console', { predicate: message => POLICY_MESSAGE.test(message.text()), timeout: 15000 }).catch(() => {});
+      await page.evaluate(() => { const img = new Image(); img.src = 'https://example.org/watch-browser.png'; document.body.append(img); });
+      await reported;
+      await policies.check();
+      fail('self-test watchBrowser: check() passed despite the planted CSP violation');
+    } catch (error) { fail(`self-test watchBrowser: ${error.message.split('\n').join(' | ').slice(0, 1500)}`); }
+    finally { await second.close(); }
   }
 
   const status = new Map(); // path -> { status, from }
@@ -560,6 +578,8 @@ try {
       'CSP report (event)': /1366px \/: CSP report: img-src https:\/\/example\.org\/self-test\.png/,
       'CSP report (console message)': /1366px \/: policy console message \(\w+\): .*example\.org\/self-test\.png.*Content Security Policy/,
       'Permissions-Policy (served and reported)': /1366px \/: policy console message \(\w+\): Permissions policy violation: Geolocation/i,
+      'policy watch of the other scripts (watchBrowser)': /self-test watchBrowser: CSP reports or policy console messages:.*watch-browser\.png/,
+      'policy watch that watched nothing': /self-test watchBrowser \(unused\): policy watch: no browser context was watched/,
       'missing security headers': /self-test headers: x-content-type-options is missing/,
       'X-Powered-By header': /self-test headers: x-powered-by is set/,
     };

@@ -3,7 +3,7 @@
 ## Implemented - 2026-10-27 / Security headers (batch 3)
 
 - Standard security headers on every response, no `X-Powered-By`, and a report-only Content-Security-Policy for the site and the admin (`security-headers.mjs`); nothing is blocked yet, violations show in the browser console. Enforcing it is roadmap 4.6.
-- The admin shows Payload's built-in avatar instead of loading a Gravatar image, and Payload's usage telemetry is off (batch 3b).
+- The admin shows Payload's built-in avatar instead of loading a Gravatar image, and Payload's and Next.js's usage telemetry is off (batches 3b, 3c).
 - Checks: `scripts/verify-security-headers.mjs` (production build) and site health (headers and CSP reports on the fixture, including logged-in admin pages).
 
 ## Implemented - 2026-10-27 / Audit fixes (batch 2)
