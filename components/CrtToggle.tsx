@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 
 type ModeToggleProps<Mode extends string> = {
   /** The <html data-*> attribute that holds the mode (set before first paint by the layout script). */
@@ -22,6 +22,15 @@ function ModeToggle<Mode extends string>({ attribute, storageKey, modes, label, 
     const current = (saved ?? document.documentElement.dataset[attribute]) as Mode | undefined;
     if (current && modes.includes(current)) { document.documentElement.dataset[attribute] = current; setMode(current); }
   }, [attribute, storageKey, modes]);
+  // The homepage terminal sets modes too (crt, phosphor commands); it announces the change so this button catches up.
+  useEffect(() => {
+    const changed = (event: Event) => {
+      const detail = (event as CustomEvent<{ attribute: string; value: string }>).detail;
+      if (detail?.attribute === attribute && modes.includes(detail.value as Mode)) setMode(detail.value as Mode);
+    };
+    window.addEventListener("migrainz:display-mode", changed);
+    return () => window.removeEventListener("migrainz:display-mode", changed);
+  }, [attribute, modes]);
   const next = () => {
     const value = modes[(modes.indexOf(mode) + 1) % modes.length];
     setMode(value);

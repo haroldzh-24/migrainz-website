@@ -22,6 +22,7 @@ const STEPS = [
   { name: 'blob-storage', args: ['--import', 'tsx', 'scripts/check-blob-storage.mjs'], timeout: minutes(3) },
   { name: 'equipment', args: ['--import', 'tsx', 'scripts/verify-equipment.ts'], timeout: minutes(5) },
   { name: 'migration', args: ['--import', 'tsx', 'scripts/verify-equipment-migration.mjs'], timeout: minutes(5) },
+  { name: 'home-graphics', args: ['--import', 'tsx', 'scripts/verify-home-graphics.ts'], timeout: minutes(1) },
   { name: 'regression', args: ['scripts/regression.mjs'], timeout: minutes(30) },
   { name: 'equipment-navigation', args: ['scripts/verify-equipment-navigation.mjs'], timeout: minutes(10) },
   { name: 'equipment-browser', args: ['scripts/verify-equipment-browser.mjs'], timeout: minutes(10) },

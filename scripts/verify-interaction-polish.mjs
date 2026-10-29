@@ -130,7 +130,7 @@ try {
   {
     const { context, page } = await open({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
     await visit(page, base + '/');
-    const trigger = page.getByRole('button', { name: 'Requisitions / shop 03 / requisitions.exe', exact: true });
+    const trigger = page.getByRole('button', { name: 'Requisitions / shop 06 / requisitions.exe', exact: true });
     // Press state: in this no-hover phone context only :active can show the reticle (headless Chrome does not turn raw
     // DevTools touch events into a press, so a held mouse button stands in for the finger; real touch is unverified).
     const box = await page.locator('.terminal-nav a').first().boundingBox();
@@ -274,14 +274,15 @@ try {
     }));
     assert.deepEqual(hits, [['.terminal-nav a', true, false], ['.brand', true, false]], 'clicks reach content, not the bezel');
     // The flicker loop pauses while the Watcher is scrolled away and resumes when it is back.
-    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    // The batch 6 homepage is about one screen tall, so pad the page (test only) to scroll the Watcher fully away.
+    await page.evaluate(() => { document.body.style.paddingBottom = '3000px'; window.scrollTo(0, document.body.scrollHeight); });
     await page.waitForFunction(() => document.querySelector('.watcher').hasAttribute('data-offscreen'));
     assert.equal(await page.locator('.watcher-flicker').evaluate(el => getComputedStyle(el).animationPlayState), 'paused', 'flicker pauses off-screen');
-    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.evaluate(() => { window.scrollTo(0, 0); document.body.style.paddingBottom = ''; });
     await page.waitForFunction(() => !document.querySelector('.watcher').hasAttribute('data-offscreen'));
     assert.equal(await page.locator('.watcher-flicker').evaluate(el => getComputedStyle(el).animationPlayState), 'running', 'flicker resumes on-screen');
     // Keyboard, not click: a mouse click hovers first, which opens the shop ad, and the click would then close it.
-    await page.getByRole('button', { name: 'Requisitions / shop 03 / requisitions.exe', exact: true }).focus();
+    await page.getByRole('button', { name: 'Requisitions / shop 06 / requisitions.exe', exact: true }).focus();
     await page.keyboard.press('Enter');
     assert.equal(await page.locator('.promo-window h2').first().evaluate(el => getComputedStyle(el).textShadow), 'none', 'the Win95 promo headline has no glow');
     await visit(page, base + '/projects/blushland');

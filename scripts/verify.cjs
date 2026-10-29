@@ -95,7 +95,7 @@ const { chromium } = require(
     await page.locator('header a.brand').click();
     assert.equal(await page.locator('.startup-announcement').isVisible(), true);
     // The shop ad cannot be opened (hover or click) while the splash is showing.
-    const splashShop = page.getByRole('button', { name: 'Requisitions / shop 03 / requisitions.exe' });
+    const splashShop = page.getByRole('button', { name: 'Requisitions / shop 06 / requisitions.exe' });
     await splashShop.hover();
     await splashShop.click();
     assert.equal(await splashShop.getAttribute('aria-expanded'), 'false');
@@ -203,15 +203,16 @@ const { chromium } = require(
       path: "test-results/home-desktop.png",
       fullPage: true,
     });
-    assert.equal(await page.locator('main > section').count(), 1);
+    // Batch 6 homepage: the first screen plus the recent-files strip below it.
+    assert.ok(await page.locator('main > section').count() <= 2);
     assert.equal(await page.locator('main > .hero').count(), 1);
     assert.equal(await page.locator('main .section-block').count(), 0);
     for (const [name, route] of [
       ['Project database 01 / projects.db', '/projects'],
-      ['Current operations 02 / operations.log', '/tracker'],
+      ['Current operations 03 / operations.log', '/tracker'],
       ['Archive 04 / archive/', '/archive'],
       ['Information 05 / info.txt', '/about'],
-      ['Comics / reader 07 / comics/', '/comics'],
+      ['Comics / reader 02 / comics/', '/comics'],
     ]) {
       const link = page.getByRole('link', { name, exact: true });
       assert.equal(await link.getAttribute('href'), route);
@@ -226,7 +227,7 @@ const { chromium } = require(
     await page.mouse.move(5, 5);
     await page.waitForFunction(() => /translate\(-/.test(document.querySelector('.watcher-eyes').style.transform));
     await page.waitForFunction(() => document.querySelector("#readout-x")?.textContent !== "000");
-    const patronTrigger = page.getByRole('button', { name: 'Patreon access 06 / patreon.key' });
+    const patronTrigger = page.getByRole('button', { name: 'Patreon access 07 / patreon.key' });
     await patronTrigger.hover();
     const patronPopup = page.getByRole('region', { name: 'PATREON promotional window' });
     const triggerBox = await patronTrigger.boundingBox();
@@ -240,7 +241,7 @@ const { chromium } = require(
     assert.equal(await patronTrigger.getAttribute('aria-expanded'), 'true');
     await page.screenshot({ path: 'test-results/patreon-desktop.png' });
     await page.keyboard.press('Escape');
-    const shop = page.getByRole("button", { name: "Requisitions / shop 03 / requisitions.exe" });
+    const shop = page.getByRole("button", { name: "Requisitions / shop 06 / requisitions.exe" });
     // The shop ad hover-opens once per visit: start from a fresh visit.
     await page.evaluate(() => sessionStorage.removeItem("migrainz-shop-promo-seen"));
     await shop.hover();
@@ -401,7 +402,7 @@ const { chromium } = require(
     assert.equal(await touch.locator('.startup-blink').first().evaluate(el => getComputedStyle(el).animationName), 'none');
     await touch.getByRole('button', { name: 'ENTER', exact: true }).tap();
     await touch.locator('.startup-sequence').waitFor({ state: 'hidden' });
-    const patreon = touch.getByRole("button", { name: "Patreon access 06 / patreon.key" });
+    const patreon = touch.getByRole("button", { name: "Patreon access 07 / patreon.key" });
     await patreon.tap();
     assert.equal(await patreon.getAttribute("aria-expanded"), "true");
     const touchPopup = await touch.locator('#patreon-promo').boundingBox();
@@ -437,16 +438,16 @@ const { chromium } = require(
       .getByRole("button", { name: "PATREON SIGN-IN UNAVAILABLE" })
       .waitFor();
     await touch.goto("/");
-    await touch.getByRole("button", { name: "Requisitions / shop 03 / requisitions.exe" }).tap();
+    await touch.getByRole("button", { name: "Requisitions / shop 06 / requisitions.exe" }).tap();
     assert.equal(await touch.locator('#shop-promo').evaluate(el => getComputedStyle(el).position), 'static');
     assert.equal(await touch.locator('#shop-promo small').isVisible(), true, 'Placeholder-store note stays visible on phones');
     await touch.keyboard.press("Escape");
-    assert.equal(await touch.getByRole("button", { name: "Requisitions / shop 03 / requisitions.exe" }).getAttribute("aria-expanded"), "false");
-    await touch.getByRole("button", { name: "Requisitions / shop 03 / requisitions.exe" }).tap();
+    assert.equal(await touch.getByRole("button", { name: "Requisitions / shop 06 / requisitions.exe" }).getAttribute("aria-expanded"), "false");
+    await touch.getByRole("button", { name: "Requisitions / shop 06 / requisitions.exe" }).tap();
     await touch.locator(".lede").first().tap();
     assert.equal(
       await touch
-        .getByRole("button", { name: "Requisitions / shop 03 / requisitions.exe" })
+        .getByRole("button", { name: "Requisitions / shop 06 / requisitions.exe" })
         .getAttribute("aria-expanded"),
       "false",
     );

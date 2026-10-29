@@ -18,8 +18,13 @@ export default function TerminalHeader() {
       <Link className="brand" href="/#top">
         MIGRAINZ<span className="brand-full"> // PUBLIC ACCESS TERMINAL</span>
       </Link>
-      {/* Phase 2 puts the menu-bar navigation here. */}
-      <div className="topbar-nav" />
+      {/* Menu bar (phase 2, design canvas board 23); hidden on phones, where the homepage directory comes first. */}
+      <nav className="topbar-nav" aria-label="Sections">
+        <Link href="/projects">PROJECTS</Link>
+        <Link href="/comics">COMICS</Link>
+        <Link href="/archive">ARCHIVE</Link>
+        <Link href="/tracker">TRACKER</Link>
+      </nav>
       <div className="topbar-meta">
         <span>NODE 01</span>
         <span id="clock">{clock}</span>

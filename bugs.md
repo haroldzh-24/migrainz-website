@@ -2,6 +2,11 @@
 
 ## Open Bugs
 
+### 2026-10-29 - New homepage checked only in headless Chromium
+
+- Batch 6 (board 23) was checked with `scripts/verify-home.mjs` and screenshots in headless Chromium at 1366x768 and 390x844, green and amber. Not checked: real phones (the touch caption "Tap a file to open it" and the absence of the lens and previews on touch were not seen, because headless Chromium reports a mouse), Safari, Firefox, the Macs from the Watcher stutter report (the static re-scatters every 220 ms and the globe redraws every 80 ms while on screen with CRT "on"), and a real schematic video on the homepage tile (the fixture's is a small test clip).
+- Status: Open until Harold checks the homepage on a phone and a Mac.
+
 ### 2026-10-27 - The store link is a placeholder
 
 - The store link points at `example.com` (labelled as a placeholder) until the real store URL exists. Recorded in `scripts/site-health-baseline.json`.
