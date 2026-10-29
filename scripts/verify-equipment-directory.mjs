@@ -206,6 +206,15 @@ try {
         await page.waitForTimeout(200);
         const scrolled = await measure();
         assert.ok(scrolled.image.top < wide.image.top - 100, 'the wheel scrolls the page');
+        // 10b: after clicking the page, Right turns the page and focus stays on the (new) page, so Left turns it back.
+        await page.locator('.comic-reader-window .art-viewer-canvas').click();
+        await page.keyboard.press('ArrowRight');
+        await page.waitForFunction(() => /PAGE 2 \//.test(document.querySelector('.comic-reader-navigation output').textContent));
+        await page.waitForFunction(() => document.activeElement?.closest('.comic-reader-window') !== null);
+        await page.keyboard.press('ArrowLeft');
+        await page.waitForFunction(() => /PAGE 1 \//.test(document.querySelector('.comic-reader-navigation output').textContent));
+        await page.getByRole('button', { name: 'FIT WIDTH', exact: true }).click();
+        await page.waitForFunction(() => document.querySelector('.reader-toolbar output').textContent === 'FIT WIDTH');
         // Batch 10: + on the focused page zooms; 0 goes back to the reader's own fit (here the chosen FIT WIDTH).
         await page.locator('.comic-reader-window .art-viewer-canvas').focus();
         await page.keyboard.press('+');

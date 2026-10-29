@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
-import { ArtworkCanvas, fitHeightView, fitWidthView, type View } from "@/components/ArtViewer";
+import { ArtworkCanvas, fitHeightView, fitWidthView, keepFocusAfterChange, type View } from "@/components/ArtViewer";
 import { RetroWindow, useWindowManager } from "@/components/WindowManager";
 import ClassifiedPlaceholder from "@/components/ClassifiedPlaceholder";
 import { projectHref, type Project, type Chapter } from "@/lib/content/types";
@@ -45,16 +45,20 @@ export default function ComicReader({
     setView(fitted());
   }
 
+  // A page turned by key replaces the page and its toolbar; focus that was on them moves to the new page (10b).
+  const content = useRef<HTMLElement>(null);
+  const cancelKeep = useRef(() => {});
+  useEffect(() => () => cancelKeep.current(), []);
   function keyboard(event: KeyboardEvent<HTMLElement>) {
     const target = event.target as HTMLElement;
     if (event.defaultPrevented || target.closest("select, input, textarea, [contenteditable='true']") || event.altKey || event.ctrlKey || event.metaKey) return;
-    if (event.key === "ArrowRight") {
+    if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
       event.preventDefault();
-      goToPage(page + 1);
-    }
-    if (event.key === "ArrowLeft") {
-      event.preventDefault();
-      goToPage(page - 1);
+      if (target.closest(".comic-page-stage")) {
+        cancelKeep.current();
+        cancelKeep.current = keepFocusAfterChange(target.closest(".comic-page-stage"), content.current);
+      }
+      goToPage(page + (event.key === "ArrowRight" ? 1 : -1));
     }
     // 0: back to the reader's own fit (FIT HEIGHT on a landscape screen, FIT WIDTH on a portrait one, or the one chosen).
     if (event.key === "0") {
@@ -74,7 +78,7 @@ export default function ComicReader({
       titlebarContent={titlebar}
       onToggleMaximize={() => toggleMaximizeWindow(windowID)}
     >
-      <section className="comic-reader-content" aria-label="Comic reader" tabIndex={0} onKeyDown={keyboard}>
+      <section ref={content} className="comic-reader-content" aria-label="Comic reader" tabIndex={0} onKeyDown={keyboard}>
         <div className="comic-page-stage">
           {current?.classification ? <ClassifiedPlaceholder classification={current.classification} label={current.safeLabel} variant="media" />
             : current?.src ? <ArtworkCanvas key={`${page}-${current.src}`} reader image={current} view={view} onChange={setView} onFitChosen={chooseFit} />

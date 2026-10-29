@@ -14,10 +14,24 @@
 - No dedicated test yet (6c/7c, listed by the 8b review): the idle caption following a CRT-mode or reduced-motion change, the lens dropping a sample that went stale while loading, the motion helper reading the latest visibility entry.
 - Status: Open; questions for Harold.
 
+### 2026-10-29 - Regression server restarted for memory mid-run (batch 11 check)
+
+- `check-20261029-183710`: every browser script passed, then `next dev` logged "Server is approaching the used memory threshold, restarting..." during the site-health crawl, and the next request got ECONNRESET. The suite had grown by two browser scripts (batches 10 and 11). Not a site defect: a dev-server limit on the 8 GB, 2-core check machine.
+- A larger heap did not help (Next already gives the dev server half the machine's memory; the re-run `check-20261029-191436` restarted the same way, and a page then timed out while the restarted server recompiled). Fix: `scripts/regression.mjs` stops the dev server after the browser scripts and starts a fresh one for site health, so the crawl never meets that restart; the regression step was re-run.
+- Status: Fixed (test harness).
+
+### 2026-10-29 - Batch 11: slow-page status limits
+
+- It follows in-app (client-side) navigations only. A plain link that loads a whole new document (none in the site's own navigation today) shows the browser's own loading indicator instead.
+- The "fast page shows nothing" case is simulated in the test (the address changes 100 ms after the click): under `next dev` every dynamic page takes a second or more, and an attempt to answer the page data from a recording did not complete the navigation. Real timing on Vercel not checked.
+- A link whose own click handler cancels the navigation without `data-mode-switch="off"` would leave the panel up until its 20 s limit; the site's terminal pages have none today (bugs.md "Mode switch: known limits" asks for that attribute on such links).
+- Status: Open (recorded).
+
 ### 2026-10-29 - Batch 10: Art Viewer and decoding limits
 
 - PREV / NEXT RECORD (board 9) is not built: the viewer only knows the records whose tabs are open; neighbours would need every opener to pass a list.
-- The decoding placeholder needs the image's width and height from the CMS (older uploads without them get the DECODING label only) and a thumbnail that is a different file from the image being loaded (SVGs and legacy uploads without size variants get none). No progress percentage: an image element gives none.
+- The decoding placeholder needs the image's width and height from the CMS (older uploads without them get the DECODING label only), a thumbnail that is a different file from the image being loaded (SVGs and legacy uploads without size variants get none) and, since 10b, a thumbnail this page has already shown (the Art Viewer's filmstrip), so it never adds a media request. Measured in the fixture: one image view with the strip makes 3 media requests (the image, its thumbnail, the other image's thumbnail), none twice. No progress percentage: an image element gives none.
+- No test for Up / Down scrolling a long caption while the picture is zoomed (10b): the fixture's captions are short.
 - The reader's wide-window row with no size toolbar (a classified, unavailable or empty page; 9b) has no test: the fixture has no such page.
 - Checked only in headless Chromium: container queries and `display: contents` in the reader and the viewer, the filmstrip's smooth scroll, keyboard behaviour in Safari and Firefox.
 - Status: Open (recorded).

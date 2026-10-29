@@ -1,5 +1,22 @@
 # Changelog
 
+## Changed - 2026-10-29 / Batch 11 (with 10b): slow-page status (feat/batch-11-nav-status)
+
+Design canvas board 10 (left half), from Harold's "everything else on the road map" (2026-10-29). Planned with batch 10 and split off after that plan's review; the review's points are built in. Code-only; no schema, migration, Blob or env change.
+
+- A terminal page that takes longer than 300 ms to arrive after a link click (or the homepage terminal's `cd`/`open`) shows a small terminal panel at the top right under the header: `> ACCESSING SYS:/ABOUT`, `request sent`, `waiting for node ........ 1.4 s` (the real time so far) and a blinking cursor. It goes when the address changes, on Back/Forward, and when the switch to the grey-window desktop starts; after 20 s it says "no answer yet; the page may still arrive" for 2 s and goes. Fast pages never show it. No progress figure and no "ok" that nothing measured.
+- Screen readers: a status region that is always in the page says "Loading SYS:/ABOUT" when the panel appears; the panel itself is decoration.
+- Not shown for: the grey-window desktop and the switch into it (it has its own LOADING VOLUME line), links with `data-mode-switch="off"` (their own handlers decide), API, admin, sign-in and file links, the same page, other sites, new tabs and modified clicks. Reduced motion: no cursor blink.
+- Check: `check-20261029-183710`: 15 of 16 steps passed; the regression step passed every browser script, then the `next dev` server restarted for memory during the site-health crawl (bugs.md "Regression server restarted for memory mid-run"). A larger heap did not help (`check-20261029-191436`, same restart). `scripts/regression.mjs` now gives site health a freshly started server; the regression step re-run with that: `check-20261029-194926`, passed.
+
+**10b (fixes from the independent review of batch 10, which went live before its review):**
+- Keyboard focus after a key turns the page or changes the image: the picture and its toolbar are new elements after the change, so focus fell back to the page and further arrow keys did nothing (in the live comic reader: after clicking the page, the first Right turned it and the next did nothing, a regression from batch 10 making the page focusable). Focus that was on the picture or its toolbar now moves to the new picture (or the reader or viewer window).
+- The decoding placeholder uses only a thumbnail this page has already shown (the Art Viewer's filmstrip), so it never costs another media request; elsewhere (the comic reader, a single-image viewer tab, a strip not yet loaded) only the DECODING label shows.
+- Filmstrip tiles keep their raised grey look with a mouse (a hover rule had made the other tiles transparent, so a tile whose image had not loaded was invisible).
+- In the caption or the filmstrip, Up and Down are theirs (a zoomed picture took them, so a long caption could not be scrolled by keyboard); the caption is a tab stop only when its text scrolls; the image counter never shows a number past the end while switching tabs; the picture's spoken name lists the keys; dead CSS from the old meta row removed.
+- Tests: click the picture, Right, Left (Art Viewer) and click the page, Right, Left (reader) keep working; the filmstrip tile colour; a short caption is not a tab stop; the scan is recorded when its animation starts instead of looked for afterwards.
+- Tests: new `scripts/verify-nav-status.mjs` (regression): with the page data for /about held 1.5 s, the panel appears after about 300 ms with the right path, the status region announces it, no "ok", and it goes when the page arrives; a page that arrives within 300 ms (simulated: under `next dev` every dynamic page takes a second or more) shows nothing; nothing for the desktop switch, an opted-out link, `/robots.txt` or `/admin`; a slow `cd about` in the homepage terminal shows it; at 390 px it fits and stays clear of the tab bar.
+
 ## Changed - 2026-10-29 / Batch 10 (with 9b): Art Viewer filmstrip and captions, decoding art (feat/batch-10-art-viewer)
 
 Design canvas boards 9 and 10 (right half), from Harold's "everything else on the road map" (2026-10-29). Plan reviewed by a fresh agent first (its points are in the plan: one window-level key handler, no landmark inside the window, placeholder as an image that reuses the filmstrip's copy, no scan in the reader, the slow-page status moved to batch 11). Code-only; no schema, migration, Blob or env change.

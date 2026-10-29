@@ -722,11 +722,6 @@ button {
   color: #111;
   font: 12px Arial, sans-serif;
 }
-.art-viewer-meta > div { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
-.art-viewer-meta strong { color: #000080; }
-.art-viewer-meta span,
-.art-viewer-meta small { color: #444; }
-.art-viewer-meta p { margin: 3px 0 0; max-height: 3.2em; overflow: auto; }
 .terminal-panel { border: 1px solid var(--line); box-shadow: var(--crt-vignette); min-width: 0; padding: 18px; background: rgba(var(--crt-text-rgb), 0.018); }
 .terminal-panel-head { display: flex; justify-content: space-between; align-items: baseline; gap: 14px; padding-bottom: 13px; border-bottom: 1px solid var(--line); }
 .terminal-panel-head h2 { margin: 0; color: var(--hot); font-size: 16px; letter-spacing: 0.1em; }
@@ -2167,15 +2162,14 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
 /* With a real pointer, toolbar buttons sit flat and raise on hover; touch keeps the raised buttons so they still read as
    buttons. Window controls and taskbar buttons stay raised, as in Win95. Every Win95 button presses in on click. */
 @media (hover: hover) {
+  /* Filmstrip tiles keep their raised grey look (board 9, batch 10b). */
   .art-viewer-toolbar button:not([aria-pressed="true"]),
-  .comic-reader-navigation button,
-  .art-viewer-thumbs button:not(.is-active) {
+  .comic-reader-navigation button {
     border: 1px solid transparent;
     background: transparent;
   }
   .art-viewer-toolbar button:hover:not(:disabled),
-  .comic-reader-navigation button:hover:not(:disabled),
-  .art-viewer-thumbs button:hover {
+  .comic-reader-navigation button:hover:not(:disabled) {
     border: 1px solid;
     border-color: #fff #404040 #404040 #fff;
   }
@@ -2686,3 +2680,18 @@ html[data-crt="off"] .startup-sequence[data-collapsing] .startup-log { animation
   .art-viewer-canvas img[data-reveal], .art-viewer-scan::after { animation: none; }
   .art-viewer-scan { display: none; }
 }
+
+/* Batch 11: slow-page status (design canvas board 10, left half). Top right under the header, so it never meets the
+   phone tab bar or the window dock at the bottom; under the scanlines and any window. */
+.nav-status {
+  position: fixed; top: 64px; right: 16px; z-index: 19;
+  width: min(440px, calc(100vw - 32px)); padding: 12px 16px;
+  border: 1px solid rgba(var(--crt-border-rgb), .3); background: var(--crt-panel); color: var(--crt-text);
+  font-size: 14px; line-height: 1.7; white-space: pre; pointer-events: none;
+}
+.nav-status p { margin: 0; overflow: hidden; text-overflow: ellipsis; }
+.nav-status p:first-child { color: var(--crt-bright); }
+html[data-crt="on"] .nav-status p:first-child { text-shadow: var(--crt-glow-ui); }
+.nav-status-cursor { animation: nav-status-blink 1.1s steps(1) infinite; }
+@keyframes nav-status-blink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .nav-status-cursor { animation: none; } }
