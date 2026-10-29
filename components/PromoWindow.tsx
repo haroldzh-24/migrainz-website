@@ -93,6 +93,8 @@ export default function PromoWindow({
     <div
       className="promo-anchor"
       id={kind}
+      data-channel={kind}
+      data-locked={shop ? undefined : ""}
       ref={wrapper}
       onPointerEnter={(event) => {
         if (event.pointerType === "mouse" && hoverOpen()) setOpen(true);

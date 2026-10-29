@@ -8,6 +8,17 @@ const storageKey = `migrainz-announcement:${announcement.id}`;
 // Set once the checklist has run (or been skipped): a reload before dismissing the ad goes straight to the ad.
 const bootSeenKey = "migrainz-boot-seen";
 const LINE_MS = 250, FIRST_LINE_MS = 300, HOLD_MS = 500, REDUCED_HOLD_MS = 1200;
+// End of the boot (design canvas board 17): the checklist collapses to a line, then the page powers on. CSS runs both;
+// this is how long the collapse takes before the page is shown. Reduced motion or CRT effects off: a plain cut.
+const COLLAPSE_MS = 320;
+const POWER_ON_MS = 900;
+const COUNTER_CELLS = 20;
+
+/** Tells the page the screen is on: html[data-power="on"] and a migrainz:power-on event (the homepage title listens). */
+function powerOn() {
+  document.documentElement.dataset.power = "on";
+  window.dispatchEvent(new Event("migrainz:power-on"));
+}
 // The data lines come from /boot-status, fetched only when the checklist shows; the boot never waits longer than this.
 const DATA_WAIT_MS = 2000;
 // Keys that never skip the checklist (S toggles sound instead).
@@ -15,6 +26,9 @@ const passiveKeys = new Set(["Tab", "Shift", "Control", "Alt", "Meta", "CapsLock
 
 export default function StartupSequence({ children }: { children: ReactNode }) {
   const [state, setState] = useState<"boot" | "announcement" | "closed">("boot");
+  // The boot screen's collapse is playing; the page powers on (CSS) once it ends.
+  const [collapsing, setCollapsing] = useState(false);
+  const [count, setCount] = useState(0);
   const [stage, setStage] = useState(0);
   const [phosphor, setPhosphor] = useState("green");
   // True once this page load actually runs the checklist; null data = still waiting for /boot-status.
@@ -75,7 +89,24 @@ export default function StartupSequence({ children }: { children: ReactNode }) {
     bootTimers.current.forEach(clearTimeout);
     bootTimers.current = [];
     try { sessionStorage.setItem(bootSeenKey, "1"); } catch { /* Optional storage. */ }
-    setState(current => current === "boot" ? "announcement" : current);
+    const plain = window.matchMedia("(prefers-reduced-motion: reduce)").matches || document.documentElement.dataset.crt === "off";
+    const show = () => {
+      setCollapsing(false);
+      setState(current => current === "boot" ? "announcement" : current);
+      // Power-on (board 17): only the page's <main> scales up from a line, never the wrapper with the fixed layers
+      // (CRT overlay, header, windows); the class goes again once every staggered panel has risen (560ms for <main>, up
+      // to 300 + 520ms for the panels). A timer, not animationend: the panels' own animationend events bubble to <main>.
+      const main = !plain ? contentRef.current?.querySelector<HTMLElement>("main.shell") : null;
+      if (main) {
+        main.classList.add("power-on");
+        setTimeout(() => main.classList.remove("power-on"), POWER_ON_MS);
+      }
+      powerOn();
+    };
+    if (plain) { show(); return; }
+    setCount(100);
+    setCollapsing(true);
+    bootTimers.current = [setTimeout(show, COLLAPSE_MS)];
   };
   useEffect(() => {
     let dismissed = false, seen = false;
@@ -83,8 +114,8 @@ export default function StartupSequence({ children }: { children: ReactNode }) {
       dismissed = sessionStorage.getItem(storageKey) === announcement.id;
       seen = sessionStorage.getItem(bootSeenKey) === "1";
     } catch { /* Optional storage. */ }
-    if (!announcement.enabled || dismissed) { setState("closed"); return; }
-    if (seen) { setState("announcement"); return; }
+    if (!announcement.enabled || dismissed) { setState("closed"); powerOn(); return; }
+    if (seen) { setState("announcement"); powerOn(); return; }
     setPhosphor(document.documentElement.dataset.phosphor === "amber" ? "amber" : "green");
     windowRef.current?.focus();
     setRunning(true);
@@ -112,6 +143,20 @@ export default function StartupSequence({ children }: { children: ReactNode }) {
     return () => { if (timer) clearTimeout(timer); };
     // finishBoot only touches refs and setters.
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, running, stage, lines.length, dataLines]);
+  // The big counter follows the checklist: it eases toward the share of lines printed so far (all of them at the end).
+  useEffect(() => {
+    if (state !== "boot" || !running) return;
+    // Until /boot-status answers the list can still grow, so the counter holds below 100. When the data lines arrive
+    // the list gets longer and the share can fall; the counter then waits for the list to catch up and never goes back.
+    const share = lines.length ? Math.min(stage, lines.length) / lines.length : 0;
+    const target = Math.round(dataLines === null ? Math.min(90, share * 90) : share * 100);
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { setCount(value => Math.max(value, target)); return; }
+    const timer = setInterval(() => setCount(value => {
+      if (target - value < 1) { clearInterval(timer); return Math.max(value, target); }
+      return value + (target - value) * 0.25;
+    }), 30);
+    return () => clearInterval(timer);
   }, [state, running, stage, lines.length, dataLines]);
   // Boot keys: S toggles sound (without skipping); any other key skips on release, so the same press can't also
   // activate ENTER once focus moves to it. Esc, Enter and Space skip too.
@@ -155,7 +200,7 @@ export default function StartupSequence({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("keydown", dismiss);
   }, [state]);
   return <>
-    {state !== "closed" && <div className="startup-sequence" data-phase={state} onClick={state === "boot" ? finishBoot : undefined} style={{ position: "fixed", inset: 0, background: state === "boot" ? "var(--crt-deep-lo)" : "transparent", zIndex: state === "boot" ? 10000 : foreground ? 42 : 40, pointerEvents: state === "boot" ? "auto" : "none" }}>
+    {state !== "closed" && <div className="startup-sequence" data-phase={state} data-collapsing={collapsing || undefined} onClick={state === "boot" ? finishBoot : undefined} style={{ position: "fixed", inset: 0, background: state === "boot" ? "var(--crt-deep-lo)" : "transparent", zIndex: state === "boot" ? 10000 : foreground ? 42 : 40, pointerEvents: state === "boot" ? "auto" : "none" }}>
       <div ref={windowRef} className="startup-takeover startup-window" role="dialog" aria-modal={state === "boot" ? true : undefined} aria-labelledby="startup-title" tabIndex={-1}
         style={state === "announcement" && position ? { left: position.x, top: position.y, right: "auto", bottom: "auto", transform: "none" } : undefined}
         onKeyDown={event => {
@@ -177,6 +222,16 @@ export default function StartupSequence({ children }: { children: ReactNode }) {
         <div className="startup-takeover-body startup-window-body">
           {state === "boot" ? <div className="startup-log">
             <p className="eyebrow">MIGRAINZ SYSTEM BIOS v0.3 / BOOT CHECK</p>
+            {/* Progress (board 17): a counter driven by the checklist, a 20-cell bar and SIGNAL LOCKED at the end. The list
+                below is what screen readers follow; this block is hidden from them. */}
+            <div className="boot-progress" aria-hidden="true">
+              <span className="boot-count">{String(Math.round(count)).padStart(3, "0")}</span>
+              <span className="boot-progress-side">
+                <span className="boot-progress-label">% LOADED · {Math.min(stage, lines.length)} / {lines.length} CHECKS</span>
+                <span className="boot-cells">{Array.from({ length: COUNTER_CELLS }, (_, index) => <i key={index} data-on={index < Math.round(count / (100 / COUNTER_CELLS)) || undefined} />)}</span>
+                <span className="boot-locked">{Math.round(count) >= 100 ? "SIGNAL LOCKED" : "\u00a0"}</span>
+              </span>
+            </div>
             <ol className="boot-checklist" aria-live="polite">
               {/* Append-only list; labels can repeat (e.g. two classified rows), so the position is the key. */}
               {lines.slice(0, stage).map((line, index) => <li key={index} className="boot-line" data-status={line.status}>

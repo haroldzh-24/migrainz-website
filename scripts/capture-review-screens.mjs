@@ -26,7 +26,7 @@ try {
       await page.waitForTimeout(400);
       await page.screenshot({ path: path.join(out, `${label}-${name}-${mode}.png`) });
       if (label === 'homepage' && width < 700) {
-        const shop = page.getByRole('button', { name: 'Requisitions / shop 03 / requisitions.exe' });
+        const shop = page.getByRole('button', { name: 'Requisitions / shop 06 / requisitions.exe' });
         await shop.tap();
         await page.locator('#shop-promo').waitFor();
         await page.waitForTimeout(300);

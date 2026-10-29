@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import WatcherArt from "./WatcherArt";
 
 // Full deflection distance, and the eye sockets' centre as a fraction of the 1200px source canvas.
@@ -18,7 +18,8 @@ const JITTER_MS = 90;
 export type WatcherGlanceDetail = { x: number; y: number };
 export const WATCHER_GLANCE_EVENT = "migrainz:watcher-glance";
 
-export default function Watcher() {
+/** `children` are extra layers drawn inside the Watcher box (the homepage adds its text-mode layers there). */
+export default function Watcher({ children }: { children?: ReactNode }) {
   const root = useRef<HTMLDivElement>(null);
   const jitter = useRef<HTMLDivElement>(null);
   // Jitter: written straight to the wrapper's data-jitter (no React state, so the Watcher still never re-renders).
@@ -178,6 +179,7 @@ export default function Watcher() {
         <span>X <b id="readout-x">000</b></span>
         <span>Y <b id="readout-y">000</b></span>
       </div>
+      {children}
     </div>
   );
 }

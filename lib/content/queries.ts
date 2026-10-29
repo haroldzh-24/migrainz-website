@@ -201,14 +201,34 @@ export const getEquipment = cache(async (project: number, slug: string) => {
   const characters = await cms.find({ collection: 'characters', req, overrideAccess: false, depth: 0, pagination: false, sort: 'name',
     where: { and: [{ project: { equals: project } }, { 'equipmentAssignments.equipment': { equals: item.id } }] },
     select: { name: true, slug: true, role: true } });
-  const video = item.schematicVideo;
-  const authorizedVideo = item.schematicEnabled && video && typeof video === 'object' && video.mimeType === 'video/mp4' && video._status === 'published' && ['public', 'patron'].includes(video.accessLevel);
-  const poster = item.schematicEnabled ? image(item.schematicPoster) : undefined;
-  return { ...equipmentSummary(item),
-    schematic: item.schematicEnabled ? { src: authorizedVideo && video.filename ? '/api/media/file/' + encodeURIComponent(video.filename) : undefined,
-      poster: poster && !poster.classification ? poster.src : undefined,
-      ratio: poster && !poster.classification && poster.width && poster.height ? poster.width / poster.height : undefined } : undefined,
+  return { ...equipmentSummary(item), schematic: schematicOf(item),
     characters: characters.docs.map(character => ({ name: character.name, slug: character.slug, role: character.role || '' })) };
+});
+
+// The schematic video and poster of an equipment record fetched with overrideAccess:false: only a published public or
+// patron mp4 plays, and only an authorized poster image is used.
+function schematicOf(item: Equipment) {
+  if (!item.schematicEnabled) return undefined;
+  const video = item.schematicVideo;
+  const authorizedVideo = video && typeof video === 'object' && video.mimeType === 'video/mp4' && video._status === 'published' && ['public', 'patron'].includes(video.accessLevel);
+  const poster = image(item.schematicPoster);
+  return { src: authorizedVideo && video.filename ? '/api/media/file/' + encodeURIComponent(video.filename) : undefined,
+    poster: poster && !poster.classification ? poster.src : undefined,
+    ratio: poster && !poster.classification && poster.width && poster.height ? poster.width / poster.height : undefined };
+}
+
+/** The most recently updated public equipment record with a schematic, for the homepage's turning thumbnail. */
+export const getNewestSchematic = cache(async () => {
+  const cms = await getPayload({ config });
+  const req = await contentRequest();
+  const result = await cms.find({ req, collection: 'equipment', overrideAccess: false, depth: 1, limit: 1, sort: '-updatedAt',
+    where: { and: [publicWhere, { schematicEnabled: { equals: true } }] } });
+  const item = result.docs[0];
+  const project = item && typeof item.project === 'object' && item.project ? item.project : undefined;
+  const schematic = item ? schematicOf(item) : undefined;
+  if (!item || !project?.slug || !schematic || (!schematic.src && !schematic.poster)) return undefined;
+  return { name: item.name, file: `${item.name.replace(/\s+/g, '_')}.EQP`, href: `/projects/${project.slug}/equipment/${item.slug}`,
+    src: schematic.src, poster: schematic.poster };
 });
 
 export const getHomepageData = cache(async () => {
