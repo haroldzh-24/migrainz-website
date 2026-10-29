@@ -85,7 +85,7 @@ Plan: written 2026-10-28 as the Project doc `claude/phase-2-plan.md` (five batch
 
 | # | Item | Done when |
 |---|---|---|
-| 5.1 | Homepage first screen (P2-4; design canvas board 23 chosen by Harold over the orbiting windows): directory and terminal, Watcher with the title, node status with a real-world globe, recent files; one navigation; boot counter and power-on (board 17). | **Done** batch 6 (local `main`, not pushed). Phone bottom tab bar not built (see 5.6). |
+| 5.1 | Homepage first screen (P2-4; design canvas board 23 chosen by Harold over the orbiting windows): directory and terminal, Watcher with the title, node status with a real-world globe, recent files; one navigation; boot counter and power-on (board 17). | **Done** batch 6, review fixes 6b (local `main`, not pushed). Phone bottom tab bar not built (see 5.6). |
 | 5.2 | Terminal to grey desktop transition every time a graphics route opens (P2-1; board 2), reverse on Back, crossfade for reduced motion and CRT off. | **Done** batch 7 (local `main`, not pushed), with board 14 (windows below the header on the desktop) and a Win95 taskbar with `◂ TERMINAL`. Not built yet (P2-2): the stepping zoom outline from the clicked item, window → taskbar button on close, every open window in the taskbar, the phone "sheet slides up". |
 | 5.3 | Equipment directory on the dark page with synced spinning schematic thumbnails (board 22); windows open below the header (board 14); comic reader fitted to height (P2-5; board 4). | Open: batch 8. |
 | 5.4 | Remaining canvas boards (Art Viewer filmstrip and zoom, loading states, plain mode, command palette, lore previews, activity log, page transitions, dossier template, motion tokens). | Open: later batches. |

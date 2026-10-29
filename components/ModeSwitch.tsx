@@ -2,7 +2,6 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import type { PrefetchOptions } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import { GRAPHICS_LINES, LAST_TERMINAL_KEY, fileForPath, isGraphicsPath } from "@/lib/graphics-mode";
 
 /**
@@ -28,13 +27,16 @@ const skippable = (stage: Stage) => stage === "print" || stage === "collapse" ||
 export default function ModeSwitch() {
   const router = useRouter();
   const pathname = usePathname();
-  const [stage, setStage] = useState<Stage>("idle");
+  const [stage, setStageState] = useState<Stage>("idle");
+  // Every stage is announced as an event as it starts (also stages too short to be painted), for tests and tools.
+  const setStage = (next: Stage) => { setStageState(next); window.dispatchEvent(new CustomEvent("migrainz:mode-stage", { detail: next })); };
   const [lines, setLines] = useState<string[]>([]);
   // A slow server: after a moment of black, a small "LOADING VOLUME" line shows the switch is still working.
   const [slow, setSlow] = useState(false);
   const timers = useRef<number[]>([]);
   const forward = useRef<Forward | null>(null);
   const wasGraphics = useRef<boolean | null>(null);
+  const [desktop, setDesktop] = useState(false);
   const routerRef = useRef(router);
   routerRef.current = router;
 
@@ -77,7 +79,7 @@ export default function ModeSwitch() {
     clear();
     // The routes are dynamic, which Next does not prefetch on its own: ask for the full route now (what
     // <Link prefetch={true}> does), so the server works while the animation runs and the push finds it ready.
-    try { routerRef.current.prefetch(path, { kind: "full" } as unknown as PrefetchOptions); } catch { /* best effort */ }
+    try { routerRef.current.prefetch(path, { kind: "full" } as unknown as Parameters<ReturnType<typeof useRouter>["prefetch"]>[1]); } catch { /* best effort */ }
     const run: Forward = { from: window.location.pathname, pushed: false, started: performance.now(), push: () => { if (!run.pushed) { run.pushed = true; routerRef.current.push(path); } } };
     forward.current = run;
     if (plain()) {
@@ -117,6 +119,8 @@ export default function ModeSwitch() {
   };
   const skipRef = useRef(skip);
   skipRef.current = skip;
+  const finishRef = useRef(finish);
+  finishRef.current = finish;
   const openRef = useRef(open);
   openRef.current = open;
 
@@ -140,8 +144,9 @@ export default function ModeSwitch() {
       const href = (event as CustomEvent<{ href?: string }>).detail?.href;
       if (href && follow(href)) event.preventDefault();
     };
-    // Browser Back or Forward before the push: the switch is abandoned.
-    const onPop = () => { if (forward.current && !forward.current.pushed) finish(); };
+    // Browser Back or Forward during a run: the visitor has gone elsewhere, so the run ends at once (before the push it
+    // never navigates; after it, the cover simply lifts on wherever history went).
+    const onPop = () => { if (forward.current) finish(); };
     window.addEventListener("click", onClick, true);
     window.addEventListener("migrainz:open-route", onOpenRoute);
     window.addEventListener("popstate", onPop);
@@ -155,16 +160,20 @@ export default function ModeSwitch() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Keys while the switch runs: plain keys never reach the page underneath (focus is still on the link or the terminal
-  // input); during the print, collapse and line they skip. Shortcuts with Ctrl, Alt or Meta, function keys, auto-repeat
-  // (the held Enter that followed the link) and IME composition pass through untouched.
+  // Keys while the page is covered: plain keys never reach the page underneath (focus is still on the link or the
+  // terminal input). During the print, collapse and line, Escape cancels the run (nothing is opened) and any other
+  // key skips to the end; an auto-repeat (the held Enter that followed the link) is held back but does not skip.
+  // Shortcuts with Ctrl, Alt or Meta, function keys and IME composition pass through untouched. Once the new page shows
+  // (the fade, the reverse opening, the crossfade out), keys go to it again.
   useEffect(() => {
-    if (stage === "idle") return;
+    if (!["print", "collapse", "line", "black", "fade-in", "rblack", "rline"].includes(stage)) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.ctrlKey || event.altKey || event.metaKey || event.isComposing || /^F\d{1,2}$/.test(event.key) || ["Shift", "Control", "Alt", "Meta", "CapsLock"].includes(event.key)) return;
       event.preventDefault();
       event.stopPropagation();
-      if (!event.repeat && skippable(stage)) skipRef.current();
+      if (event.repeat || !skippable(stage)) return;
+      if (event.key === "Escape" && forward.current && !forward.current.pushed) finishRef.current();
+      else skipRef.current();
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
@@ -177,9 +186,10 @@ export default function ModeSwitch() {
     const before = wasGraphics.current;
     wasGraphics.current = now;
     if (!now && !document.querySelector("[data-not-found]")) {
-      try { sessionStorage.setItem(LAST_TERMINAL_KEY, pathname); } catch { /* optional storage */ }
+      try { sessionStorage.setItem(LAST_TERMINAL_KEY, pathname + window.location.search); } catch { /* optional storage */ }
     }
     window.dispatchEvent(new CustomEvent("migrainz:mode", { detail: { graphics: now } }));
+    setDesktop(now);
     if (before === null || before === now || forward.current) return;
     clear();
     setLines([]);
@@ -200,12 +210,14 @@ export default function ModeSwitch() {
   }, [pathname]);
 
   // Windows start below the header on the desktop (design canvas board 14): the window layer reads the header's bottom
-  // edge as it is on screen (it scrolls with the page), so a maximized window never covers SYSTEM.
+  // edge as it is on screen (it scrolls with the page), so a maximized window never covers SYSTEM. Measured only while
+  // the desktop shows, and written on the window layer itself, so terminal pages pay nothing.
   useLayoutEffect(() => {
     const header = document.querySelector<HTMLElement>(".topbar");
-    if (!header) return;
+    const layer = document.querySelector<HTMLElement>(".public-window-layer");
+    if (!header || !layer || !desktop) return;
     let frame = 0;
-    const measure = () => { frame = 0; document.documentElement.style.setProperty("--header-bottom", `${Math.max(0, Math.round(header.getBoundingClientRect().bottom))}px`); };
+    const measure = () => { frame = 0; layer.style.setProperty("--header-bottom", `${Math.max(0, Math.round(header.getBoundingClientRect().bottom))}px`); };
     const soon = () => { if (!frame) frame = requestAnimationFrame(measure); };
     measure();
     const resize = new ResizeObserver(soon);
@@ -213,9 +225,11 @@ export default function ModeSwitch() {
     window.addEventListener("scroll", soon, { passive: true });
     window.addEventListener("resize", soon);
     return () => { resize.disconnect(); window.removeEventListener("scroll", soon); window.removeEventListener("resize", soon); cancelAnimationFrame(frame); };
-  }, []);
+  }, [desktop]);
 
-  return (
+  return (<>
+    {/* The wait, for screen readers too (the overlay itself is hidden from them). */}
+    <p className="visually-hidden" role="status">{slow ? "Loading" : ""}</p>
     <div className="mode-switch" data-stage={stage} hidden={stage === "idle"} aria-hidden="true"
       onPointerDown={event => {
         // A primary press skips, except the second click of a double-click right after the run started.
@@ -229,5 +243,5 @@ export default function ModeSwitch() {
       <i className="mode-switch-bar" data-edge="bottom" />
       <i className="mode-switch-line" />
     </div>
-  );
+  </>);
 }

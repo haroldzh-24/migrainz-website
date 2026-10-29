@@ -2,6 +2,11 @@
 
 ## Open Bugs
 
+### 2026-10-29 - Homepage: left as is after the batch 6 review (6b)
+
+- Text sizes: the directory previews and the operations phase labels stay 12 px (data labels); body rows are 14 px since 6b. Redesign plan step 1a asks 14 px for row titles; Harold may want the previews larger (they would then need a wider preview panel).
+- The old homepage's CSS rules (`.home-terminal*`, `.desktop-launchers`, `.home-feed*`, `.home-project-*`, `.home-directory-row`) are unused but still in globals.css and in the reticle selector list; removing them is a separate clean-up.
+- The boot's power-on plays mostly behind the announcement window (seen in a headless screenshot at 1366); whether the announcement should wait for it is a design question for Harold.
 ### 2026-10-29 - Mode switch: known limits (batch 7)
 
 - A link to a grey-window path that turns out to be missing or locked (for example `/projects/blushland/characters/no-such`, a locked chapter) prints "switching to graphics mode" and then lands on the terminal 404 or locked page, because the switch decides from the path before the page exists.

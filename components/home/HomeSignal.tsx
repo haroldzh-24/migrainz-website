@@ -3,80 +3,56 @@
 import { useEffect, useRef, useState } from "react";
 import Watcher from "@/components/Watcher";
 import { CELL_H, CELL_W, imageToText, noise, renderStatic, GLYPHS } from "@/lib/home/text-graphics";
+import { crtMode, finePointer, reducedMotion, watchMotion } from "@/components/home/motion";
 
 export type HomeChannel = { name: string; ext: string; caption: string; lines: string[] };
 
 const TITLE = ["MIGRAINZ", "ARCHIVE & PROJECTS"] as const;
+// The idle line says what the visitor can do here: move over the Watcher only where the lens runs (a mouse, motion
+// allowed, CRT "on"); otherwise preview files by hover or focus; on touch a tap simply opens the file.
 const IDLE = "Move over the Watcher to read its signal. Hover a file to preview it.";
-// Touch screens have no hover: no lens and no previews, so the idle line says what a tap does.
+const IDLE_STILL = "Hover or focus a file to preview it.";
 const IDLE_TOUCH = "Signal steady. Tap a file to open it.";
-const finePointer = () => window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+const idleText = () => !finePointer() ? IDLE_TOUCH : !reducedMotion() && crtMode() === "on" ? IDLE : IDLE_STILL;
 const LENS_RADIUS = 84;
 // The Watcher base layer's box inside .watcher: art inset 7%, 86% wide, plus 80px of glow padding per 1200px each side.
 const BASE_INSET = 0.07 - 0.86 * 80 / 1200;
 const BASE_SIZE = 0.86 * 1360 / 1200;
 
-const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-const crtMode = () => document.documentElement.dataset.crt ?? "on";
 
 /**
  * The homepage's centre panel (design canvas board 23): the Watcher with a one-line glowing title over it, a layer of
  * text-mode static behind it, a "text lens" that redraws the Watcher as characters around the mouse, and a dark preview
- * panel for the directory row being hovered or focused. Everything is decoration over the existing Watcher; the title
- * and the previews are real text for screen readers, the moving characters are hidden from them.
+ * panel for the directory row being hovered or focused. Everything is decoration over the existing Watcher: the title is
+ * read by screen readers as plain text, while the moving characters, the previews and the caption are hidden from them
+ * (the directory links themselves carry the names). The title and the caption keep their own state, so their
+ * per-frame updates never re-render the Watcher.
  */
 export default function HomeSignal({ channels }: { channels: Record<string, HomeChannel> }) {
-  const [title, setTitle] = useState<{ done: string; noise: string }[]>(TITLE.map(text => ({ done: text, noise: "" })));
   const [channel, setChannel] = useState<string | null>(null);
-  const [caption, setCaption] = useState(IDLE);
   const [wipe, setWipe] = useState(0);
   const stage = useRef<HTMLDivElement>(null);
   const current = useRef<string | null>(null);
   const staticRef = useRef<HTMLPreElement>(null);
   const lensRef = useRef<HTMLPreElement>(null);
 
-  // Title: decodes once when the screen powers on (after the boot, or at once when there is no boot this visit).
-  useEffect(() => {
-    let timer = 0;
-    const run = () => {
-      if (reducedMotion() || crtMode() === "off") { setTitle(TITLE.map(text => ({ done: text, noise: "" }))); return; }
-      const start = performance.now() + 250;
-      const tick = () => {
-        const now = performance.now();
-        setTitle(TITLE.map((text, index) => {
-          const progress = Math.max(0, Math.min(1, (now - start - index * 240) / 900));
-          const shown = Math.floor(text.length * progress);
-          return { done: text.slice(0, shown), noise: noise(text.slice(shown)) };
-        }));
-        if (now - start < 900 + 240) timer = window.setTimeout(tick, 40);
-      };
-      tick();
-    };
-    if (document.documentElement.dataset.power === "on") run();
-    const onPower = () => run();
-    window.addEventListener("migrainz:power-on", onPower);
-    return () => { clearTimeout(timer); window.removeEventListener("migrainz:power-on", onPower); };
-  }, []);
-
   // Static: sparse dots scattered again every 220ms while the panel is on screen and CRT effects are "on"; held still
   // under reduced motion or CRT "reduced", gone with CRT "off" (CSS hides the layer).
   useEffect(() => {
     const pre = staticRef.current, box = stage.current?.querySelector<HTMLElement>(".watcher");
     if (!pre || !box) return;
-    let step = 0, timer = 0, visible = true;
+    let step = 0, timer = 0;
     const size = () => ({ cols: Math.ceil(box.clientWidth / CELL_W) + 1, rows: Math.ceil(box.clientHeight / CELL_H) + 1 });
     const draw = () => { const { cols, rows } = size(); pre.textContent = renderStatic(cols, rows, step); };
-    const loop = () => {
-      if (visible && !document.hidden && !reducedMotion() && crtMode() === "on") { step += 1; draw(); }
-      timer = window.setTimeout(loop, 220);
-    };
     draw();
-    loop();
     const resize = new ResizeObserver(draw);
     resize.observe(box);
-    const seen = new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; });
-    seen.observe(box);
-    return () => { clearTimeout(timer); resize.disconnect(); seen.disconnect(); };
+    // The re-scatter timer runs only while the layer may move (watchMotion); nothing polls while it is held or hidden.
+    const stop = watchMotion(box, running => {
+      clearInterval(timer);
+      timer = running ? window.setInterval(() => { step += 1; draw(); }, 220) : 0;
+    });
+    return () => { clearInterval(timer); resize.disconnect(); stop(); };
   }, []);
 
   // Text lens: the Watcher's base layer sampled into characters once, shown inside a circle around a mouse pointer. The
@@ -111,7 +87,7 @@ export default function HomeSignal({ channels }: { channels: Record<string, Home
       };
       image.src = url;
     };
-    const allowed = () => !reducedMotion() && crtMode() === "on" && matchMedia("(hover: hover) and (pointer: fine)").matches;
+    const allowed = () => !reducedMotion() && crtMode() === "on" && finePointer();
     const off = () => {
       delete box.dataset.lens;
       clearInterval(flicker); flicker = 0;
@@ -141,14 +117,19 @@ export default function HomeSignal({ channels }: { channels: Record<string, Home
       if (!frame) frame = requestAnimationFrame(apply);
     };
     const leave = () => { pending = null; cancelAnimationFrame(frame); frame = 0; off(); };
-    sample();
-    const resize = new ResizeObserver(() => { lines = null; sampledFor = ""; sample(); });
+    // Sampled lazily, on the first mouse move where the lens may run, and again after a resize or a phosphor switch
+    // (the base image changes with the colour).
+    const stale = () => { lines = null; sampledFor = ""; };
+    const resize = new ResizeObserver(stale);
     resize.observe(box);
+    const phosphor = new MutationObserver(stale);
+    phosphor.observe(document.documentElement, { attributes: true, attributeFilter: ["data-phosphor"] });
     box.addEventListener("pointermove", move);
     box.addEventListener("pointerleave", leave);
     return () => {
       leave();
       resize.disconnect();
+      phosphor.disconnect();
       box.removeEventListener("pointermove", move);
       box.removeEventListener("pointerleave", leave);
     };
@@ -183,30 +164,10 @@ export default function HomeSignal({ channels }: { channels: Record<string, Home
     };
   }, [channels]);
 
-  // Caption: types out the active channel's line (all at once under reduced motion).
-  useEffect(() => {
-    const text = channel ? channels[channel].caption : finePointer() ? IDLE : IDLE_TOUCH;
-    if (reducedMotion()) { setCaption(text); return; }
-    let shown = 0, timer = 0;
-    const tick = () => {
-      shown = Math.min(text.length, shown + 2);
-      setCaption(text.slice(0, shown));
-      if (shown < text.length) timer = window.setTimeout(tick, 16);
-    };
-    tick();
-    return () => clearTimeout(timer);
-  }, [channel, channels]);
-
   const active = channel ? channels[channel] : null;
   return (
     <div className="home-signal" ref={stage} data-channel={channel ?? undefined}>
-      <div className="home-title">
-        <h1>
-          <span className="visually-hidden">MIGRAINZ ARCHIVE &amp; PROJECTS</span>
-          <span className="home-title-main" aria-hidden="true">{title[0].done}<span className="home-title-noise">{title[0].noise}</span></span>
-          <span className="home-title-sub" aria-hidden="true">{title[1].done}<span className="home-title-noise">{title[1].noise}</span></span>
-        </h1>
-      </div>
+      <HomeTitle />
       <Watcher>
         <pre ref={staticRef} className="home-static" aria-hidden="true" />
         <pre ref={lensRef} className="home-lens" aria-hidden="true" />
@@ -220,7 +181,63 @@ export default function HomeSignal({ channels }: { channels: Record<string, Home
           </div>
         )}
       </Watcher>
-      <p className="home-caption" aria-hidden="true"><span>{active ? `▸ ${active.name.toLowerCase()}${active.ext.toLowerCase()}` : "▸ watcher"}</span> {caption}<span className="home-caret">_</span></p>
+      <HomeCaption active={active} />
     </div>
   );
+}
+
+/** The one-line title over the Watcher; decodes once when the screen powers on (after the boot, or at once without). */
+function HomeTitle() {
+  const [title, setTitle] = useState<{ done: string; noise: string }[]>(TITLE.map(text => ({ done: text, noise: "" })));
+  // Title: decodes once when the screen powers on (after the boot, or at once when there is no boot this visit).
+  useEffect(() => {
+    let timer = 0;
+    const run = () => {
+      clearTimeout(timer);
+      if (reducedMotion() || crtMode() === "off") { setTitle(TITLE.map(text => ({ done: text, noise: "" }))); return; }
+      const start = performance.now() + 250;
+      const tick = () => {
+        const now = performance.now();
+        setTitle(TITLE.map((text, index) => {
+          const progress = Math.max(0, Math.min(1, (now - start - index * 240) / 900));
+          const shown = Math.floor(text.length * progress);
+          return { done: text.slice(0, shown), noise: noise(text.slice(shown)) };
+        }));
+        if (now - start < 900 + 240) timer = window.setTimeout(tick, 40);
+      };
+      tick();
+    };
+    if (document.documentElement.dataset.power === "on") run();
+    const onPower = () => run();
+    window.addEventListener("migrainz:power-on", onPower);
+    return () => { clearTimeout(timer); window.removeEventListener("migrainz:power-on", onPower); };
+  }, []);
+
+  return (
+    <div className="home-title">
+      <h1>
+        <span className="visually-hidden">MIGRAINZ ARCHIVE &amp; PROJECTS</span>
+        <span className="home-title-main" aria-hidden="true">{title[0].done}<span className="home-title-noise">{title[0].noise}</span></span>
+        <span className="home-title-sub" aria-hidden="true">{title[1].done}<span className="home-title-noise">{title[1].noise}</span></span>
+      </h1>
+    </div>
+  );
+}
+
+/** The caption under the Watcher: types out the active channel's line (all at once under reduced motion). */
+function HomeCaption({ active }: { active: HomeChannel | null }) {
+  const [caption, setCaption] = useState(IDLE);
+  useEffect(() => {
+    const text = active ? active.caption : idleText();
+    if (reducedMotion()) { setCaption(text); return; }
+    let shown = 0, timer = 0;
+    const tick = () => {
+      shown = Math.min(text.length, shown + 2);
+      setCaption(text.slice(0, shown));
+      if (shown < text.length) timer = window.setTimeout(tick, 16);
+    };
+    tick();
+    return () => clearTimeout(timer);
+  }, [active]);
+  return <p className="home-caption" aria-hidden="true"><span>{active ? `▸ ${active.name.toLowerCase()}${active.ext.toLowerCase()}` : "▸ watcher"}</span> {caption}<span className="home-caret">_</span></p>;
 }

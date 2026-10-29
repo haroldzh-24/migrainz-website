@@ -431,16 +431,18 @@ export function WindowLauncher({ id, children }: { id: string; children: ReactNo
   return <button className="terminal-button" type="button" aria-controls={id === "system" ? "pixel-monitor" : undefined} aria-expanded={id === "system" ? desktopVisible : undefined} onClick={() => restoreWindow(id)}>{children}</button>;
 }
 
-export function WindowTaskbar({ system = false }: { system?: boolean }) {
+export function WindowTaskbar({ system = false, inside = false }: { system?: boolean; inside?: boolean }) {
   const { windows, viewerTabs, restoreWindow, desktopVisible } = useWindowManager();
   const visibleWindows = windows.filter((window) => (system ? window.id === "system" : window.open && window.minimized) && (window.id !== viewerWindowId || viewerTabs.length > 0));
   if (!visibleWindows.length) return null;
-  return <nav className="window-taskbar" aria-label={system ? "SYSTEM window dock" : "Window dock"}>
+  // Inside the desktop taskbar (already a navigation landmark) the window buttons are a group, not a second landmark.
+  const Tag = inside ? "div" : "nav";
+  return <Tag className="window-taskbar" role={inside ? "group" : undefined} aria-label={system ? "SYSTEM window dock" : "Window dock"}>
     {visibleWindows.map((window) => {
       const visible = window.open && !window.minimized && (window.id !== "system" || desktopVisible);
       return <button type="button" key={window.id} className={visible ? "is-open" : ""} aria-label={`${visible ? "Focus" : "Restore"} ${window.title}`} onClick={() => restoreWindow(window.id)}>[{window.title}]</button>;
     })}
-  </nav>;
+  </Tag>;
 }
 
 // The desktop taskbar's way back (design canvas board 2): the last terminal page this tab showed. Hidden by CSS on
@@ -458,12 +460,23 @@ function TerminalReturn() {
 
 export function PublicWindowWorkspace() {
   const { setWorkspace, windows } = useWindowManager();
+  // Desktop mode (components/ModeSwitch.tsx announces every route change; the marker covers the first render).
+  const [desktop, setDesktop] = useState(false);
+  useEffect(() => {
+    setDesktop(Boolean(document.querySelector(".graphics-route")));
+    const onMode = (event: Event) => setDesktop(Boolean((event as CustomEvent<{ graphics?: boolean }>).detail?.graphics));
+    window.addEventListener("migrainz:mode", onMode);
+    return () => window.removeEventListener("migrainz:mode", onMode);
+  }, []);
   const systemFocused = windows.some((window) => window.id === "system" && window.focused);
   return <>
     <div className="public-window-layer" data-system-focused={systemFocused || undefined}>
       <div ref={setWorkspace} className="public-windows" role="region" aria-label="Public terminal window workspace" />
     </div>
-    {/* A labelled landmark: on the desktop it holds ◂ TERMINAL as well as the window buttons. */}
-    <nav className="public-window-dock" aria-label="Taskbar"><TerminalReturn /><WindowTaskbar /></nav>
+    {/* On the desktop the dock is the taskbar, a labelled landmark holding ◂ TERMINAL and the window buttons; on terminal
+        pages it is a plain box (the window dock inside is its own landmark when there is anything in it). */}
+    <div className="public-window-dock" role={desktop ? "navigation" : undefined} aria-label={desktop ? "Taskbar" : undefined}>
+      <TerminalReturn /><WindowTaskbar inside={desktop} />
+    </div>
   </>;
 }

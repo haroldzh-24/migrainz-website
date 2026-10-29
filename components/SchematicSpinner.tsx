@@ -5,7 +5,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 /**
  * Every turning schematic on the site shares one clock, so all of them show the same angle at the same moment, and each
  * loop starts on the item's right side (the start of the schematic video). A video longer or shorter than the shared
- * period is sped up or slowed down to fit it; drift is corrected once a second. Reduced motion, a data-saver setting, a
+ * period is sped up or slowed down to fit it (between 0.25x and 4x, so videos from 3 s to 48 s keep exact step; outside
+ * that range the drift check re-aligns them once a second); drift is corrected once a second. Reduced motion, a data-saver setting, a
  * missing video or a failed load show the poster still instead; off-screen videos pause. The video is not requested
  * until it comes within 200px of the screen (each media request is a function call and Blob read).
  */
@@ -21,7 +22,22 @@ function quiet() {
   return motion || data || saveData;
 }
 
-export default function SchematicSpinner({ src, poster, label }: { src?: string; poster?: string; label: string }) {
+/**
+ * The shared clock's angle in degrees, for a readout next to the spinners (board 22). "000" on the server and while
+ * motion is held (reduced motion, data saver), paused in a hidden tab.
+ */
+export function SpinAngle() {
+  const [degrees, setDegrees] = useState(0);
+  useEffect(() => {
+    if (quiet()) return;
+    const timer = window.setInterval(() => { if (!document.hidden) setDegrees(Math.floor((Date.now() % SPIN_PERIOD_MS) / SPIN_PERIOD_MS * 360)); }, 250);
+    return () => clearInterval(timer);
+  }, []);
+  return <>{String(degrees).padStart(3, "0")}</>;
+}
+
+/** `decorative`: inside a link or card that already names the item, the media is hidden from screen readers. */
+export default function SchematicSpinner({ src, poster, label, decorative = false }: { src?: string; poster?: string; label: string; decorative?: boolean }) {
   const video = useRef<HTMLVideoElement>(null);
   const [still, setStill] = useState(true);
   const [failed, setFailed] = useState(false);
@@ -29,7 +45,14 @@ export default function SchematicSpinner({ src, poster, label }: { src?: string;
   const holder = useRef<HTMLElement | null>(null);
   const hold = useCallback((element: HTMLElement | null) => { holder.current = element; }, []);
 
-  useEffect(() => { setStill(!src || quiet()); }, [src]);
+  // Re-checked when the reduced-motion or reduced-data setting changes while the page is open.
+  useEffect(() => {
+    const update = () => setStill(!src || quiet());
+    update();
+    const queries = ["(prefers-reduced-motion: reduce)", "(prefers-reduced-data: reduce)"].map(query => window.matchMedia(query));
+    queries.forEach(query => query.addEventListener("change", update));
+    return () => queries.forEach(query => query.removeEventListener("change", update));
+  }, [src]);
 
   // Swap the still for the video only once it is about to be seen.
   useEffect(() => {
@@ -74,11 +97,11 @@ export default function SchematicSpinner({ src, poster, label }: { src?: string;
   if (still || failed || !src || !near) {
     const waiting = !still && !failed && Boolean(src);
     return poster
-      ? <img ref={hold} className="schematic-spinner" src={poster} alt={label} loading="lazy" />
-      : <span ref={hold} className="schematic-spinner schematic-spinner-empty" role="img" aria-label={label}>{waiting ? "" : "NO SCHEMATIC"}</span>;
+      ? <img ref={hold} className="schematic-spinner" src={poster} alt={decorative ? "" : label} loading="lazy" />
+      : <span ref={hold} className="schematic-spinner schematic-spinner-empty" role={decorative ? undefined : "img"} aria-label={decorative ? undefined : label} aria-hidden={decorative || undefined}>{waiting ? "" : "NO SCHEMATIC"}</span>;
   }
   return (
     <video ref={video} className="schematic-spinner" src={src} poster={poster} muted loop playsInline preload="metadata"
-      aria-label={label} onError={() => setFailed(true)} disablePictureInPicture />
+      aria-label={decorative ? undefined : label} aria-hidden={decorative || undefined} onError={() => setFailed(true)} disablePictureInPicture />
   );
 }

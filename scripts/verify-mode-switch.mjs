@@ -36,15 +36,9 @@ const open = async ({ width = 1366, height = 768, reducedMotion = 'no-preference
       sessionStorage.setItem(key, 'studio-transmission-001');
       if (mode) localStorage.setItem('crt-effects', mode);
     } catch {}
-    // Record every stage the switch shows, in order, with the time it started.
+    // Record every stage the switch starts, in order (ModeSwitch announces each one, also those too short to paint).
     window.__stages = [];
-    const watch = () => {
-      const overlay = document.querySelector('.mode-switch');
-      if (!overlay) return requestAnimationFrame(watch);
-      const note = () => { const stage = overlay.dataset.stage; if (window.__stages.at(-1)?.stage !== stage) window.__stages.push({ stage, at: performance.now() }); };
-      new MutationObserver(note).observe(overlay, { attributes: true, attributeFilter: ['data-stage'] });
-    };
-    addEventListener('DOMContentLoaded', watch);
+    addEventListener('migrainz:mode-stage', event => { window.__stages.push({ stage: event.detail, at: performance.now() }); });
   }, [announcementKey, crt]);
   const page = await context.newPage();
   page.setDefaultTimeout(90000);
@@ -87,7 +81,6 @@ try {
       await reset(page);
       await page.locator('.terminal-nav a[data-channel="projects"]').click();
       await page.locator('.mode-switch-log li', { hasText: '$ open projects.db' }).waitFor();
-      assert.match(await page.locator('.mode-switch-log').textContent(), /\$ open projects\.db/);
       await page.locator('.mode-switch[data-stage="black"]').waitFor({ state: 'attached' });
       assert.equal(await page.locator('.mode-switch-log').count(), 0, 'the mount log is gone once the screen is black');
       await page.waitForURL(/\/projects$/);
@@ -164,21 +157,35 @@ try {
     assert.deepEqual(await stages(page), ['print', 'black', 'idle'], 'a key skips to black, no collapse or fade');
     pass('a key skips the forward run');
 
-    // During the print, a shortcut key (Alt+Left, keyboard Back) is left alone (not prevented, no skip); browser Back
-    // then abandons the run: no push, the page stays where Back went.
+    // During the print, a shortcut key (Alt+Left) is left alone (not prevented, no skip), and Escape cancels the run;
+    // browser Back in the same document (popstate) abandons a run too. /tracker is reached by a link, so Back stays in
+    // the same document.
     await page.goto(base + '/about');
-    await page.goto(base + '/tracker');
-    await reset(page);
+    await page.locator('header a[href="/tracker"]').click();
+    await page.waitForURL(/\/tracker$/);
     await page.evaluate(() => { window.__keys = []; document.addEventListener('keydown', event => window.__keys.push([event.key, event.defaultPrevented])); });
+    await reset(page);
     await page.locator('header a[href="/archive"]').click();
     await page.locator('.mode-switch[data-stage="print"]').waitFor();
     await page.keyboard.press('Alt+ArrowLeft');
     assert.deepEqual(await page.evaluate(() => window.__keys.filter(([key]) => key === 'ArrowLeft')), [['ArrowLeft', false]], 'Alt+Left reaches the page unprevented');
-    await page.goBack();
+    await page.waitForTimeout(300);
+    if (new URL(page.url()).pathname === '/tracker') {
+      // Headless Chromium did not treat Alt+Left as Back: cancel this run with Escape instead.
+      await page.keyboard.press('Escape');
+      await idle(page);
+      assert.ok(!(await stages(page)).includes('black'), 'Escape cancelled the run before the push');
+      assert.equal(new URL(page.url()).pathname, '/tracker', 'Escape opens nothing');
+      await reset(page);
+      await page.locator('header a[href="/archive"]').click();
+      await page.locator('.mode-switch[data-stage="print"]').waitFor();
+      await page.goBack();
+    }
     await page.waitForURL(/\/about$/);
     await idle(page);
-    assert.ok(!(await stages(page)).includes('black'), 'the abandoned run never went black');
-    await page.waitForTimeout(1200);
+    const abandoned = await stages(page);
+    assert.ok(abandoned.includes('print') && !abandoned.includes('black'), `Back abandoned the run before the push (${abandoned})`);
+    await page.waitForTimeout(1500);
     assert.equal(new URL(page.url()).pathname, '/about', 'the abandoned run never pushes');
     pass('Back during the print abandons the run');
   }
@@ -227,7 +234,21 @@ try {
     await idle(page);
     assert.deepEqual(await stages(page), FORWARD, 'terminal cd plays the forward run');
     assert.match(await page.evaluate(() => [...document.querySelectorAll('.mode-switch-log li')].map(li => li.textContent).join('|')), /^$/, 'log cleared when done');
-    pass('homepage terminal: cd plays the switch');
+    // Back the moment the desktop page arrives (mid-fade): the run ends, the reverse plays, and the terminal takes
+    // typing again right away (keys are held only while the page is covered).
+    await page.goBack();
+    await page.locator('#home-terminal-input').waitFor();
+    await idle(page);
+    await input.fill('cd 1');
+    await input.press('Enter');
+    await page.waitForURL(/\/projects$/);
+    await page.goBack();
+    await page.locator('#home-terminal-input').waitFor();
+    await idle(page);
+    await page.locator('#home-terminal-input').fill('cd 4');
+    await page.locator('#home-terminal-input').press('Enter');
+    await page.waitForURL(/\/archive$/, { timeout: 30000 });
+    pass('homepage terminal: cd plays the switch; Back mid-fade ends it and the terminal works at once');
     await context.close();
   }
 
