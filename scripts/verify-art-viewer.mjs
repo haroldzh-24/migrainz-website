@@ -30,11 +30,14 @@ const open = async ({ width = 1366, height = 768, reducedMotion = 'no-preference
   await context.addInitScript(() => {
     try { sessionStorage.setItem('migrainz-announcement:studio-transmission-001', 'studio-transmission-001'); } catch {}
     // Every time the decoding layers appear, note it (they can come and go between two checks).
-    window.__seen = { decode: 0, label: 0 };
+    window.__seen = { decode: 0, label: 0, reveal: 0, scan: [] };
     new MutationObserver(() => {
       if (document.querySelector('.art-viewer-decode')) window.__seen.decode++;
       if (document.querySelector('.art-viewer-decoding')) window.__seen.label++;
-    }).observe(document, { childList: true, subtree: true });
+      if (document.querySelector('img.art-viewer-image[data-reveal]')) window.__seen.reveal++;
+    }).observe(document, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-reveal'] });
+    // The scan lives 460 ms: its animation is recorded when it starts, not looked for afterwards (10b).
+    addEventListener('animationstart', event => { if (event.target.matches?.('img.art-viewer-image')) window.__seen.scan.push(event.animationName); }, true);
   });
   const page = await context.newPage();
   page.setDefaultTimeout(90000);
@@ -101,6 +104,18 @@ try {
     await page.keyboard.press('+');
     await page.waitForFunction(value => Number(document.querySelector('.art-viewer-window .art-viewer-toolbar output').dataset.scale) > value, fitted);
     await page.keyboard.press('0');
+    // 10b: after a key changes the image, keyboard focus stays in the viewer (the picture and its toolbar are new
+    // elements), so the next keys still work: click the picture, Right, then Left.
+    await v.locator('.art-viewer-canvas').click();
+    await page.keyboard.press('ArrowRight');
+    await page.waitForFunction(() => document.querySelector('.art-viewer-position').textContent === 'IMAGE 2 / 2');
+    await page.waitForFunction(() => document.activeElement?.closest('.art-viewer-window') !== null && document.activeElement !== document.body);
+    await page.keyboard.press('ArrowLeft');
+    await page.waitForFunction(() => document.querySelector('.art-viewer-position').textContent === 'IMAGE 1 / 2');
+    // Filmstrip tiles keep their raised grey look with a mouse (board 9; the hover rule had made them transparent).
+    assert.equal(await thumbs.nth(1).evaluate(button => getComputedStyle(button).backgroundColor), 'rgb(141, 145, 141)', 'filmstrip tile grey');
+    // A short caption is not a tab stop; it takes focus only when it scrolls.
+    assert.equal(await v.locator('.art-viewer-meta').getAttribute('tabindex'), null, 'short caption not focusable');
     // OPEN RECORD: absent on the record's own page, present elsewhere (the viewer reopens after a page load).
     assert.equal(await v.getByRole('link', { name: 'OPEN RECORD' }).count(), 0, 'no link to the page already shown');
     await page.screenshot({ path: path.join(out, 'art-viewer-1366-maximized.png') });
@@ -163,9 +178,10 @@ try {
     if (reducedMotion === 'no-preference') await page.screenshot({ path: path.join(out, 'art-viewer-decoding.png') });
     release();
     await v.locator('img.art-viewer-image[style*="width"]').waitFor();
-    const reveal = await v.locator('img.art-viewer-image').evaluate(img => ({ reveal: img.hasAttribute('data-reveal'), animation: getComputedStyle(img).animationName }));
-    if (reducedMotion === 'reduce') assert.ok(!reveal.reveal || reveal.animation === 'none', 'reduced motion: no scan');
-    else assert.deepEqual(reveal, { reveal: true, animation: 'art-decode' }, 'the image scans in');
+    await page.waitForTimeout(100);
+    const seenScan = await page.evaluate(() => ({ reveal: window.__seen.reveal, scan: window.__seen.scan }));
+    if (reducedMotion === 'reduce') assert.deepEqual(seenScan.scan, [], 'reduced motion: no scan');
+    else assert.ok(seenScan.reveal > 0 && seenScan.scan.includes('art-decode'), `the image scans in (${JSON.stringify(seenScan)})`);
     await page.waitForFunction(() => !document.querySelector('.art-viewer-decode, .art-viewer-scan, .art-viewer-decoding'));
     assert.ok(viewerSrc, 'the viewer derivative was held');
     // Cost (media is served private, no-store): one request per file; the placeholder reuses the copy the filmstrip
@@ -180,7 +196,7 @@ try {
     const { context, page } = await open();
     await openViewer(page);
     await viewer(page).getByRole('button', { name: /Close Fixture Scanner/ }).click();
-    await page.evaluate(() => { window.__seen = { decode: 0, label: 0 }; });
+    await page.evaluate(() => { window.__seen = { decode: 0, label: 0, reveal: 0, scan: [] }; });
     await page.getByRole('button', { name: /OPEN IN ART VIEWER/i }).click();
     await viewer(page).locator('img.art-viewer-image[style*="width"]').waitFor();
     await page.waitForTimeout(400);

@@ -12,6 +12,32 @@ export const fitView: View = { scale: null, x: 0, y: 0 };
 export const fitHeightView: View = { scale: null, x: 0, y: 0, fit: "height" };
 export const fitWidthView: View = { scale: null, x: 0, y: 0, fit: "width", top: true };
 
+/**
+ * Thumbnails this page has already shown (the Art Viewer's filmstrip). The decoding placeholder uses only these, so it
+ * never costs another media request (10b: every media request is a function call and a Blob read).
+ */
+const shownThumbnails = new Set<string>();
+export function noteThumbnailShown(src: string) {
+  if (shownThumbnails.has(src)) return;
+  shownThumbnails.add(src);
+  window.dispatchEvent(new Event("migrainz:thumbnail-shown"));
+}
+
+/**
+ * After a key turns the page or changes the image, the canvas (and its toolbar) is a new element and keyboard focus would
+ * fall back to the page. If focus was in that area, it goes to the new canvas, or else to `fallback` (10b).
+ */
+export function keepFocusAfterChange(area: Element | null, fallback: HTMLElement | null) {
+  if (!area || !area.contains(document.activeElement)) return () => {};
+  const frame = requestAnimationFrame(() => requestAnimationFrame(() => {
+    const active = document.activeElement;
+    if (active && active !== document.body && active.isConnected) return;
+    const next = fallback?.querySelector<HTMLElement>(".art-viewer-canvas[tabindex]") ?? fallback;
+    next?.focus({ preventScroll: true });
+  }));
+  return () => cancelAnimationFrame(frame);
+}
+
 /** A key the canvas can act on (zoom, fit, pan); returns true when it did. */
 export type CanvasKeys = (key: string) => boolean;
 
@@ -47,6 +73,13 @@ export function ArtworkCanvas({ image, view, onChange, schematic = false, reader
     const timer = window.setTimeout(() => setSlow(true), 150);
     return () => window.clearTimeout(timer);
   }, []);
+  const [, setThumbnails] = useState(0);
+  useEffect(() => {
+    if (decode === "done") return;
+    const shown = () => setThumbnails(value => value + 1);
+    window.addEventListener("migrainz:thumbnail-shown", shown);
+    return () => window.removeEventListener("migrainz:thumbnail-shown", shown);
+  }, [decode]);
   useEffect(() => {
     if (decode !== "scan") return;
     const timer = window.setTimeout(() => setDecode("done"), 460);
@@ -205,7 +238,7 @@ export function ArtworkCanvas({ image, view, onChange, schematic = false, reader
   // The placeholder takes the size the image will have: from the CMS's width and height before it arrives (the
   // derivative being loaded has the same proportions), with the same fit, FIT WIDTH from the top.
   const source = sources[sourceIndex];
-  const placeholderSrc = !schematic && image.thumbnailSrc && image.thumbnailSrc !== source ? image.thumbnailSrc : undefined;
+  const placeholderSrc = !schematic && image.thumbnailSrc && image.thumbnailSrc !== source && shownThumbnails.has(image.thumbnailSrc) ? image.thumbnailSrc : undefined;
   const placeholderBox = (() => {
     if (!placeholderSrc || failed) return null;
     if (ready) return box;
@@ -234,7 +267,7 @@ export function ArtworkCanvas({ image, view, onChange, schematic = false, reader
       <output aria-label="Artwork scale" data-scale={ready ? Math.round(scale * 100) : undefined}>{failed ? "UNAVAILABLE" : ready ? `${Math.round(scale * 100)}%` : "LOADING"}</output>
     </div>}
     <div ref={canvas} className="art-viewer-canvas" data-pannable={pannable} data-dragging={dragging}
-      tabIndex={ready ? 0 : undefined} role="group" aria-label="Artwork canvas; plus and minus zoom; drag or use arrow keys to pan when zoomed"
+      tabIndex={failed ? undefined : 0} role="group" aria-label={reader ? "Comic page; plus and minus zoom; drag or arrow keys pan when zoomed; left and right arrows turn the page at the edge" : "Artwork; plus and minus zoom, 0 fits; drag or arrow keys pan when zoomed; left and right arrows change the image at the edge"}
       onKeyDown={(event) => {
         if (event.altKey || event.ctrlKey || event.metaKey || event.nativeEvent.isComposing) return;
         if (act(event.key)) event.preventDefault();
@@ -287,6 +320,18 @@ export default function ArtViewer() {
   const [imageIndex, setImageIndex] = useState(0);
   const strip = useRef<HTMLDivElement>(null);
   const canvasKeys = useRef<CanvasKeys | null>(null);
+  // The caption takes keyboard focus only when its text is long enough to scroll (10b).
+  const meta = useRef<HTMLDivElement>(null);
+  const [captionScrolls, setCaptionScrolls] = useState(false);
+  useEffect(() => {
+    const element = meta.current;
+    if (!element) return;
+    const measure = () => setCaptionScrolls(element.scrollHeight > element.clientHeight + 1);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  });
   const [views, setViews] = useState<Record<string, View>>({});
   const normalViews = useRef<Record<string, View>>({});
   // Restored tabs reopen the viewer after a reload only if it was open (bugs.md 2026-10-27).
@@ -329,24 +374,34 @@ export default function ArtViewer() {
   useEffect(() => {
     if (!closeable) return;
     let frame: number | null = null;
+    let cancelKeep = () => {};
     const key = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.isComposing) return;
       const target = event.target instanceof Element ? event.target : null;
       if (!target?.closest(".art-viewer-window") || target.closest('[role="tab"], input, select, textarea, [contenteditable]')) return;
-      if (canvasKeys.current?.(event.key)) { event.preventDefault(); return; }
+      // In the caption or the filmstrip, Up and Down are theirs (scrolling a long caption).
+      const own = Boolean(target.closest(".art-viewer-meta, .art-viewer-thumbs")) && (event.key === "ArrowUp" || event.key === "ArrowDown");
+      if (!own && canvasKeys.current?.(event.key)) { event.preventDefault(); return; }
       if ((event.key !== "ArrowLeft" && event.key !== "ArrowRight") || event.shiftKey || event.repeat) return;
       const { index, count: total } = position.current;
       const next = index + (event.key === "ArrowRight" ? 1 : -1);
       if (next < 0 || next >= total) return;
       event.preventDefault();
       setImageIndex(next);
-      // From the filmstrip, focus follows the shown image.
+      // From the filmstrip, focus follows the shown image; from the picture or its toolbar (both replaced by the change),
+      // focus moves to the new picture (10b).
       if (target.closest(".art-viewer-thumbs")) frame = requestAnimationFrame(() => strip.current?.querySelector<HTMLElement>('[aria-current="true"]')?.focus());
+      else {
+        const win = target.closest<HTMLElement>(".art-viewer-window");
+        cancelKeep();
+        cancelKeep = keepFocusAfterChange(win, win);
+      }
     };
     window.addEventListener("keydown", key);
     return () => {
       window.removeEventListener("keydown", key);
       if (frame !== null) cancelAnimationFrame(frame);
+      cancelKeep();
     };
   }, [closeable]);
   if (!active) return null;
@@ -379,8 +434,8 @@ export default function ArtViewer() {
     {/* Caption (board 9): beside the canvas in a window at least 760 px wide, under it otherwise (CSS container query).
         A plain group, not a landmark: it sits inside the window's own region. It scrolls when the text is long, so it
         takes focus for keyboard scrolling. */}
-    <div className="art-viewer-meta" role="group" aria-labelledby={headingId} tabIndex={0}>
-      {count > 1 && <output className="art-viewer-position">IMAGE {imageIndex + 1} / {count}</output>}
+    <div ref={meta} className="art-viewer-meta" role="group" aria-labelledby={headingId} tabIndex={captionScrolls ? 0 : undefined}>
+      {count > 1 && <output className="art-viewer-position">IMAGE {Math.min(imageIndex, count - 1) + 1} / {count}</output>}
       <h2 id={headingId}>{active.title}</h2>
       <p className="art-viewer-context">{active.project}{active.role ? ` / ${active.role}` : ""}</p>
       {image?.caption && <p className="art-viewer-caption">{image.caption}</p>}
@@ -395,7 +450,7 @@ export default function ArtViewer() {
         aria-current={index === imageIndex ? "true" : undefined}
         aria-label={`Image ${index + 1} of ${count}${item.alt && item.alt !== active.title ? `: ${item.alt}` : ""}`}
         onClick={() => setImageIndex(index)}>
-        <img src={item.thumbnailSrc ?? item.src} alt="" loading="lazy" />
+        <img src={item.thumbnailSrc ?? item.src} alt="" loading="lazy" onLoad={() => noteThumbnailShown(item.thumbnailSrc ?? item.src)} />
       </button>)}
     </div>}
   </RetroWindow>;

@@ -15,10 +15,10 @@ const problems = fixtureEnvProblems(env, fixture);
 if (problems.length) { rmSync(fixture, { recursive: true, force: true }); console.error('Refusing to start. Offending variables: ' + problems.join(', ')); process.exit(1); }
 mkdirSync(env.CMS_MEDIA_DIR);
 const children = new Set();
-function launch(args) {
+function launch(args, extraEnv = {}) {
   // Own process group on Linux/macOS so stop() can end next dev and its workers together. Under `npm run check` the
   // group is also listed in CHECK_PGID_FILE so a forced stop of the whole check can reach it.
-  const child = spawn(process.execPath, args, { env, stdio: 'inherit', windowsHide: true, detached: process.platform !== 'win32' });
+  const child = spawn(process.execPath, args, { env: { ...env, ...extraEnv }, stdio: 'inherit', windowsHide: true, detached: process.platform !== 'win32' });
   children.add(child);
   if (child.pid && process.env.CHECK_PGID_FILE) { try { appendFileSync(process.env.CHECK_PGID_FILE, `${child.pid}\n`); } catch {} }
   // When a step ends, end anything it left in its group at once (later its group id could be reused).
@@ -63,29 +63,47 @@ try {
     });
   });
   env.BASE_URL = `http://127.0.0.1:${port}`;
-  const server = launch(['node_modules/next/dist/bin/next', 'dev', '--hostname', '127.0.0.1', '--port', String(port)]);
-  let serverFailure;
-  server.once('error', error => { serverFailure = error; });
-  const deadline = Date.now() + 120000;
-  while (true) {
-    if (serverFailure) throw serverFailure;
-    if (server.exitCode !== null || server.signalCode !== null) throw new Error('Regression server stopped. Close any existing next dev server before running regression.');
-    try {
-      const response = await fetch(env.BASE_URL, { signal: AbortSignal.timeout(5000) });
-      await response.arrayBuffer();
-      if (response.ok) break;
-    } catch { /* Server is still starting/compiling. */ }
-    if (Date.now() >= deadline) throw new Error('Regression server did not become ready within 120 seconds.');
-    await new Promise(resolve => setTimeout(resolve, 500));
+  // The dev server, started fresh twice: `next dev` grows with every route it compiles and, near its heap limit, restarts
+  // itself mid-request (batch 11: after the browser scripts, during the site-health crawl). Site health gets its own
+  // fresh server, so its crawl never meets that restart.
+  async function startServer() {
+    const server = launch(['node_modules/next/dist/bin/next', 'dev', '--hostname', '127.0.0.1', '--port', String(port)]);
+    let serverFailure;
+    server.once('error', error => { serverFailure = error; });
+    const deadline = Date.now() + 120000;
+    while (true) {
+      if (serverFailure) throw serverFailure;
+      if (server.exitCode !== null || server.signalCode !== null) throw new Error('Regression server stopped. Close any existing next dev server before running regression.');
+      try {
+        const response = await fetch(env.BASE_URL, { signal: AbortSignal.timeout(5000) });
+        await response.arrayBuffer();
+        if (response.ok) break;
+      } catch { /* Server is still starting/compiling. */ }
+      if (Date.now() >= deadline) throw new Error('Regression server did not become ready within 120 seconds.');
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    return server;
   }
+  async function stopServer(server) {
+    if (server.exitCode !== null || server.signalCode !== null) return;
+    const exited = new Promise(resolve => server.once('exit', resolve));
+    if (process.platform === 'win32') spawnSync('taskkill', ['/pid', String(server.pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true });
+    else { try { process.kill(-server.pid, 'SIGTERM'); } catch { server.kill('SIGTERM'); } }
+    await Promise.race([exited, new Promise(resolve => setTimeout(resolve, 10000))]);
+    if (server.exitCode === null && server.signalCode === null && process.platform !== 'win32') { try { process.kill(-server.pid, 'SIGKILL'); } catch {} }
+  }
+  let server = await startServer();
   await completed(launch(['scripts/verify-factions.cjs']));
   await completed(launch(['scripts/verify.cjs']));
   await completed(launch(['scripts/verify-interaction-polish.mjs']));
   await completed(launch(['scripts/verify-art-viewer-keys.mjs']));
   await completed(launch(['scripts/verify-art-viewer.mjs']));
+  await completed(launch(['scripts/verify-nav-status.mjs']));
   await completed(launch(['scripts/verify-home.mjs']));
   await completed(launch(['--import', 'tsx', 'scripts/verify-mode-switch.mjs']));
   await completed(launch(['scripts/verify-equipment-directory.mjs']));
+  await stopServer(server);
+  server = await startServer();
   await completed(launch(['scripts/verify-site-health.mjs']));
   await completed(launch(['scripts/verify-site-health.mjs', '--self-test']));
 } catch (error) {

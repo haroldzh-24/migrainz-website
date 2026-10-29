@@ -1,5 +1,9 @@
 # Features
 
+## Implemented - 2026-10-29 / Slow-page status (batch 11, board 10)
+
+- A terminal page that is slow to arrive shows an in-world ACCESSING panel with the real waiting time; fast pages never show it.
+
 ## Implemented - 2026-10-29 / Art Viewer filmstrip and captions, decoding art (batch 10, boards 9 and 10)
 
 - Art Viewer: a caption panel beside the picture in a wide window (under it in a narrow one, kept when maximized) with `IMAGE n / m`, the record's name, project and role, the image's caption and the record's description, and OPEN RECORD on any page but the record's own; a larger filmstrip with the shown image marked; Left / Right step through the images and + / − / 0 zoom and fit with focus anywhere in the window.
