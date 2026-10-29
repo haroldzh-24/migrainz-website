@@ -2,6 +2,14 @@
 
 ## Open Bugs
 
+### 2026-10-29 - Batch 8: open questions and limits
+
+- Cost (Harold asked for always-turning thumbnails): every card on screen plays its schematic video through `/api/media/file` (a function call and a Blob read per request; responses are `private, no-store`). In the fixture two clips made 3 requests on load and none per loop; the real number per visit is about one to two requests per card on screen, times the video size. Videos only load within 200 px of the screen and pause off screen; once loaded they stay in memory until the page is left.
+- Reader: FIT HEIGHT gives 533 px at 1366x768 and 665 px at 1440x900 instead of board 4's 690/850, because the page-turn row stays separate from the size row.
+- Tab bar: board 5's four tabs leave TRACKER without a phone tab (it is in the homepage directory). Harold's call.
+- A spinner's video, once near the screen, stays loaded while the page is open (paused off screen).
+- Status: Open; questions for Harold.
+
 ### 2026-10-29 - Homepage: left as is after the batch 6 review (6b)
 
 - Text sizes: the directory previews and the operations phase labels stay 12 px (data labels); body rows are 14 px since 6b. Redesign plan step 1a asks 14 px for row titles; Harold may want the previews larger (they would then need a wider preview panel).

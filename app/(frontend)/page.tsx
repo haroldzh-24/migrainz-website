@@ -20,7 +20,7 @@ function dateLabel(value?: string) {
 
 /** A panel's title row: the title is a real heading (h2) for screen-reader navigation; the end label is decoration. */
 function PanelHead({ id, title, ext, end }: { id: string; title: string; ext: string; end?: string }) {
-  return <div className="pnl-h"><h2 className="pnl-title" id={id}><b>{title}</b><i> {ext}</i></h2>{end && <span className="pnl-end" aria-hidden="true">{end}</span>}</div>;
+  return <div className="pnl-h"><h2 className="pnl-title" id={id}><b>{title}</b><i aria-hidden="true"> {ext}</i></h2>{end && <span className="pnl-end" aria-hidden="true">{end}</span>}</div>;
 }
 
 // Homepage first screen (design canvas board 23, Harold 2026-10-29): the directory and a terminal on the left, the
@@ -79,8 +79,9 @@ export default async function Home() {
             still runs left to right on desktop: directory, terminal, then node status (with [ SYSTEM ]). */}
         <div className="home-col home-center">
           <div className="strip" aria-hidden="true"><span>VISUAL NODE / WATCHER</span><span className="strip-end">01 <i>|</i> 012</span></div>
-          <section className="pnl home-watcher" aria-labelledby="home-watcher">
-            <PanelHead id="home-watcher" title="WATCHER" ext=".LIVE" end="SIGNAL" />
+          {/* Labelled by the page title (the h1 over the Watcher), so the h1 is the first heading on the page. */}
+          <section className="pnl home-watcher" aria-labelledby="home-title">
+            <div className="pnl-h" aria-hidden="true"><span><b>WATCHER</b><i> .LIVE</i></span><span className="pnl-end">SIGNAL</span></div>
             <HomeSignal channels={channels} />
           </section>
           {recentCount > 0 && (

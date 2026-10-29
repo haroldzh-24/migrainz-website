@@ -170,17 +170,17 @@ try {
     await page.keyboard.press('Alt+ArrowLeft');
     assert.deepEqual(await page.evaluate(() => window.__keys.filter(([key]) => key === 'ArrowLeft')), [['ArrowLeft', false]], 'Alt+Left reaches the page unprevented');
     await page.waitForTimeout(300);
-    if (new URL(page.url()).pathname === '/tracker') {
-      // Headless Chromium did not treat Alt+Left as Back: cancel this run with Escape instead.
-      await page.keyboard.press('Escape');
-      await idle(page);
-      assert.ok(!(await stages(page)).includes('black'), 'Escape cancelled the run before the push');
-      assert.equal(new URL(page.url()).pathname, '/tracker', 'Escape opens nothing');
-      await reset(page);
-      await page.locator('header a[href="/archive"]').click();
-      await page.locator('.mode-switch[data-stage="print"]').waitFor();
-      await page.goBack();
-    }
+    assert.equal(new URL(page.url()).pathname, '/tracker', 'Alt+Left did not move this page');
+    // Escape cancels the run before the push: nothing opens.
+    await page.keyboard.press('Escape');
+    await idle(page);
+    assert.ok(!(await stages(page)).includes('black'), 'Escape cancelled the run before the push');
+    assert.equal(new URL(page.url()).pathname, '/tracker', 'Escape opens nothing');
+    // Browser Back (popstate in the same document) during the next print abandons that run too.
+    await reset(page);
+    await page.locator('header a[href="/archive"]').click();
+    await page.locator('.mode-switch[data-stage="print"]').waitFor();
+    await page.goBack();
     await page.waitForURL(/\/about$/);
     await idle(page);
     const abandoned = await stages(page);

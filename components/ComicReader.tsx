@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
-import { ArtworkCanvas, fitView, type View } from "@/components/ArtViewer";
+import { ArtworkCanvas, fitHeightView, fitWidthView, type View } from "@/components/ArtViewer";
 import { RetroWindow, useWindowManager } from "@/components/WindowManager";
 import ClassifiedPlaceholder from "@/components/ClassifiedPlaceholder";
 import { projectHref, type Project, type Chapter } from "@/lib/content/types";
@@ -17,7 +17,16 @@ export default function ComicReader({
   chapter: Chapter;
 }) {
   const [page, setPage] = useState(0);
-  const [view, setView] = useState<View>(fitView);
+  // Board 4: a page fits the frame's height on a landscape screen and its width on a portrait one (phones). A reader who
+  // picks FIT HEIGHT or FIT WIDTH keeps it for the next pages; zoom and pan start over on each page.
+  const [view, setView] = useState<View>(fitHeightView);
+  const chosenFit = useRef<"height" | "width" | null>(null);
+  const fitted = () => (chosenFit.current ?? (window.innerHeight > window.innerWidth ? "width" : "height")) === "width" ? fitWidthView : fitHeightView;
+  useEffect(() => setView(fitted()), []); // eslint-disable-line react-hooks/exhaustive-deps
+  const changeView = (next: View) => {
+    if (next.scale === null && next.fit) chosenFit.current = next.fit;
+    setView(next);
+  };
   const pageSelectID = useId();
   const { toggleMaximizeWindow, unregisterWindow } = useWindowManager();
   const unregisterRef = useRef(unregisterWindow);
@@ -35,7 +44,7 @@ export default function ComicReader({
     const bounded = Math.max(0, Math.min(chapter.pages.length - 1, nextPage));
     if (bounded === page) return;
     setPage(bounded);
-    setView(fitView);
+    setView(fitted());
   }
 
   function keyboard(event: KeyboardEvent<HTMLElement>) {
@@ -58,13 +67,14 @@ export default function ComicReader({
       className="comic-reader-window"
       defaultPosition={{ x: 32, y: 24 }}
       defaultSize={{ width: 1040, height: 700 }}
+      defaultMaximized
       titlebarContent={titlebar}
       onToggleMaximize={() => toggleMaximizeWindow(windowID)}
     >
       <section className="comic-reader-content" aria-label="Comic reader" tabIndex={0} onKeyDown={keyboard}>
         <div className="comic-page-stage">
           {current?.classification ? <ClassifiedPlaceholder classification={current.classification} label={current.safeLabel} variant="media" />
-            : current?.src ? <ArtworkCanvas key={`${page}-${current.src}`} image={current} view={view} onChange={setView} />
+            : current?.src ? <ArtworkCanvas key={`${page}-${current.src}`} reader image={current} view={view} onChange={changeView} />
             : <p className="comic-page-empty" role="status">{current ? "PAGE UNAVAILABLE" : "NO PUBLIC PAGES FILED"}</p>}
         </div>
         <footer className="comic-reader-navigation">

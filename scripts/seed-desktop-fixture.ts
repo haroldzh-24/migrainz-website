@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import path from 'node:path';
+import { readFile } from 'node:fs/promises';
 import sharp from 'sharp';
 import { pathToFileURL } from 'node:url';
 import { getPayload } from 'payload';
@@ -43,6 +44,13 @@ try {
   const scanner = await cms.create({ collection: 'equipment', data: { name: 'Fixture Scanner', slug: 'fixture-scanner', project: project.id, category: 'Sensor', manufacturer: 'Studio Fixture',
     capacity: '2 cells', technicalSpecifications: [{ label: 'Mass', value: '1 kg' }, { label: 'Range', value: '40 m' }], schematicEnabled: true, schematicVideo: video.id, schematicPoster: poster.id,
     images: [{ media: poster.id, caption: 'Synthetic concept one' }, { media: media.id, caption: 'Synthetic concept two' }], ...pub } });
+  // Two items whose schematics really play (tiny VP9-in-MP4 test clips, scripts/fixtures/): the equipment directory's
+  // cards must turn in step on the shared 12 s clock (scripts/verify-equipment-directory.mjs). 6 s and 9 s on purpose.
+  for (const [name, slug, seconds] of [['Fixture Beacon', 'fixture-beacon', 6], ['Fixture Lamp', 'fixture-lamp', 9]] as const) {
+    const clip = await readFile(path.resolve(`scripts/fixtures/schematic-${seconds}s.mp4`));
+    const clipMedia = await cms.create({ collection: 'media', data: { alt: `Synthetic ${seconds} s schematic clip`, ...pub }, file: { data: clip, name: `fixture-${slug}.mp4`, mimetype: 'video/mp4', size: clip.length } });
+    await cms.create({ collection: 'equipment', data: { name, slug, project: project.id, category: 'Signal', schematicEnabled: true, schematicVideo: clipMedia.id, schematicPoster: poster.id, ...pub } });
+  }
   const satchel = await cms.create({ collection: 'equipment', data: { name: 'Fixture Satchel', slug: 'fixture-satchel', project: project.id, category: 'Carry', images: [{ media: media.id, caption: 'Synthetic satchel' }], ...pub } });
   await cms.create({ collection: 'characters', data: { name: 'Fixture Operative', slug: 'fixture-operative', project: project.id,
     equipmentAssignments: [{ equipment: scanner.id, designation: 'Unit 7', quantity: 1, notes: 'Synthetic assignment', order: 1 }, { equipment: satchel.id, order: 2 }], ...pub } });

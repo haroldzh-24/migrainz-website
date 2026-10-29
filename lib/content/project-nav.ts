@@ -1,11 +1,14 @@
-import type { ReactNode } from 'react';
-import RouteApplication from '@/components/RouteApplication';
-import { getProject, getProjectIdentity, getFactions, getEquipmentDirectory } from '@/lib/content/queries';
+import 'server-only';
+import { getEquipmentDirectory, getFactions, getProject, getProjectIdentity } from './queries';
 
-export default async function ProjectLayout({ children, params }: { children: ReactNode; params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
+/**
+ * A project's section links (OVERVIEW, FACTIONS, CHARACTERS, EQUIPMENT, WRITING, GALLERY), shared by the project
+ * window's tab row and the equipment directory, which sits outside the window (design canvas board 22). Sections with
+ * nothing public are left out. Undefined for a missing or classified project.
+ */
+export async function projectSections(slug: string) {
   const [project, identity] = await Promise.all([getProject(slug), getProjectIdentity(slug)]);
-  if (!project || !identity) return <RouteApplication id="project" title="PROJECT: CLASSIFIED">{children}</RouteApplication>;
+  if (!project || !identity) return undefined;
   const [factions, equipment] = await Promise.all([getFactions(identity.id), getEquipmentDirectory(identity.id)]);
   const base = `/projects/${project.slug}`;
   const navigation = [{ label: 'OVERVIEW', href: base },
@@ -14,5 +17,5 @@ export default async function ProjectLayout({ children, params }: { children: Re
     ...(equipment.length ? [{ label: 'EQUIPMENT', href: `${base}/equipment` }] : []),
     ...(project.writing ? [{ label: 'WRITING', href: `${base}#writing` }] : []),
     ...(project.galleries.length ? [{ label: 'GALLERY', href: `${base}#gallery-${project.galleries[0].slug}` }] : [])];
-  return <RouteApplication key={slug} id="project" title={`PROJECT: ${project.title}`} navigation={navigation}>{children}</RouteApplication>;
+  return { project, identity, equipment, navigation };
 }

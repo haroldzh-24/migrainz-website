@@ -1,5 +1,11 @@
 # Features
 
+## Implemented - 2026-10-29 / Equipment directory, comic reader fit, phone tab bar (batch 8, boards 22, 4 and 5)
+
+- The equipment directory is a terminal page outside the project window: section tabs and cards whose schematics all turn in step on one 12 s clock, each loop starting on the item's right side.
+- The comic reader opens maximized with the page fitted to the height (width on portrait screens): FIT HEIGHT, FIT WIDTH, ACTUAL SIZE and zoom, in words; the wheel scrolls a large page; arrows turn pages.
+- A HOME / PROJECTS / COMICS / ARCHIVE tab bar at the bottom of terminal pages at 860 px and narrower.
+
 ## Implemented - 2026-10-29 / Terminal to desktop switch (batch 7, design canvas boards 2 and 14)
 
 - Grey-window pages (projects, comics, the reader, the archive) sit on a dark teal Win95 desktop with a taskbar and `◂ TERMINAL`; windows start below the header.

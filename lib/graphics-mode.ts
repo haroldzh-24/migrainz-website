@@ -4,8 +4,12 @@
 // decides, before a link is followed, whether the switch animation should play. scripts/verify-mode-switch.mjs checks
 // that the two agree on every route the fixture serves.
 
-/** Paths that render a route window (RouteApplication) or the comic reader. */
+/**
+ * Paths that render a route window (RouteApplication) or the comic reader. The equipment directory
+ * (/projects/<slug>/equipment) is the one project page outside the window (design canvas board 22).
+ */
 export function isGraphicsPath(pathname: string): boolean {
+  if (/^\/projects\/[^/]+\/equipment\/?$/.test(pathname)) return false;
   return /^\/(projects|comics|archive)(\/|$)/.test(pathname);
 }
 

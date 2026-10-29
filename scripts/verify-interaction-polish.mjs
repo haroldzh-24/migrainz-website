@@ -102,7 +102,8 @@ try {
     assert.equal(await afterStyle(focused, 'opacity'), '1', 'reticle shows on keyboard focus');
     assert.equal(await focused.evaluate(el => getComputedStyle(el).outlineColor), 'rgba(0, 0, 0, 0)', 'one indicator: the outline is transparent outside High Contrast');
     await page.screenshot({ path: path.join(out, 'reticle-focus-1366.png'), clip: { x: 60, y: 520, width: 620, height: 240 } });
-    await visit(page, base + '/projects/blushland/equipment');
+    // The equipment directory left the window in batch 8 (board 22); the character directory is still Win95 inside it.
+    await visit(page, base + '/projects/blushland/characters');
     const tab = page.locator('.project-app-nav a:not([aria-current])').first();
     await tab.hover();
     assert.equal(await tab.evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(0, 0, 128)', 'Win95 menu item gets the navy bar');
