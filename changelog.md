@@ -1,10 +1,16 @@
 # Changelog
 
+## Changed - 2026-10-28 / Batch 4e: fixes from the independent review of batch 4d (fix/batch-4e-review-fixes)
+
+- **Correction:** batch 4d's commit message cites `test-results/check-20261028-232649.txt` as its check. That run was in the Payload upgrade worktree, not on `main`, so 4d had not passed a full check on `main` when it was committed. The check for this batch covers 4d and 4e together on `main` (see the 4e commit). The 4d mutation log (`test-results/mutation-4d-no-focusout-clear.txt`) was run on `main`.
+- Switching to another app and back (the browser window losing and regaining focus) no longer ends the quiet hand-back, so the file's Properties panel doesn't pop open on return; only focus really leaving the element ends it (4d had brought back the 4b bug in that case). Tested by replaying the browser's window-blur events.
+- Site health's self-check asserts which rule reports each sample, and matches React's image preload link in any attribute order. The samples come from the `react-dom` in node_modules; Next renders pages with its own bundled React build, so they show the form of React's output, not that exact build (the 4d entry said "React's own server output").
+
 ## Changed - 2026-10-28 / Batch 4d: fixes from the independent review of batch 4c (fix/batch-4d-review-fixes)
 
 - Focus handed back by the window manager also stops being "quiet" when focus leaves that element (not only on the next key or pointer press), so coming back to it later is an ordinary focus again.
 - `partlyInView` (decides whether a handed-back element needs scrolling into view) measures each scrolling ancestor's inner box, without borders and scrollbars, and treats fixed elements as clipped by the viewport only.
-- Tests: site health's hidden-copy check matches attribute names in any case (React writes `srcSet`, `imageSrcSet`, `fetchPriority`), places each `<source>` by its own position, fails if the crawl never reaches `/projects/blushland`, and checks itself on React's own server output, including React's automatic `<link rel="preload">` for eager images (found while writing this: React's server render adds a preload link for eager images, seen in its static output, so a hidden eager image would also be fetched through `<head>`). The Art Viewer test checks the panel stays shut after restore and Escape, and that focus leaving and returning to a handed-back file opens its panel as usual (fails without the fix).
+- Tests: site health's hidden-copy check matches attribute names in any case (React writes `srcSet`, `imageSrcSet`, `fetchPriority`), places each `<source>` by its own position, fails if the crawl never reaches `/projects/blushland`, and checks itself on sample HTML rendered by `react-dom` (node_modules; Next bundles its own build), including React's automatic `<link rel="preload">` for eager images (found while writing this: React's server render adds a preload link for eager images, seen in its static output, so a hidden eager image would also be fetched through `<head>`). The Art Viewer test checks the panel stays shut after restore and Escape, and that focus leaving and returning to a handed-back file opens its panel as usual (fails without the fix).
 - Docs: features.md (focus return on minimize); the 4c changelog line now says the next Tab lands on the file's own Properties button in the test, and no longer claims an untested sound.
 
 ## Changed - 2026-10-28 / Batch 4c: fixes from the independent review of batch 4b (fix/batch-4c-review-fixes)
