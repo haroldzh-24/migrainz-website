@@ -1,5 +1,22 @@
 # Changelog
 
+## Changed - 2026-10-29 / Batch 9 (with 8c): Harold's design calls (feat/batch-9-design-calls)
+
+Harold, 2026-10-29 (~10:20 CT), answering the open design questions: "TRACKER tab on phones", "Taller reader page", "Boot power-on visible", "Fix CRT vignette order"; keep the always-turning equipment thumbnails. Code-only; no schema, migration, Blob or env change.
+
+- Phone tab bar: a fifth tab, TRACKER (`/tracker`). At 360 px and narrower the labels lose their letter spacing so PROJECTS fits its 64 px tab at 320 px.
+- Comic reader: in a reader window at least 760 px wide (a container query on the window), the page bar (PREV / PAGE n / m / GO TO / NEXT) shares the size toolbar's row above the page, so the page is taller: 564 px at 1366x768 (533 before) and 696 px at 1440x900 (665 before). The page bar never shrinks; the size toolbar wraps first. Narrower windows (phones) keep the page bar at the bottom. The DOM order is unchanged (toolbar, page, page bar), so keyboard order on wide windows goes toolbar, page, then the page bar shown above it.
+- Boot: after the checklist collapses, the page's power-on (board 17, 900 ms) plays with the startup window hidden (still mounted, so it is the same window that becomes the announcement, and the shop ad and Escape still know a startup window is up); then the announcement opens. It takes focus only if the visitor has not moved into the page meanwhile. Reduced motion or CRT off: no power-on, the announcement opens at once.
+- CRT vignette: body is transparent, so the fixed background layer with the screen vignette shows behind every page (before, body's own background covered it on any page longer than the screen). The layer's faint top-centre haze, never seen either, was dropped rather than shown.
+**8c (fixes from the independent review of 8b, in the same commit and check):**
+- Equipment card with a video but no poster: the concept art stays while the video is on its way and under the clip until its first frame plays, so the card is never blank (before: art, then blank, then black until the first frame). A fixture item (Fixture Relay) has a video and no poster.
+- Phone tab bar: the focus nudge skips only elements with `tabindex="-1"` (containers focused by script) and tall controls whose top already shows; a tall card whose top is under the bar (a phone in landscape) is moved again. One `--phone-tabs-height` (including the safe area) now sets the page padding, the window dock offset and the scroll padding.
+- Equipment tabs on phones: the current tab is scrolled into view before the first paint (no jump), measured from the boxes; the Windows High Contrast outline stays inside the scrolling row.
+- Tests that did not prove their claim: the reader's "scrolling does not choose a fit" case now runs where FIT WIDTH overflows (700x1000), checks the page moved, then the landscape refit; the readout case checks 000 is held for 700 ms and that it turns again; the phone reader screenshot is taken before any other step again.
+- Recorded in bugs.md: the 6c/7c behaviours that still have no dedicated test.
+- Check: `check-20261029-155800`: 15 of 16 steps passed; the regression step stopped on a timing assertion in `verify-interaction-polish.mjs` (a Watcher jitter took over 250 ms to snap back with three pages running at once; not caused by this batch, see bugs.md "Flaky timing check"). The regression step was re-run on the unchanged tree: `check-20261029-161900`, passed (all ten browser scripts).
+- Tests: `verify-home.mjs` checks the power-on plays with no startup window over it, then the announcement opens with focus on ENTER; focus moved into the page during the power-on stays put; reduced motion has no power-on wait; the vignette darkens the same background pixel compared with the vignette switched off. `verify-equipment-directory.mjs` checks five tabs, TRACKER current on /tracker, every tab label inside its tab at 320 px, the reader's one bar row on wide windows with the page at least 20 px taller than before, the page bar at the bottom at 390 px, and every reader control inside the window at 800 px. `verify.cjs` allows the extra 900 ms between a boot skip and the announcement.
+
 ## Changed - 2026-10-29 / Batch 8b: fixes from the independent review of batch 8 (fix/batch-8b-review-fixes)
 
 Code-only; no schema, migration, Blob or env change.

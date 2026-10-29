@@ -148,7 +148,9 @@ html {
 body {
   margin: 0;
   min-height: 100%;
-  background: var(--crt-bg);
+  /* Transparent: html carries the page colour, and the fixed background layer (body::before, with the screen vignette)
+     must not be covered by body's own background (it was until batch 9, so the vignette only showed below short pages). */
+  background: transparent;
   color: var(--green);
   font-family: var(--crt-font);
   font-size: 16px;
@@ -1400,10 +1402,12 @@ body::before {
   z-index: -1;
 
   /* The screen vignette lives here, in the fixed layer under all content: it darkens the page background toward the
-     corners but never the text above it (the scanline overlay .crt stays on top). */
+     corners but never the text above it (the scanline overlay .crt stays on top). Until batch 9 body's own background
+     covered this layer, so neither the vignette nor a faint green haze at the top centre (a second layer here, also
+     from index.html) was ever seen on a long page. Batch 9 made body transparent and dropped the haze: it would have
+     lightened the background behind the header's dim text and shown in every CRT mode. */
   background:
     var(--crt-overlay-vignette),
-    radial-gradient(circle at 50% 0%, rgba(var(--crt-border-rgb), 0.05), transparent 38%),
     var(--crt-bg);
 }
 
@@ -2369,6 +2373,11 @@ html[data-crt="off"] .home-lens-ring { display: none; }
 .home-activity i[data-empty] { background: rgba(var(--crt-border-rgb), .12); box-shadow: none; }
 .schematic-spinner { display: block; width: 100%; height: 100%; object-fit: contain; filter: var(--crt-tune-filter); }
 .schematic-spinner-empty { display: grid; place-items: center; font-size: 12px; color: var(--crt-dim); filter: none; }
+/* 8c: an item with a video but no poster keeps its fallback (concept art) under the video until the first frame plays. */
+.schematic-spinner-layered { position: relative; display: block; width: 100%; height: 100%; }
+.schematic-spinner-layered > * { position: absolute; inset: 0; width: 100%; height: 100%; }
+.schematic-spinner-layered > video:not([data-playing]) { opacity: 0; }
+.schematic-spinner-layered > video[data-playing] { background: #000; }
 
 /* Boot (board 17): the counter in the checklist window, the collapse at the end and the page powering on. */
 .boot-progress { display: flex; align-items: flex-end; gap: 14px; margin: 10px 0 12px; }
@@ -2434,9 +2443,6 @@ html[data-crt="off"] .startup-sequence[data-collapsing] .startup-log { animation
    bar, the page's own text is re-inked for the desktop, the window dock becomes a taskbar with ◂ TERMINAL. Keyed on the
    server-rendered marker, so a direct load never flashes the terminal. */
 :root:has(.graphics-route) { --desktop: #2e4646; background: var(--desktop); }
-/* body stays transparent so the fixed background layer below (teal plus the screen vignette) shows evenly behind the
-   whole desktop instead of stopping where the page's own box ends. */
-:root:has(.graphics-route) body { background: transparent; }
 /* The header stays a full-width dark bar. border-image paints past the box without clipping the SYSTEM dropdown and
    without making the page scroll sideways (its outset is ink overflow); it replaces the border, so the rule is redrawn. */
 :root:has(.graphics-route) .topbar {
@@ -2577,31 +2583,52 @@ html[data-crt="off"] .startup-sequence[data-collapsing] .startup-log { animation
   .reader-toolbar .label-short { display: inline; }
 }
 
+/* Batch 9 (Harold, 2026-10-29: "taller reader page"): in a reader window at least 760 px wide, the size toolbar and the
+   page bar share one row above the page, so the page gains a bar's height. The DOM order is unchanged (toolbar, page,
+   page bar); narrower windows keep the page bar at the bottom, within thumb reach. */
+.comic-reader-window { container: comic-reader / inline-size; }
+@container comic-reader (min-width: 760px) {
+  /* The page bar never shrinks (its NEXT button must stay visible); the size toolbar wraps instead. The stage's own box
+     goes (display: contents), so the page row takes its dark background here. */
+  .comic-reader-content { display: grid; grid-template-columns: minmax(min-content, 1fr) max-content; grid-template-rows: auto minmax(0, 1fr); background: #555; }
+  .comic-page-stage { display: contents; }
+  .comic-page-stage > .art-viewer-toolbar { grid-row: 1; grid-column: 1; }
+  .comic-page-stage > :not(.art-viewer-toolbar) { grid-row: 2; grid-column: 1 / -1; min-height: 0; }
+  .comic-reader-navigation { grid-row: 1; grid-column: 2; justify-content: flex-end; gap: 8px; min-height: 0; padding: 2px 8px; border-top: 0; background: #c0c0c0; }
+}
+
 /* PHONE AND TABLET TAB BAR (design canvas board 5): terminal pages at 860 px and narrower, where the header's section links
    are hidden. Hidden on the grey-window desktop (its taskbar), while a window or the SYSTEM monitor is open, and while a
    text field has focus (the on-screen keyboard). Under the scanlines and the bezel, like the page. */
 .phone-tabs { display: none; }
 @media (max-width: 860px) {
+  /* The bar's height (56 px tabs, 1 px border, the bottom padding), used for everything that has to clear it (8c). */
+  :root { --phone-tabs-height: calc(57px + max(8px, env(safe-area-inset-bottom))); }
   .phone-tabs {
-    position: fixed; left: 0; right: 0; bottom: 0; z-index: 19; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 19; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
     border-top: 1px solid rgba(var(--crt-border-rgb), .3); background: var(--crt-panel);
     padding-bottom: max(8px, env(safe-area-inset-bottom)); /* 8b: room above a phone's home indicator */
   }
   .phone-tabs a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 56px; font-size: 12px; letter-spacing: .06em; color: var(--crt-text); }
   .phone-tabs a[aria-current] { color: var(--crt-bright); text-shadow: var(--crt-glow-ui); }
-  body:has(.phone-tabs) { padding-bottom: 65px; }
+  @media (max-width: 360px) { .phone-tabs a { letter-spacing: 0; } }
+  body:has(.phone-tabs) { padding-bottom: var(--phone-tabs-height); }
   /* Scroll padding: when the browser scrolls a focused control into view, it stops above the bar (stronger than the
      bezel rule); PhoneTabBar moves a control the browser leaves under the bar (WCAG 2.4.11, tested). */
-  html[data-crt] { scroll-padding-bottom: 72px; }
+  html[data-crt] { scroll-padding-bottom: calc(var(--phone-tabs-height) + 7px); }
   body:has(.public-windows > .retro-window, .pixel-monitor:not([hidden]), :is(input, textarea, select):focus) .phone-tabs,
   :root:has(.graphics-route) .phone-tabs { display: none; }
   :root:has(.graphics-route) body { padding-bottom: 0; }
   /* The window dock sits above the bar while the bar shows. */
-  body:not(:has(.public-windows > .retro-window, .pixel-monitor:not([hidden]), .graphics-route)) .public-window-dock { bottom: 72px; }
+  body:not(:has(.public-windows > .retro-window, .pixel-monitor:not([hidden]), .graphics-route)) .public-window-dock { bottom: calc(var(--phone-tabs-height) + 7px); }
 }
 
 /* Batch 8b (review of batch 8). Equipment tabs on phones: the reticle stays inside the scrolling row, and the focused
    tab brightens (the tab colour rule outranked the shared focus colour). */
 .equipment-tabs a:focus-visible { color: var(--crt-bright); }
 /* At 700 px and narrower the tab row scrolls sideways, which clips anything drawn outside it: the reticle stays inside each tab. */
-@media (max-width: 700px) { .equipment-tabs a::after { --reticle-inset: 0px; --reticle-from: 0px; } }
+@media (max-width: 700px) {
+  .equipment-tabs a::after { --reticle-inset: 0px; --reticle-from: 0px; }
+  /* The outline Windows High Contrast draws (the shared transparent outline) stays inside the row too (8c). */
+  .equipment-tabs a { outline-offset: -2px; }
+}

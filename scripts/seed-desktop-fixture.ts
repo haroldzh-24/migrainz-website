@@ -51,6 +51,13 @@ try {
     const clipMedia = await cms.create({ collection: 'media', data: { alt: `Synthetic ${seconds} s schematic clip`, ...pub }, file: { data: clip, name: `fixture-${slug}.mp4`, mimetype: 'video/mp4', size: clip.length } });
     await cms.create({ collection: 'equipment', data: { name, slug, project: project.id, category: 'Signal', schematicEnabled: true, schematicVideo: clipMedia.id, schematicPoster: poster.id, ...pub } });
   }
+  // A schematic video with no poster but with concept art (8c): its card shows the art until the clip's first frame plays.
+  {
+    const clip = await readFile(path.resolve('scripts/fixtures/schematic-6s.mp4'));
+    const clipMedia = await cms.create({ collection: 'media', data: { alt: 'Synthetic 6 s schematic clip (no poster)', ...pub }, file: { data: clip, name: 'fixture-fixture-relay.mp4', mimetype: 'video/mp4', size: clip.length } });
+    await cms.create({ collection: 'equipment', data: { name: 'Fixture Relay', slug: 'fixture-relay', project: project.id, category: 'Signal', schematicEnabled: true, schematicVideo: clipMedia.id,
+      images: [{ media: poster.id, caption: 'Synthetic relay concept' }], ...pub } });
+  }
   const satchel = await cms.create({ collection: 'equipment', data: { name: 'Fixture Satchel', slug: 'fixture-satchel', project: project.id, category: 'Carry', images: [{ media: media.id, caption: 'Synthetic satchel' }], ...pub } });
   await cms.create({ collection: 'characters', data: { name: 'Fixture Operative', slug: 'fixture-operative', project: project.id,
     equipmentAssignments: [{ equipment: scanner.id, designation: 'Unit 7', quantity: 1, notes: 'Synthetic assignment', order: 1 }, { equipment: satchel.id, order: 2 }], ...pub } });

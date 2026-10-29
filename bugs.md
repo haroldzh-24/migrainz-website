@@ -5,25 +5,34 @@
 ### 2026-10-29 - Batch 8: open questions and limits
 
 - Cost (Harold asked for always-turning thumbnails): every card on screen plays its schematic video through `/api/media/file` (a function call and a Blob read per request; responses are `private, no-store`). Measured in the fixture (corrected in 8b): one request per video file on load, three files (the two test clips and the scanner's stub video, which fails and shows its poster), and no request during a full 12 s loop. Not measured: real-size schematic files (the test clips are 33 KB and 49 KB; with `no-store` a browser may fetch a large file again when it loops), production request counts, Vercel or Blob usage. Since 8b the cards and the phone tab bar do not prefetch their pages (in production every link on screen would otherwise prefetch; `next dev`, which the tests use, never does, so this is not tested); the switch still fetches the route at the click. Videos only load within 200 px of the screen and pause off screen; once loaded they stay in memory until the page is left.
-- Reader: FIT HEIGHT gives 533 px at 1366x768 and 665 px at 1440x900 instead of board 4's 690/850, because the page-turn row stays separate from the size row.
-- Tab bar: board 5's four tabs leave TRACKER without a phone tab (it is in the homepage directory). Harold's call.
+- Reader: FIT HEIGHT gave 533 px at 1366x768 and 665 px at 1440x900 instead of board 4's 690/850. Harold, 2026-10-29: "taller reader page"; batch 9 puts the page bar on the size toolbar's row in windows at least 760 px wide: 564 px and 696 px now. The rest of the gap is the header above the windows (board 14), the window frame and the toolbar row.
+- Tab bar: board 5's four tabs left TRACKER without a phone tab. Harold, 2026-10-29: add it; five tabs since batch 9.
+- Harold, 2026-10-29: keep the always-turning thumbnails (the cost note above stands; real request counts to be measured on the live site).
 - A spinner's video, once near the screen, stays loaded while the page is open (paused off screen).
 - Tab bar on iPhones: the bar pads its bottom by the safe area (8b), but the site sets no `viewport-fit=cover`, so that value is 0 and the bar sits above the home indicator area as any fixed bar does; not checked on a device. Board 5 shows 14 px of bottom padding; the build has 8 px.
-- Not tested (8b): the concept-art fallback for an item whose video has no poster (no fixture item has a video without a poster).
+- ~~Not tested (8b): the concept-art fallback for an item whose video has no poster.~~ Tested since 8c (Fixture Relay).
+- No dedicated test yet (6c/7c, listed by the 8b review): the idle caption following a CRT-mode or reduced-motion change, the lens dropping a sample that went stale while loading, the motion helper reading the latest visibility entry.
 - Status: Open; questions for Harold.
+
+### 2026-10-29 - Flaky timing check: Watcher jitter snap-back (batch 9 check)
+
+- Batch 9's first full check (`check-20261029-155800`) failed one assertion in `verify-interaction-polish.mjs`: "each jitter snaps back within ~90ms" (it allows 250 ms). The test watches three pages at once for 10.5 s on a 2-core machine while `next dev` serves them, so one long main-thread task delays the 90 ms timer.
+- Not caused by batch 9: a probe with three pages at once measured 90-94 ms snap-backs both with batch 9's transparent body and with the old opaque one injected (two runs each), and the script passed alone right after. The regression step was re-run; see the batch 9 changelog entry.
+- Possible hardening (not done): judge each snap-back against the longest long task seen in that page, or watch the three pages one after another.
+- Status: Open (test robustness only).
 
 ### 2026-10-29 - Homepage: left as is after the batch 6 review (6b)
 
 - Text sizes: the directory previews and the operations phase labels stay 12 px (data labels); body rows are 14 px since 6b. Redesign plan step 1a asks 14 px for row titles; Harold may want the previews larger (they would then need a wider preview panel).
 - The old homepage's CSS rules (`.home-terminal*`, `.desktop-launchers`, `.home-feed*`, `.home-project-*`, `.home-directory-row`) are unused but still in globals.css and in the reticle selector list; removing them is a separate clean-up.
-- The boot's power-on plays mostly behind the announcement window (seen in a headless screenshot at 1366); whether the announcement should wait for it is a design question for Harold.
+- ~~The boot's power-on plays mostly behind the announcement window.~~ Fixed in batch 9 (Harold, 2026-10-29: "Boot power-on visible"): the announcement opens once the power-on has played.
 ### 2026-10-29 - Mode switch: known limits (batch 7)
 
 - A link to a grey-window path that turns out to be missing or locked (for example `/projects/blushland/characters/no-such`, a locked chapter) prints "switching to graphics mode" and then lands on the terminal 404 or locked page, because the switch decides from the path before the page exists.
 - Windows opened over a terminal page (the Art Viewer, the access-denied window) stay open over the terminal after the reverse switch, although the redesign plan says windows never sit directly on the terminal.
 - The click is handled before next/link; a terminal-page link that runs its own click handler must carry `data-mode-switch="off"` to keep the switch out of it.
 - Real timing on Vercel (a cold function makes the black hold longer) and the full route fetch at the click are not checked live; the fixture runs `next dev`, where Next does not prefetch.
-- Pre-existing, found by the plan review: the fixed background layer (`body::before`, with the screen vignette) is painted under body's own background, so the vignette only shows below short pages (seen as a band at about y=715 in `test-results/site-health/1366_patreon.png`). docs/redesign-plan.md "Theme" describes a vignette that mostly is not drawn. Not changed here (the CRT look is Harold's call).
+- ~~Pre-existing, found by the plan review: the fixed background layer (`body::before`, with the screen vignette) is painted under body's own background, so the vignette only shows below short pages.~~ Fixed in batch 9 (Harold, 2026-10-29: "Fix CRT vignette order"): body is transparent, so the vignette shows behind every page. The layer's second gradient, a faint haze at the top centre (also never seen), was dropped rather than shown: it would have lightened the background behind the header's dim text in every CRT mode. The text contrast figures in bugs.md "CRT vignette contrast" (2026-10-26) were measured while the vignette was not drawn; the vignette only darkens the background, so text contrast can only rise, but those figures were not re-measured.
 - Status: Open; recorded for Harold.
 
 ### 2026-10-29 - New homepage checked only in headless Chromium

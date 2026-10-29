@@ -25,7 +25,9 @@ const DATA_WAIT_MS = 2000;
 const passiveKeys = new Set(["Tab", "Shift", "Control", "Alt", "Meta", "CapsLock", "s", "S"]);
 
 export default function StartupSequence({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<"boot" | "announcement" | "closed">("boot");
+  // "power": the boot screen is gone and the page powers on with nothing over it (board 17; Harold, 2026-10-29: the
+  // power-on should be seen), then the announcement opens.
+  const [state, setState] = useState<"boot" | "power" | "announcement" | "closed">("boot");
   // The boot screen's collapse is playing; the page powers on (CSS) once it ends.
   const [collapsing, setCollapsing] = useState(false);
   const [count, setCount] = useState(0);
@@ -88,7 +90,8 @@ export default function StartupSequence({ children }: { children: ReactNode }) {
   // The boot finishes once: a second key or click during the collapse, or the boot data arriving then, changes nothing.
   const finishing = useRef(false);
   const showTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  useEffect(() => () => clearTimeout(showTimer.current), []);
+  const powerTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => { clearTimeout(showTimer.current); clearTimeout(powerTimer.current); }, []);
   const finishBoot = () => {
     if (finishing.current) return;
     finishing.current = true;
@@ -98,15 +101,19 @@ export default function StartupSequence({ children }: { children: ReactNode }) {
     const plain = window.matchMedia("(prefers-reduced-motion: reduce)").matches || document.documentElement.dataset.crt === "off";
     const show = () => {
       setCollapsing(false);
-      setState(current => current === "boot" ? "announcement" : current);
       // Power-on (board 17): only the page's <main> scales up from a line, never the wrapper with the fixed layers
       // (CRT overlay, header, windows); the class goes again once every staggered panel has risen (560ms for <main>, up
       // to 300 + 520ms for the panels). A timer, not animationend: the panels' own animationend events bubble to <main>.
+      // The announcement waits for it, so the power-on plays in full view.
       const main = !plain ? contentRef.current?.querySelector<HTMLElement>("main.shell") : null;
       if (main) {
         main.classList.add("power-on");
-        setTimeout(() => main.classList.remove("power-on"), POWER_ON_MS);
-      }
+        setState(current => current === "boot" ? "power" : current);
+        powerTimer.current = setTimeout(() => {
+          main.classList.remove("power-on");
+          setState(current => current === "power" ? "announcement" : current);
+        }, POWER_ON_MS);
+      } else setState(current => current === "boot" ? "announcement" : current);
       powerOn();
     };
     if (plain) { show(); return; }
@@ -183,7 +190,11 @@ export default function StartupSequence({ children }: { children: ReactNode }) {
     return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); };
   }, [state, soundOn, setSound]);
   useEffect(() => {
-    if (state === "announcement") enterRef.current?.focus();
+    // The announcement takes focus unless the visitor already moved into the page (possible during the power-on).
+    if (state === "announcement") {
+      const active = document.activeElement;
+      if (!active || active === document.body || windowRef.current?.contains(active)) enterRef.current?.focus();
+    }
     if (state === "closed" && restoreFocus.current) contentRef.current?.querySelector<HTMLElement>("#top")?.focus({ preventScroll: true });
   }, [state]);
   const close = () => {
@@ -207,8 +218,10 @@ export default function StartupSequence({ children }: { children: ReactNode }) {
   }, [state]);
   return <>
     {state !== "closed" && <div className="startup-sequence" data-phase={state} data-collapsing={collapsing || undefined} onClick={state === "boot" ? finishBoot : undefined} style={{ position: "fixed", inset: 0, background: state === "boot" ? "var(--crt-deep-lo)" : "transparent", zIndex: state === "boot" ? 10000 : foreground ? 42 : 40, pointerEvents: state === "boot" ? "auto" : "none" }}>
+      {/* During "power" the same window stays mounted but hidden (nothing in it can take focus), so the boot window and the
+          announcement remain one element and the page knows a startup window is up (the shop ad and Escape check for it). */}
       <div ref={windowRef} className="startup-takeover startup-window" role="dialog" aria-modal={state === "boot" ? true : undefined} aria-labelledby="startup-title" tabIndex={-1}
-        style={state === "announcement" && position ? { left: position.x, top: position.y, right: "auto", bottom: "auto", transform: "none" } : undefined}
+        style={state === "power" ? { visibility: "hidden" } : state === "announcement" && position ? { left: position.x, top: position.y, right: "auto", bottom: "auto", transform: "none" } : undefined}
         onKeyDown={event => {
           if (event.key === "Escape") { event.preventDefault(); close(); }
           if (event.key === "Tab" && state === "boot") {
