@@ -1,5 +1,10 @@
 # Features
 
+## Implemented - 2026-10-29 / Art Viewer filmstrip and captions, decoding art (batch 10, boards 9 and 10)
+
+- Art Viewer: a caption panel beside the picture in a wide window (under it in a narrow one, kept when maximized) with `IMAGE n / m`, the record's name, project and role, the image's caption and the record's description, and OPEN RECORD on any page but the record's own; a larger filmstrip with the shown image marked; Left / Right step through the images and + / − / 0 zoom and fit with focus anywhere in the window.
+- Artwork that is slow to arrive shows a blurred copy of its thumbnail at its final size with a DECODING label; in the Art Viewer it then scans in from the top (CRT "on", motion allowed). The comic reader shows the placeholder only, so page turns stay quick; 0 in the reader goes back to its own fit.
+
 ## Implemented - 2026-10-29 / Harold's design calls (batch 9)
 
 - A fifth phone tab, TRACKER.

@@ -118,7 +118,7 @@ const { chromium } = require(
       else await page.keyboard.press(skip);
       // The collapse (320 ms) and the page's power-on (900 ms, batch 9) come before the announcement.
       await page.locator('.startup-sequence[data-phase="announcement"]').waitFor({ timeout: 2500 });
-      assert.ok(Date.now() - started < 2500, `${skip} skips the checklist`);
+      assert.ok(Date.now() - started < 1900, `${skip} skips the checklist (${Date.now() - started} ms)`);
       await page.waitForTimeout(200);
       assert.equal(await page.locator('.startup-sequence').getAttribute('data-phase'), 'announcement', `${skip} does not dismiss the ad`);
       assert.equal(await page.evaluate(() => document.activeElement?.textContent), 'ENTER');
@@ -275,7 +275,7 @@ const { chromium } = require(
       assert.equal(await art.getAttribute('href'), '/projects/blushland#gallery-regression-art');
       await art.click();
       await page.getByRole('tab', { name: 'REGRESSION ART', exact: true }).waitFor();
-      await page.waitForFunction(() => { const img = document.querySelector('.art-viewer-canvas img'); return img?.complete && img.naturalWidth > 0; });
+      await page.waitForFunction(() => { const img = document.querySelector('.art-viewer-canvas img.art-viewer-image'); return img?.complete && img.naturalWidth > 0; });
       assert.equal(await page.locator('.art-viewer-canvas').evaluate(el => { const canvas = el.getBoundingClientRect(); const image = el.querySelector('img').getBoundingClientRect(); return image.bottom <= canvas.bottom && image.right <= canvas.right; }), true);
       await page.screenshot({ path: 'test-results/phase5-artwork.png' });
       await page.getByRole('button', { name: 'Minimize ART VIEWER', exact: true }).click();
@@ -328,24 +328,24 @@ const { chromium } = require(
     assert.equal(await previous.isDisabled(), true);
     await next.click();
     assert.match(
-      await page.locator(".comic-page-stage .art-viewer-canvas img").getAttribute("src"),
+      await page.locator(".comic-page-stage .art-viewer-canvas img.art-viewer-image").getAttribute("src"),
       /02.svg/,
     );
     await next.press("ArrowRight");
     assert.equal(await next.isDisabled(), true);
     assert.match(
-      await page.locator(".comic-page-stage .art-viewer-canvas img").getAttribute("src"),
+      await page.locator(".comic-page-stage .art-viewer-canvas img.art-viewer-image").getAttribute("src"),
       /03.svg/,
     );
     await page.getByLabel("Go to page").selectOption("0");
     assert.equal(await previous.isDisabled(), true);
     await page.waitForFunction(() => {
-      const img = document.querySelector('.comic-page-stage .art-viewer-canvas img');
+      const img = document.querySelector('.comic-page-stage .art-viewer-canvas img.art-viewer-image');
       return img?.complete && img.naturalWidth > 0;
     });
     assert.equal(
       await page
-        .locator(".comic-page-stage .art-viewer-canvas img")
+        .locator(".comic-page-stage .art-viewer-canvas img.art-viewer-image")
         .evaluate((img) => img.complete && img.naturalWidth > 0),
       true,
     );
@@ -478,7 +478,7 @@ const { chromium } = require(
     await touch.goto("/comics/blushland/chapter-01");
     await touch.getByRole("button", { name: "NEXT", exact: true }).first().tap();
     assert.match(
-      await touch.locator(".comic-page-stage .art-viewer-canvas img").getAttribute("src"),
+      await touch.locator(".comic-page-stage .art-viewer-canvas img.art-viewer-image").getAttribute("src"),
       /02.svg/,
     );
     assert.equal(

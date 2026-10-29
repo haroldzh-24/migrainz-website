@@ -148,11 +148,15 @@ try {
     await fresh('/projects/fixture/equipment/poster-only', seedTabs([tab('poster-only', 'MP5 10MM Company Custom', [], posterImage)]));
     await viewer(page).waitFor();
     await focusInViewer(page, 'restored tab');
-    assert.equal(await viewer(page).locator('.art-viewer-canvas img').getAttribute('src'), '/poster.svg');
+    assert.equal(await viewer(page).locator('.art-viewer-canvas img.art-viewer-image').getAttribute('src'), '/poster.svg');
     assert.match(await viewer(page).textContent(), /SHOWING SCHEMATIC POSTER/);
     await onScreen(page, page.getByRole('button', { name: 'Close ART VIEWER' }), 'close button');
     await page.screenshot({ path: path.join(output, `${name}-3-viewer-poster.png`) });
-    assert.equal(await page.getByRole('link', { name: 'OPEN ITEM PAGE' }).getAttribute('href'), '/projects/fixture/equipment/poster-only');
+    // OPEN RECORD (batch 10) leads to the record from any other page; on the record's own page there is no link to itself.
+    assert.equal(await page.getByRole('link', { name: 'OPEN RECORD' }).count(), 0, 'no link to the page already shown');
+    await fresh('/projects/fixture/equipment', seedTabs([tab('poster-only', 'MP5 10MM Company Custom', [], posterImage)]));
+    await viewer(page).waitFor();
+    assert.equal(await viewer(page).getByRole('link', { name: 'OPEN RECORD' }).getAttribute('href'), '/projects/fixture/equipment/poster-only');
 
     // Nothing at all: placeholder plus a link to the item page; and no button to reach it from the page.
     await fresh('/projects/fixture/equipment/bare');
@@ -173,8 +177,8 @@ try {
     await page.getByRole('button', { name: 'OPEN IN ART VIEWER' }).click();
     await viewer(page).waitFor();
     await focusInViewer(page, 'opened from the item page button');
-    assert.equal(await viewer(page).locator('.art-viewer-canvas img').getAttribute('src'), '/concept.svg');
-    await page.waitForFunction(() => document.querySelector('.art-viewer-canvas img')?.naturalWidth > 0 && document.querySelector('.art-viewer-canvas img').style.visibility !== 'hidden');
+    assert.equal(await viewer(page).locator('.art-viewer-canvas img.art-viewer-image').getAttribute('src'), '/concept.svg');
+    await page.waitForFunction(() => document.querySelector('.art-viewer-canvas img.art-viewer-image')?.naturalWidth > 0 && document.querySelector('.art-viewer-canvas img.art-viewer-image').style.visibility !== 'hidden');
     for (const label of ['Close ART VIEWER', 'Minimize ART VIEWER']) await onScreen(page, page.getByRole('button', { name: label }), `${label} with large artwork`);
     await page.screenshot({ path: path.join(output, `${name}-5-viewer-artwork.png`) });
     await fresh('/projects/fixture/equipment/with-art', seedTabs([tab('with-art', 'Equipment With Concept Art', [conceptImage]), tab('poster-only', 'MP5 10MM Company Custom', [], posterImage), tab('bare', 'Equipment With Nothing Filed', [])]));

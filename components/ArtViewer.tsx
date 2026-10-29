@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, type PointerEvent } from "react";
+import { usePathname } from "next/navigation";
+import { useEffect, useId, useRef, useState, type MutableRefObject, type PointerEvent } from "react";
 import { RetroWindow, useWindowManager, viewerClosedKey, type ViewerImage } from "@/components/WindowManager";
 
 // scale null = fitted: to the whole frame by default, or to the frame's height or width (the comic reader's FIT HEIGHT
@@ -11,7 +12,21 @@ export const fitView: View = { scale: null, x: 0, y: 0 };
 export const fitHeightView: View = { scale: null, x: 0, y: 0, fit: "height" };
 export const fitWidthView: View = { scale: null, x: 0, y: 0, fit: "width", top: true };
 
-export function ArtworkCanvas({ image, view, onChange, schematic = false, reader = false, onFitChosen }: { image: ViewerImage; view: View; onChange: (view: View) => void; schematic?: boolean; reader?: boolean; onFitChosen?: (fit: "height" | "width") => void }) {
+/** A key the canvas can act on (zoom, fit, pan); returns true when it did. */
+export type CanvasKeys = (key: string) => boolean;
+
+/** The file name the DECODING label shows: the last part of the media path, without a query. */
+function fileLabel(src?: string) {
+  if (!src) return "";
+  const last = src.split("?")[0].split("/").filter(Boolean).pop() ?? "";
+  try { return decodeURIComponent(last); } catch { return last; }
+}
+
+/**
+ * `keys`: filled with the canvas's key handler, so a window can let the canvas act on a key wherever focus is inside it.
+ * `scan`: a slow image scans in when it arrives (Art Viewer); the comic reader shows it at once, so page turns stay quick.
+ */
+export function ArtworkCanvas({ image, view, onChange, schematic = false, reader = false, onFitChosen, keys, scan = false }: { image: ViewerImage; view: View; onChange: (view: View) => void; schematic?: boolean; reader?: boolean; onFitChosen?: (fit: "height" | "width") => void; keys?: MutableRefObject<CanvasKeys | null>; scan?: boolean }) {
   const canvas = useRef<HTMLDivElement>(null);
   const [space, setSpace] = useState({ width: 0, height: 0 });
   const [natural, setNatural] = useState({ width: 0, height: 0 });
@@ -23,6 +38,20 @@ export function ArtworkCanvas({ image, view, onChange, schematic = false, reader
   const change = useRef(onChange);
   change.current = onChange;
   const [dragging, setDragging] = useState(false);
+  // Decoding (design canvas board 10): an image still loading after 150 ms gets a blurred copy of its thumbnail at the
+  // size it will have and a DECODING label; a cached image shows neither. In the Art Viewer a slow image then scans in
+  // from the top (CRT "on", motion allowed); otherwise it simply appears.
+  const [slow, setSlow] = useState(false);
+  const [decode, setDecode] = useState<"loading" | "scan" | "done">("loading");
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSlow(true), 150);
+    return () => window.clearTimeout(timer);
+  }, []);
+  useEffect(() => {
+    if (decode !== "scan") return;
+    const timer = window.setTimeout(() => setDecode("done"), 460);
+    return () => window.clearTimeout(timer);
+  }, [decode]);
 
   useEffect(() => {
     const element = canvas.current;
@@ -33,8 +62,9 @@ export function ArtworkCanvas({ image, view, onChange, schematic = false, reader
   }, []);
 
   const ready = natural.width > 0 && natural.height > 0 && space.width > 0 && space.height > 0;
-  const fit = !ready ? 1 : view.fit === "height" ? space.height / natural.height : view.fit === "width" ? space.width / natural.width
-    : Math.min(space.width / natural.width, space.height / natural.height);
+  const fitFor = (width: number, height: number) => view.fit === "height" ? space.height / height : view.fit === "width" ? space.width / width
+    : Math.min(space.width / width, space.height / height);
+  const fit = !ready ? 1 : fitFor(natural.width, natural.height);
   const minimum = Math.min(0.1, fit);
   // Zoom in up to 4x, or 4x the fitted size for a small image fitted large (the reader's FIT HEIGHT), so pinching in always works.
   const maximum = Math.max(4, fit * 4);
@@ -150,6 +180,43 @@ export function ArtworkCanvas({ image, view, onChange, schematic = false, reader
     };
   }, []);
 
+  // + (with or without Shift) and = zoom in, - zooms out, 0 fits (the reader handles 0 itself: back to its own fit);
+  // arrows pan a zoomed image. An arrow that cannot move the artwork further is left alone: the reader turns the page and
+  // the Art Viewer shows the next image with it.
+  const act: CanvasKeys = (key) => {
+    if (!ready) return false;
+    if (key === "+" || key === "=") { zoom(live.current.scale * 1.25); return true; }
+    if (key === "-" || key === "_") { zoom(live.current.scale / 1.25); return true; }
+    if (key === "0" && !reader) { reset(fitView); return true; }
+    if (!pannable || !["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(key)) return false;
+    const nx = Math.max(-limitX, Math.min(limitX, x + (key === "ArrowLeft" ? 40 : key === "ArrowRight" ? -40 : 0)));
+    const ny = Math.max(-limitY, Math.min(limitY, y + (key === "ArrowUp" ? 40 : key === "ArrowDown" ? -40 : 0)));
+    if (nx === x && ny === y) return false;
+    onChange({ scale: view.scale, fit: view.fit, x: nx, y: ny });
+    return true;
+  };
+  useEffect(() => {
+    if (!keys) return;
+    keys.current = act;
+    return () => { if (keys.current === act) keys.current = null; };
+  });
+
+  const box = { width: natural.width * scale, height: natural.height * scale, transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))` };
+  // The placeholder takes the size the image will have: from the CMS's width and height before it arrives (the
+  // derivative being loaded has the same proportions), with the same fit, FIT WIDTH from the top.
+  const source = sources[sourceIndex];
+  const placeholderSrc = !schematic && image.thumbnailSrc && image.thumbnailSrc !== source ? image.thumbnailSrc : undefined;
+  const placeholderBox = (() => {
+    if (!placeholderSrc || failed) return null;
+    if (ready) return box;
+    const width = image.width ?? 0, height = image.height ?? 0;
+    if (!width || !height || !space.width || !space.height) return null;
+    const f = fitFor(width, height);
+    const top = view.top ? Math.max(0, (height * f - space.height) / 2) : 0;
+    return { width: width * f, height: height * f, transform: `translate(-50%, calc(-50% + ${top}px))` };
+  })();
+  const decoding = slow && !failed && decode !== "done";
+
   return <>
     {reader ? <div className="art-viewer-toolbar reader-toolbar" role="group" aria-label="Page size">
       {/* Short labels on phones (CSS), so the row fits 320 px; the visible text is the accessible name either way. */}
@@ -167,15 +234,10 @@ export function ArtworkCanvas({ image, view, onChange, schematic = false, reader
       <output aria-label="Artwork scale" data-scale={ready ? Math.round(scale * 100) : undefined}>{failed ? "UNAVAILABLE" : ready ? `${Math.round(scale * 100)}%` : "LOADING"}</output>
     </div>}
     <div ref={canvas} className="art-viewer-canvas" data-pannable={pannable} data-dragging={dragging}
-      tabIndex={pannable ? 0 : undefined} role="group" aria-label="Artwork canvas; drag or use arrow keys to pan when zoomed"
+      tabIndex={ready ? 0 : undefined} role="group" aria-label="Artwork canvas; plus and minus zoom; drag or use arrow keys to pan when zoomed"
       onKeyDown={(event) => {
-        if (!pannable || !["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) return;
-        const nx = Math.max(-limitX, Math.min(limitX, x + (event.key === "ArrowLeft" ? 40 : event.key === "ArrowRight" ? -40 : 0)));
-        const ny = Math.max(-limitY, Math.min(limitY, y + (event.key === "ArrowUp" ? 40 : event.key === "ArrowDown" ? -40 : 0)));
-        // An arrow that cannot move the artwork further is left alone (the reader turns the page with it).
-        if (nx === x && ny === y) return;
-        event.preventDefault();
-        onChange({ scale: view.scale, fit: view.fit, x: nx, y: ny });
+        if (event.altKey || event.ctrlKey || event.metaKey || event.nativeEvent.isComposing) return;
+        if (act(event.key)) event.preventDefault();
       }}
       onContextMenu={(event) => event.preventDefault()}
       onPointerDown={(event) => {
@@ -199,13 +261,20 @@ export function ArtworkCanvas({ image, view, onChange, schematic = false, reader
         transform(previousDistance > 0 ? distance(after) / previousDistance : 1, midpoint(before), midpoint(after));
       }}
       onPointerUp={stopPan} onPointerCancel={stopPan} onLostPointerCapture={stopPan}>
-      <img data-schematic={schematic || undefined} src={sources[sourceIndex]} alt={image.alt} draggable={false}
+      {decoding && placeholderBox && <img className="art-viewer-decode" src={placeholderSrc} alt="" aria-hidden="true" draggable={false} style={placeholderBox} />}
+      <img className="art-viewer-image" data-schematic={schematic || undefined} data-reveal={decode === "scan" || undefined} src={source} alt={image.alt} draggable={false}
         onError={() => {
           if (sourceIndex + 1 < sources.length) setSourceIndex(sourceIndex + 1);
           else setFailed(true);
         }}
-        onLoad={(event) => setNatural({ width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight })}
-        style={ready ? { width: natural.width * scale, height: natural.height * scale, transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))` } : { visibility: "hidden" }} />
+        onLoad={(event) => {
+          setNatural({ width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight });
+          const motion = scan && slow && document.documentElement.dataset.crt === "on" && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+          setDecode(motion ? "scan" : "done");
+        }}
+        style={ready ? box : { visibility: "hidden" }} />
+      {decode === "scan" && ready && <span className="art-viewer-scan" aria-hidden="true" style={box} />}
+      {decoding && !ready && <span className="art-viewer-decoding" aria-hidden="true">DECODING {fileLabel(source)}</span>}
       {failed && <div className="art-viewer-placeholder">ARTWORK UNAVAILABLE</div>}
     </div>
   </>;
@@ -213,7 +282,11 @@ export function ArtworkCanvas({ image, view, onChange, schematic = false, reader
 
 export default function ArtViewer() {
   const { viewerTabs, activeViewerTab, switchViewerTab, closeViewerTab, closeWindow, windows, toggleMaximizeWindow } = useWindowManager();
+  const pathname = usePathname();
+  const headingId = useId();
   const [imageIndex, setImageIndex] = useState(0);
+  const strip = useRef<HTMLDivElement>(null);
+  const canvasKeys = useRef<CanvasKeys | null>(null);
   const [views, setViews] = useState<Record<string, View>>({});
   const normalViews = useRef<Record<string, View>>({});
   // Restored tabs reopen the viewer after a reload only if it was open (bugs.md 2026-10-27).
@@ -223,6 +296,15 @@ export default function ArtViewer() {
   const active = viewerTabs.find((tab) => tab.id === activeViewerTab) ?? viewerTabs[0];
 
   useEffect(() => setImageIndex(0), [active?.id]);
+  const count = active?.images.length ?? 0;
+  // The shown image's thumbnail stays in view in the filmstrip; only the strip scrolls, never the page.
+  useEffect(() => {
+    const row = strip.current, current = row?.querySelector<HTMLElement>('[aria-current="true"]');
+    if (!row || !current) return;
+    const outer = row.getBoundingClientRect(), inner = current.getBoundingClientRect();
+    const left = inner.left < outer.left ? row.scrollLeft + inner.left - outer.left - 8 : inner.right > outer.right ? row.scrollLeft + inner.right - outer.right + 8 : null;
+    if (left !== null) row.scrollTo({ left, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  }, [imageIndex, active?.id]);
   // Escape closes the viewer whenever it is open, also after another window took focus (bugs.md 2026-10-22). One Escape
   // closes one thing: it listens on window, after the document-level handlers (inspector, promo and monitor windows),
   // skips keys they already handled, leaves the boot/announcement window and text fields alone, and ignores auto-repeat.
@@ -239,6 +321,34 @@ export default function ArtViewer() {
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
   }, [closeable, closeWindow]);
+  // Keys inside the viewer window (design canvas board 9), wherever focus is in it: the canvas acts first (zoom, fit, a
+  // zoomed image pans); otherwise Left / Right show the previous / next image (not on auto-repeat, so holding an arrow
+  // to pan never races through the images). Tabs, form fields, shortcuts and keys already handled are left alone.
+  const position = useRef({ index: imageIndex, count });
+  position.current = { index: imageIndex, count };
+  useEffect(() => {
+    if (!closeable) return;
+    let frame: number | null = null;
+    const key = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.isComposing) return;
+      const target = event.target instanceof Element ? event.target : null;
+      if (!target?.closest(".art-viewer-window") || target.closest('[role="tab"], input, select, textarea, [contenteditable]')) return;
+      if (canvasKeys.current?.(event.key)) { event.preventDefault(); return; }
+      if ((event.key !== "ArrowLeft" && event.key !== "ArrowRight") || event.shiftKey || event.repeat) return;
+      const { index, count: total } = position.current;
+      const next = index + (event.key === "ArrowRight" ? 1 : -1);
+      if (next < 0 || next >= total) return;
+      event.preventDefault();
+      setImageIndex(next);
+      // From the filmstrip, focus follows the shown image.
+      if (target.closest(".art-viewer-thumbs")) frame = requestAnimationFrame(() => strip.current?.querySelector<HTMLElement>('[aria-current="true"]')?.focus());
+    };
+    window.addEventListener("keydown", key);
+    return () => {
+      window.removeEventListener("keydown", key);
+      if (frame !== null) cancelAnimationFrame(frame);
+    };
+  }, [closeable]);
   if (!active) return null;
   const artwork = active.images[imageIndex] ?? active.images[0];
   // With no artwork, fall back to the poster; with neither, offer the item page instead of a dead end.
@@ -265,17 +375,28 @@ export default function ArtViewer() {
       toggleMaximizeWindow("art-viewer");
     }}
   >
-    {image ? <ArtworkCanvas key={viewKey} schematic={!artwork} image={image} view={views[viewKey] ?? fitView} onChange={(view) => setViews((current) => ({ ...current, [viewKey]: view }))} /> : <div className="art-viewer-canvas"><div className="art-viewer-placeholder">NO PUBLIC ARTWORK FILED<br /><Link className="art-viewer-page-link" href={active.href} prefetch={false} onClick={() => closeWindow("art-viewer")}>OPEN {active.title.toUpperCase()} PAGE</Link></div></div>}
-    {active.images.length > 1 && <div className="art-viewer-thumbs" aria-label={`${active.title} artwork pages`}>
-      {active.images.map((item, index) => <button type="button" key={`${item.src}-${index}`} className={index === imageIndex ? "is-active" : ""} aria-label={`Show image ${index + 1}`} onClick={() => setImageIndex(index)}>
+    {image ? <ArtworkCanvas key={viewKey} schematic={!artwork} scan keys={canvasKeys} image={image} view={views[viewKey] ?? fitView} onChange={(view) => setViews((current) => ({ ...current, [viewKey]: view }))} /> : <div className="art-viewer-canvas"><div className="art-viewer-placeholder">NO PUBLIC ARTWORK FILED<br /><Link className="art-viewer-page-link" href={active.href} prefetch={false} onClick={() => closeWindow("art-viewer")}>OPEN {active.title.toUpperCase()} PAGE</Link></div></div>}
+    {/* Caption (board 9): beside the canvas in a window at least 760 px wide, under it otherwise (CSS container query).
+        A plain group, not a landmark: it sits inside the window's own region. It scrolls when the text is long, so it
+        takes focus for keyboard scrolling. */}
+    <div className="art-viewer-meta" role="group" aria-labelledby={headingId} tabIndex={0}>
+      {count > 1 && <output className="art-viewer-position">IMAGE {imageIndex + 1} / {count}</output>}
+      <h2 id={headingId}>{active.title}</h2>
+      <p className="art-viewer-context">{active.project}{active.role ? ` / ${active.role}` : ""}</p>
+      {image?.caption && <p className="art-viewer-caption">{image.caption}</p>}
+      {active.description && <p className="art-viewer-description">{active.description}</p>}
+      {!artwork && image && <p className="art-viewer-note">NO CONCEPT ART FILED. SHOWING SCHEMATIC POSTER.</p>}
+      {/* Every page but the record's own (a gallery tab's link carries a #hash). */}
+      {image && pathname !== active.href.split("#")[0] && <p><Link className="art-viewer-page-link" href={active.href} prefetch={false} onClick={() => closeWindow("art-viewer")}>OPEN RECORD<span aria-hidden="true"> ▸</span></Link></p>}
+      {image && <p className="art-viewer-hint" aria-hidden="true">drag to pan{count > 1 ? " · ← → images" : ""} · + − zoom</p>}
+    </div>
+    {count > 1 && <div className="art-viewer-thumbs" role="group" aria-label={`${active.title} images`} ref={strip}>
+      {active.images.map((item, index) => <button type="button" key={`${item.src}-${index}`} className={index === imageIndex ? "is-active" : ""}
+        aria-current={index === imageIndex ? "true" : undefined}
+        aria-label={`Image ${index + 1} of ${count}${item.alt && item.alt !== active.title ? `: ${item.alt}` : ""}`}
+        onClick={() => setImageIndex(index)}>
         <img src={item.thumbnailSrc ?? item.src} alt="" loading="lazy" />
       </button>)}
     </div>}
-    <div className="art-viewer-meta">
-      <div><strong>{active.title}</strong><span>{active.project}{active.role ? ` / ${active.role}` : ""}</span></div>
-      {active.description && <p>{active.description}</p>}
-      {image?.caption && <small>{image.caption}</small>}
-      {!artwork && <small>{image ? "NO CONCEPT ART FILED. SHOWING SCHEMATIC POSTER. " : ""}{image && <Link className="art-viewer-page-link" href={active.href} prefetch={false} onClick={() => closeWindow("art-viewer")}>OPEN ITEM PAGE</Link>}</small>}
-    </div>
   </RetroWindow>;
 }

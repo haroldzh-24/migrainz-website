@@ -14,6 +14,14 @@
 - No dedicated test yet (6c/7c, listed by the 8b review): the idle caption following a CRT-mode or reduced-motion change, the lens dropping a sample that went stale while loading, the motion helper reading the latest visibility entry.
 - Status: Open; questions for Harold.
 
+### 2026-10-29 - Batch 10: Art Viewer and decoding limits
+
+- PREV / NEXT RECORD (board 9) is not built: the viewer only knows the records whose tabs are open; neighbours would need every opener to pass a list.
+- The decoding placeholder needs the image's width and height from the CMS (older uploads without them get the DECODING label only) and a thumbnail that is a different file from the image being loaded (SVGs and legacy uploads without size variants get none). No progress percentage: an image element gives none.
+- The reader's wide-window row with no size toolbar (a classified, unavailable or empty page; 9b) has no test: the fixture has no such page.
+- Checked only in headless Chromium: container queries and `display: contents` in the reader and the viewer, the filmstrip's smooth scroll, keyboard behaviour in Safari and Firefox.
+- Status: Open (recorded).
+
 ### 2026-10-29 - Flaky timing check: Watcher jitter snap-back (batch 9 check)
 
 - Batch 9's first full check (`check-20261029-155800`) failed one assertion in `verify-interaction-polish.mjs`: "each jitter snaps back within ~90ms" (it allows 250 ms). The test watches three pages at once for 10.5 s on a 2-core machine while `next dev` serves them, so one long main-thread task delays the 90 ms timer.

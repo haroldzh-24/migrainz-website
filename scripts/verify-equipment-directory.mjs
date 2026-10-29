@@ -114,12 +114,20 @@ try {
       };
       new MutationObserver(check).observe(document, { subtree: true, childList: true, attributes: true });
     });
-    let held = false;
-    await page.route('**/api/media/file/fixture-fixture-relay.mp4', async route => { if (!held) { held = true; await new Promise(resolve => setTimeout(resolve, 1000)); } await route.continue(); });
-    await page.goto(base + DIRECTORY);
+    // Every request for the clip (the browser may cancel one and ask again with a range) waits until the test releases it.
+    // A loading video delays the load event, so the page is only waited for up to DOMContentLoaded.
+    let release;
+    const gate = new Promise(resolve => { release = resolve; });
+    await page.route('**/api/media/file/fixture-fixture-relay.mp4', async route => { await gate; await route.continue(); });
+    await page.goto(base + DIRECTORY, { waitUntil: 'domcontentloaded' });
     const relay = page.locator(`a.equipment-tile[href="${DIRECTORY}/fixture-relay"]`);
     await relay.scrollIntoViewIfNeeded();
     await relay.locator('.schematic-spinner-layered img.equipment-tile-art').waitFor();
+    // While the clip's request is held, the clip is in place but transparent over the art (9b: the rule now covers any
+    // poster-less spinner video, the homepage tile too).
+    await relay.locator('video').waitFor({ state: 'attached' });
+    assert.equal(await relay.locator('video').evaluate(video => video.hasAttribute('data-playing') ? 'playing' : getComputedStyle(video).opacity), '0', 'the waiting clip is transparent');
+    release();
     await relay.locator('video[data-playing]').waitFor({ timeout: 30000 });
     assert.equal(await page.evaluate(() => window.__relayBlank), 0, 'the relay card was never blank');
     assert.equal(await relay.locator('video').evaluate(video => getComputedStyle(video).opacity), '1', 'the clip shows once it plays');
@@ -158,10 +166,10 @@ try {
   const reader = async (width, height) => {
     const { context, page } = await open({ width, height });
     await page.goto(base + '/comics/blushland/chapter-01');
-    await page.locator('.comic-reader-window .art-viewer-canvas img[style*="width"]').waitFor();
+    await page.locator('.comic-reader-window .art-viewer-canvas img.art-viewer-image[style*="width"]').waitFor();
     const measure = () => page.evaluate(() => {
       const canvas = document.querySelector('.comic-reader-window .art-viewer-canvas');
-      const image = canvas.querySelector('img').getBoundingClientRect();
+      const image = canvas.querySelector('img.art-viewer-image').getBoundingClientRect();
       const box = canvas.getBoundingClientRect(), style = getComputedStyle(canvas);
       const inner = { top: box.top + parseFloat(style.paddingTop), height: canvas.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom), width: canvas.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight) };
       return { image: { top: image.top, height: image.height, width: image.width }, inner, readout: document.querySelector('.reader-toolbar output').textContent,
@@ -198,12 +206,18 @@ try {
         await page.waitForTimeout(200);
         const scrolled = await measure();
         assert.ok(scrolled.image.top < wide.image.top - 100, 'the wheel scrolls the page');
+        // Batch 10: + on the focused page zooms; 0 goes back to the reader's own fit (here the chosen FIT WIDTH).
+        await page.locator('.comic-reader-window .art-viewer-canvas').focus();
+        await page.keyboard.press('+');
+        await page.waitForFunction(() => /^ZOOM /.test(document.querySelector('.reader-toolbar output').textContent));
+        await page.keyboard.press('0');
+        await page.waitForFunction(() => document.querySelector('.reader-toolbar output').textContent === 'FIT WIDTH');
         assert.equal(scrolled.readout, 'FIT WIDTH', 'scrolling keeps FIT WIDTH');
         // The canvas has focus after a click; ArrowRight cannot pan sideways in FIT WIDTH, so it turns the page.
         await page.locator('.comic-reader-window .art-viewer-canvas').click();
         await page.keyboard.press('ArrowRight');
         await page.waitForFunction(() => /PAGE 2 \//.test(document.querySelector('.comic-reader-navigation output').textContent));
-        await page.locator('.comic-reader-window .art-viewer-canvas img[style*="width"]').waitFor();
+        await page.locator('.comic-reader-window .art-viewer-canvas img.art-viewer-image[style*="width"]').waitFor();
         await page.waitForTimeout(200);
         wide = await measure();
         assert.equal(wide.readout, 'FIT WIDTH', 'the chosen fit is kept for the next page');
@@ -234,7 +248,7 @@ try {
       assert.ok(before.image.height > before.inner.height + 20, `the page overflows the frame at 700x1000 (${JSON.stringify(before)})`);
       await page.mouse.move(350, 500);
       await page.mouse.wheel(0, 200);
-      await page.waitForFunction(top => document.querySelector('.comic-reader-window .art-viewer-canvas img').getBoundingClientRect().top < top - 50, before.image.top);
+      await page.waitForFunction(top => document.querySelector('.comic-reader-window .art-viewer-canvas img.art-viewer-image').getBoundingClientRect().top < top - 50, before.image.top);
       assert.equal((await measure()).readout, 'FIT WIDTH', 'still FIT WIDTH while scrolled');
       await page.setViewportSize({ width: 1366, height: 768 });
       await page.getByRole('button', { name: 'NEXT', exact: true }).click();
@@ -309,6 +323,21 @@ try {
     await page.goto(base + '/projects');
     await page.locator('.graphics-route').waitFor({ state: 'attached' });
     assert.equal(await bar.evaluate(el => getComputedStyle(el).display), 'none', 'hidden on the desktop');
+    // 9b: a tall card in phone landscape (844x340: a card is taller than the space above the bar) whose top lands under
+    // the bar is moved up when keyboard focus reaches it.
+    await page.setViewportSize({ width: 844, height: 340 });
+    await page.goto(base + DIRECTORY);
+    await page.locator('.startup-sequence').waitFor({ state: 'detached' });
+    const tall = page.locator('a.equipment-tile').first();
+    const barTop = await bar.evaluate(el => el.getBoundingClientRect().top);
+    assert.ok(await tall.evaluate((el, top) => el.getBoundingClientRect().height > top - 16, barTop), 'the card is taller than the space above the bar');
+    await page.keyboard.press('Tab'); // keyboard modality, so a script focus counts as :focus-visible
+    await tall.evaluate(el => { const r = el.getBoundingClientRect(); window.scrollBy(0, r.top - (innerHeight - 30)); });
+    assert.ok(await tall.evaluate((el, top) => el.getBoundingClientRect().top > top, barTop), 'the card starts under the bar');
+    await tall.evaluate(el => el.focus({ preventScroll: true }));
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    const moved = await tall.evaluate(el => el.getBoundingClientRect().top);
+    assert.ok(moved >= 0 && moved < barTop - 4, `the tall card's top moved above the bar (${moved} vs ${barTop})`);
     // Five tabs at 320 px: every label fits inside its own tab (measured on the text itself, so overflow on either side counts).
     await page.setViewportSize({ width: 320, height: 700 });
     await page.goto(base + '/tracker');

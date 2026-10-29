@@ -56,6 +56,8 @@ export default function SchematicSpinner({ src, poster, label, decorative = fals
   const [failed, setFailed] = useState(false);
   const [near, setNear] = useState(false);
   const [playing, setPlaying] = useState(false);
+  // A new clip element (after a reduced-motion switch, a failure or coming near) starts transparent again (9b).
+  useEffect(() => setPlaying(false), [still, failed, near]);
   const holder = useRef<HTMLElement | null>(null);
   const hold = useCallback((element: HTMLElement | null) => { holder.current = element; }, []);
 
