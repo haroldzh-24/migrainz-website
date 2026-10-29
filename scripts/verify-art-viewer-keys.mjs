@@ -190,6 +190,13 @@ try {
     await viewer.waitFor({ state: 'hidden', timeout: 3000 });
     await focusIsOn(handle, `${at} minimize`);
     await panelStaysShut(`${at} minimize`);
+    // Switching to another app and back keeps the file focused (no key or pointer press here): still quiet, no panel.
+    // Replays the events the browser fires on the focused element when its window loses focus and gets it back.
+    await page.evaluate(() => {
+      const element = document.activeElement;
+      for (const type of ['blur', 'focusout', 'focus', 'focusin']) element.dispatchEvent(new FocusEvent(type, { bubbles: type.startsWith('focus') && type !== 'focus' }));
+    });
+    await panelStaysShut(`${at} window blur and return`);
     await page.locator('.window-taskbar button', { hasText: 'ART VIEWER' }).click();
     await viewer.waitFor();
     await page.keyboard.press('Escape');

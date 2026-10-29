@@ -143,16 +143,18 @@ const hiddenCopyMedia = html => {
   const clean = page(h('img', { loading: 'lazy', src: '/a.webp', srcSet: '/a.webp 1x, /a2.webp 2x', alt: '' }),
     h('picture', null, h('source', { srcSet: '/b.webp' }), h('img', { loading: 'lazy', src: '/b.jpg', alt: '' })));
   assert.deepEqual(hiddenCopyMedia(clean), { blocks: 1, problems: [] });
-  for (const [what, element] of [['eager image', h('img', { src: '/a.webp', alt: '' })],
-
-    ['video poster', h('video', { poster: '/v.webp', preload: 'none' })], ['video source', h('video', { preload: 'metadata' }, h('source', { src: '/v.mp4' }))],
-    ['audio', h('audio', { src: '/s.mp3' })], ['iframe', h('iframe', { src: '/x', title: 'x' })], ['SVG image', h('svg', null, h('image', { href: '/i.png' }))]]) {
+  for (const [what, element, rule] of [['eager image', h('img', { src: '/a.webp', alt: '' }), 'image that loads'],
+    ['video poster', h('video', { poster: '/v.webp', preload: 'none' }), 'media that loads'],
+    ['video source', h('video', { preload: 'metadata' }, h('source', { src: '/v.mp4' })), 'video/audio <source>'],
+    ['audio', h('audio', { src: '/s.mp3' }), 'media that loads'], ['iframe', h('iframe', { src: '/x', title: 'x' }), 'embedded resource'],
+    ['SVG image', h('svg', null, h('image', { href: '/i.png' })), 'embedded resource']]) {
     const result = hiddenCopyMedia(page(element));
-    assert.ok(result.problems.length >= 1, `hidden-copy check reports the ${what}: ${JSON.stringify(result)}`);
+    assert.ok(result.problems.some(problem => problem.includes(rule)), `hidden-copy check reports the ${what} as "${rule}": ${JSON.stringify(result)}`);
   }
-  // React itself preloads an eager high-priority image in <head> by imageSrcSet (no href).
+  // React preloads an eager high-priority image in <head> by imageSrcSet (no href). This uses the react-dom in
+  // node_modules; Next renders pages with its own bundled copy, so the sample shows the form, not the exact build.
   const preloaded = page(h('img', { src: '/p.webp', srcSet: '/p.webp 1x', fetchPriority: 'high', alt: '' }));
-  assert.match(preloaded, /<link rel="preload" as="image" imageSrcSet="\/p\.webp 1x"/);
+  assert.match(preloaded, /<link\b(?=[^>]*\brel="preload")(?=[^>]*\bimageSrcSet="\/p\.webp 1x")[^>]*>/i);
   assert.ok(hiddenCopyMedia(preloaded).problems.some(problem => problem.includes('preloaded')), 'hidden-copy check reports React\'s preload of a hidden image');
   const second = hiddenCopyMedia(page() + page(h('img', { src: '/second.webp', alt: '' })));
   assert.ok(second.blocks === 2 && second.problems.some(problem => problem.includes('image that loads') && problem.includes('/second.webp')), 'hidden-copy check reads every block');

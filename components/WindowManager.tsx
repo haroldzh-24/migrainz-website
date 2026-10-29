@@ -136,7 +136,9 @@ export function WindowManagerProvider({ children }: { children: ReactNode }) {
   const quiet = (element: Element | null = document.activeElement) => element != null && element === handedBackTo.current;
   useEffect(() => {
     const clear = () => { handedBackTo.current = null; };
-    const left = (event: FocusEvent) => { if (event.target === handedBackTo.current) clear(); };
+    // Focus really leaving the element, not the browser window losing focus (switching apps, locking a phone): then
+    // the element stays document.activeElement and gets focus back unchanged on return.
+    const left = (event: FocusEvent) => { if (event.target === handedBackTo.current && document.activeElement !== event.target) clear(); };
     document.addEventListener("keydown", clear, true);
     document.addEventListener("pointerdown", clear, true);
     document.addEventListener("focusout", left, true);
@@ -300,8 +302,9 @@ export function WindowManagerProvider({ children }: { children: ReactNode }) {
 }
 
 // At least part of the element shows: inside the viewport and inside the content box (borders and scrollbars excluded)
-// of every clipping (scrolling) ancestor. A fixed element is clipped by the viewport only. Absolutely positioned
-// elements whose containing block sits inside a clipping ancestor aren't special-cased (none is handed focus today).
+// of every clipping (scrolling) ancestor. A fixed element is clipped by the viewport only. Not special-cased (none is
+// handed focus today): an element inside a fixed or transformed ancestor, or an absolutely positioned one whose
+// containing block sits inside a clipping ancestor.
 function partlyInView(element: HTMLElement) {
   let { top, bottom, left, right } = element.getBoundingClientRect();
   top = Math.max(top, 0); left = Math.max(left, 0);
