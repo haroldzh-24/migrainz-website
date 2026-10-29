@@ -190,10 +190,11 @@ export default function StartupSequence({ children }: { children: ReactNode }) {
     return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); };
   }, [state, soundOn, setSound]);
   useEffect(() => {
-    // The announcement takes focus unless the visitor already moved into the page (possible during the power-on).
+    // The announcement takes focus unless the visitor already moved into the page (possible during the power-on). A click
+    // on empty page only focuses the main section (tabindex -1), which does not count (9b).
     if (state === "announcement") {
       const active = document.activeElement;
-      if (!active || active === document.body || windowRef.current?.contains(active)) enterRef.current?.focus();
+      if (!active || active === document.body || active.matches("main#top") || windowRef.current?.contains(active)) enterRef.current?.focus();
     }
     if (state === "closed" && restoreFocus.current) contentRef.current?.querySelector<HTMLElement>("#top")?.focus({ preventScroll: true });
   }, [state]);

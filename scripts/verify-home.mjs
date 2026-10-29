@@ -273,6 +273,18 @@ try {
     await page.waitForTimeout(200);
     assert.equal(await page.evaluate(() => document.activeElement?.id), 'home-terminal-input', 'focus stays where the visitor put it');
     await context.close();
+    // A click on empty page during the power-on only focuses the main section; the announcement still takes focus (9b).
+    {
+      const again = await open({ boot: true });
+      await again.page.goto(base + '/');
+      await again.page.locator('.boot-line').first().waitFor();
+      await again.page.keyboard.press('x');
+      await again.page.locator('.startup-sequence[data-phase="power"]').waitFor();
+      await again.page.evaluate(() => document.getElementById('top').focus());
+      await again.page.getByRole('button', { name: 'ENTER', exact: true }).waitFor();
+      await again.page.waitForFunction(() => document.activeElement?.textContent === 'ENTER', null, { timeout: 3000 });
+      await again.context.close();
+    }
     const reduced = await open({ boot: true, reducedMotion: 'reduce' });
     await reduced.page.addInitScript(() => { window.__phases = []; new MutationObserver(() => { const phase = document.querySelector('.startup-sequence')?.dataset.phase; if (phase && window.__phases.at(-1) !== phase) window.__phases.push(phase); }).observe(document, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-phase'] }); });
     await reduced.page.goto(base + '/');

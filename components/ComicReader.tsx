@@ -56,6 +56,11 @@ export default function ComicReader({
       event.preventDefault();
       goToPage(page - 1);
     }
+    // 0: back to the reader's own fit (FIT HEIGHT on a landscape screen, FIT WIDTH on a portrait one, or the one chosen).
+    if (event.key === "0") {
+      event.preventDefault();
+      setView(fitted());
+    }
   }
 
   return (

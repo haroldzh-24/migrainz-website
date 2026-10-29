@@ -727,7 +727,6 @@ button {
 .art-viewer-meta span,
 .art-viewer-meta small { color: #444; }
 .art-viewer-meta p { margin: 3px 0 0; max-height: 3.2em; overflow: auto; }
-.art-viewer-window[data-maximized="true"] .art-viewer-meta { display: none; }
 .terminal-panel { border: 1px solid var(--line); box-shadow: var(--crt-vignette); min-width: 0; padding: 18px; background: rgba(var(--crt-text-rgb), 0.018); }
 .terminal-panel-head { display: flex; justify-content: space-between; align-items: baseline; gap: 14px; padding-bottom: 13px; border-bottom: 1px solid var(--line); }
 .terminal-panel-head h2 { margin: 0; color: var(--hot); font-size: 16px; letter-spacing: 0.1em; }
@@ -2376,7 +2375,9 @@ html[data-crt="off"] .home-lens-ring { display: none; }
 /* 8c: an item with a video but no poster keeps its fallback (concept art) under the video until the first frame plays. */
 .schematic-spinner-layered { position: relative; display: block; width: 100%; height: 100%; }
 .schematic-spinner-layered > * { position: absolute; inset: 0; width: 100%; height: 100%; }
-.schematic-spinner-layered > video:not([data-playing]) { opacity: 0; }
+/* 9b: any spinner video without a poster stays transparent until its first frame plays (the homepage tile too), so it is
+   never a black box while it loads. */
+video.schematic-spinner:not([poster]):not([data-playing]) { opacity: 0; }
 .schematic-spinner-layered > video[data-playing] { background: #000; }
 
 /* Boot (board 17): the counter in the checklist window, the collapse at the end and the page powering on. */
@@ -2595,6 +2596,8 @@ html[data-crt="off"] .startup-sequence[data-collapsing] .startup-log { animation
   .comic-page-stage > .art-viewer-toolbar { grid-row: 1; grid-column: 1; }
   .comic-page-stage > :not(.art-viewer-toolbar) { grid-row: 2; grid-column: 1 / -1; min-height: 0; }
   .comic-reader-navigation { grid-row: 1; grid-column: 2; justify-content: flex-end; gap: 8px; min-height: 0; padding: 2px 8px; border-top: 0; background: #c0c0c0; }
+  /* 9b: a page with no size toolbar (classified, unavailable or none filed): the page bar spans the whole row. */
+  .comic-reader-content:not(:has(.art-viewer-toolbar)) > .comic-reader-navigation { grid-column: 1 / -1; }
 }
 
 /* PHONE AND TABLET TAB BAR (design canvas board 5): terminal pages at 860 px and narrower, where the header's section links
@@ -2631,4 +2634,55 @@ html[data-crt="off"] .startup-sequence[data-collapsing] .startup-log { animation
   .equipment-tabs a::after { --reticle-inset: 0px; --reticle-from: 0px; }
   /* The outline Windows High Contrast draws (the shared transparent outline) stays inside the row too (8c). */
   .equipment-tabs a { outline-offset: -2px; }
+}
+
+/* Batch 9: Art Viewer caption beside the canvas and a larger filmstrip (design canvas board 9). The window is the size
+   container; its body is a grid: toolbar, canvas, caption, filmstrip in a narrow window; the caption moves beside the
+   canvas at 760 px and wider. The comic reader window keeps its own layout. */
+.art-viewer-window { container-type: inline-size; }
+.art-viewer-window .retro-window-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  grid-template-areas: "tools" "canvas" "meta" "strip";
+}
+.art-viewer-window .retro-window-body > .art-viewer-toolbar { grid-area: tools; }
+.art-viewer-window .retro-window-body > .art-viewer-canvas { grid-area: canvas; }
+.art-viewer-window .retro-window-body > .art-viewer-meta { grid-area: meta; max-height: 112px; overflow: auto; }
+.art-viewer-window .retro-window-body > .art-viewer-thumbs { grid-area: strip; }
+@container (min-width: 760px) {
+  .art-viewer-window .retro-window-body {
+    grid-template-columns: minmax(0, 1fr) 260px;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas: "tools tools" "canvas meta" "strip strip";
+  }
+  .art-viewer-window .retro-window-body > .art-viewer-meta { max-height: none; padding: 12px; border-top: 0; border-left: 2px inset #fff; }
+}
+.art-viewer-meta:focus-visible { outline: 1px dotted #000; outline-offset: -4px; }
+.art-viewer-meta h2 { margin: 2px 0 4px; color: #000080; font: bold 15px Arial, sans-serif; overflow-wrap: anywhere; }
+.art-viewer-meta p { margin: 4px 0 0; max-height: none; overflow: visible; }
+.art-viewer-position { display: block; color: #444; font: 12px var(--font-plex-mono), "Courier New", monospace; }
+.art-viewer-context, .art-viewer-note { color: #444; }
+.art-viewer-caption, .art-viewer-description { line-height: 1.5; }
+.art-viewer-hint { display: none; color: #555; font-size: 12px; }
+@media (hover: hover) and (pointer: fine) { .art-viewer-meta .art-viewer-hint { display: block; margin-top: 10px; } }
+.art-viewer-thumbs { gap: 6px; padding: 6px; border-top: 1px solid #808080; }
+.art-viewer-thumbs button { flex: 0 0 84px; height: 62px; padding: 0; border: 2px outset #fff; background: #8d918d; }
+.art-viewer-thumbs button[aria-current="true"] { border-style: inset; outline: 2px solid #000080; outline-offset: 1px; }
+.art-viewer-thumbs button:focus-visible { outline: 2px dotted #000; outline-offset: 2px; }
+@container (max-width: 480px) { .art-viewer-thumbs button { flex-basis: 64px; height: 48px; } }
+
+/* Decoding art (board 10): a blurred copy of the thumbnail at the image's size while it loads; in the Art Viewer a slow
+   image then scans in from the top behind a neutral line (no phosphor colour over artwork). No fill mode, so nothing
+   clips the image (or a poster's glow) after the scan. */
+.art-viewer-canvas img.art-viewer-decode { filter: blur(8px) saturate(.4); opacity: .55; }
+.art-viewer-scan { position: absolute; top: 50%; left: 50%; overflow: hidden; pointer-events: none; }
+.art-viewer-scan::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 2px; background: #f4f4f4; box-shadow: 0 0 8px rgba(255, 255, 255, .7); animation: art-scan 420ms cubic-bezier(.2, .7, 0, 1); }
+.art-viewer-canvas img[data-reveal] { animation: art-decode 420ms cubic-bezier(.2, .7, 0, 1); }
+@keyframes art-decode { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes art-scan { from { top: 0; } to { top: 100%; } }
+.art-viewer-decoding { position: absolute; left: 8px; bottom: 6px; z-index: 1; max-width: calc(100% - 16px); padding: 2px 6px; overflow: hidden; background: rgba(0, 0, 0, .7); color: #f0f0f0; font: 12px var(--font-plex-mono), "Courier New", monospace; white-space: nowrap; text-overflow: ellipsis; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) {
+  .art-viewer-canvas img[data-reveal], .art-viewer-scan::after { animation: none; }
+  .art-viewer-scan { display: none; }
 }
