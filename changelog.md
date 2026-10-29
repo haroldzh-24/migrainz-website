@@ -1,8 +1,31 @@
 # Changelog
 
+## Changed - 2026-10-29 / Batch 12 (with 11b): operations log on the tracker (feat/batch-12-activity-log)
+
+Design canvas board 12, from Harold's "everything else on the road map" (2026-10-29). Plan reviewed by a fresh agent first (its points are built in: seen updates kept as IDs, not a date; a session baseline so NEW survives Back; classified updates kept out of the merged log; thumbnails from the update's own images; fixed slots so nothing rewraps). Code-only; no schema, migration, Blob or env change.
+
+- The tracker page opens with an OPERATIONS LOG: the 12 newest public updates of every public project, newest first, one line each: date, project code, the update's title, `OPEN <code> ▸` to the project's page (amber, as on the board) and the first public picture of the update as a small thumbnail (none when it has no picture; on phones its text then takes the full width). The project cards with their phase bars and VIEW LOG stay below (the board's "the phase bars can stay").
+- NEW: updates this browser has not seen before carry an amber NEW label and edge, and the status line says `2 NEW SINCE YOUR LAST VISIT` (otherwise `LATEST <date>`). What was seen is a list of update IDs kept in this browser only (localStorage, capped at 300); nothing goes to the server. A first visit marks nothing; the marks stay for the visit (also after opening a project and coming Back); blocked storage just means no NEW. The NEW slot is its own column, empty in the server's HTML, so marking a row never rewraps it.
+- Classified (REDACTED or PATRON) updates stay out of the merged log (they keep their placeholder in their project's VIEW LOG); classified projects contribute nothing.
+- Public updates now carry their record ID to the page (classified placeholders never do). React keys for updates use their order, not their date (two updates on one day gave duplicate keys).
+- Tests: new `scripts/verify-operations-log.mjs` (regression): the list (both fixture projects, newest first, two updates on one day, the thumbnail of the update with a picture, no REDACTED or PATRON sentinel text in the HTML), first visit without NEW, a returning visit with two unseen updates marked NEW (also after OPEN and Back) and then recorded as seen, blocked storage, no sideways scroll at 390 and 320 px. The fixture gains five updates (two on one day, one with a picture, one for STALKER, a REDACTED and a PATRON one); site health looks for the new sentinels on every page.
+
+**11b (fixes from the independent review of batch 11, which went live before its review; nothing blocking):**
+- Slow-page status on phones: lines wrap instead of being cut, and below 420 px the dot leader goes, so the waiting time always shows (at 320 px it was cut off).
+- The panel fades in over 200 ms (none with reduced motion), so a page arriving just after 300 ms barely shows it.
+- A page shown again from the browser's back/forward cache ends a status it was frozen with (no popstate fires then).
+- Screen readers hear "Loading page: about" (plain words) instead of the SYS: path.
+- Comic reader: with focus on PREV or NEXT, reaching the first or last page (by key or click) disabled the focused button and arrow keys stopped; focus now moves to the page. The same check treats a disabled focused element as lost focus.
+- Art Viewer: the caption is measured when the panel appears or resizes and when the shown caption changes, not on every render; the picture's spoken name mentions arrow keys between images only when there is more than one, and the reader's lists 0.
+- Regression harness: the second dev server (site health) gets its own probed port; an unused option that could have bypassed the fixture's fail-closed environment check is gone.
+- Docs: Release status records the batch 11 push; the redesign plan and features say the decoding placeholder shows only a thumbnail the filmstrip already showed (so not in the comic reader); the batch 11 changelog line no longer says every plan-review point was built.
+- Tests (`verify-nav-status.mjs`): unroute now removes the held route (it never did); the switch's mode-stage event and a back/forward-cache restore end the status (both simulated by dispatching the event); at 320 px every line fits and the waiting time shows, and after 20 s it says "no answer yet" and goes while the page is still on its way; reduced motion: no fade or blink. `verify-equipment-directory.mjs`: focus on NEXT, Right to the last page, then Left still turns back.
+
+- Check: `check-20261029-210237`: all 16 steps passed (simulated: headless Chromium on throwaway SQLite fixtures).
+
 ## Changed - 2026-10-29 / Batch 11 (with 10b): slow-page status (feat/batch-11-nav-status)
 
-Design canvas board 10 (left half), from Harold's "everything else on the road map" (2026-10-29). Planned with batch 10 and split off after that plan's review; the review's points are built in. Code-only; no schema, migration, Blob or env change.
+Design canvas board 10 (left half), from Harold's "everything else on the road map" (2026-10-29). Planned with batch 10 and split off after that plan's review; the review's points are built in except two: no Escape to dismiss the panel (it takes no focus and goes by itself) and the fast-page test is simulated (corrected in 11b). Code-only; no schema, migration, Blob or env change.
 
 - A terminal page that takes longer than 300 ms to arrive after a link click (or the homepage terminal's `cd`/`open`) shows a small terminal panel at the top right under the header: `> ACCESSING SYS:/ABOUT`, `request sent`, `waiting for node ........ 1.4 s` (the real time so far) and a blinking cursor. It goes when the address changes, on Back/Forward, and when the switch to the grey-window desktop starts; after 20 s it says "no answer yet; the page may still arrive" for 2 s and goes. Fast pages never show it. No progress figure and no "ok" that nothing measured.
 - Screen readers: a status region that is always in the page says "Loading SYS:/ABOUT" when the panel appears; the panel itself is decoration.

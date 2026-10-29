@@ -41,6 +41,12 @@ export default function ComicReader({
   function goToPage(nextPage: number) {
     const bounded = Math.max(0, Math.min(chapter.pages.length - 1, nextPage));
     if (bounded === page) return;
+    // PREV or NEXT turns disabled at the first or last page; focus on it would drop to the page body (11b).
+    const navigation = content.current?.querySelector(".comic-reader-navigation") ?? null;
+    if (navigation?.contains(document.activeElement)) {
+      cancelKeep.current();
+      cancelKeep.current = keepFocusAfterChange(navigation, content.current);
+    }
     setPage(bounded);
     setView(fitted());
   }

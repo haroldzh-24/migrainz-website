@@ -20,6 +20,11 @@ const keyOf = (url: URL) => url.pathname + url.search;
 const moved = (run: Pending) => keyOf(new URL(window.location.href)) !== run.from;
 /** Pages of this app that a link can open in place (no API, admin, sign-in, build files or file downloads). */
 const appPage = (url: URL) => !/^\/(api|admin|auth|_next)(\/|$)/.test(url.pathname) && !/\.[a-z0-9]{1,5}$/i.test(url.pathname);
+const readable = (path: string) => {
+  let text = path;
+  try { text = decodeURIComponent(path); } catch {}
+  return text.replace(/^\/|\/$/g, "").toLowerCase().split("/").join(" / ");
+};
 
 export default function NavigationStatus() {
   const pathname = usePathname();
@@ -80,18 +85,23 @@ export default function NavigationStatus() {
       const href = (event as CustomEvent<{ href?: string }>).detail?.href;
       if (href) queueMicrotask(() => { if (!event.defaultPrevented) begin(href); });
     };
-    // Any stage of the switch means it has the screen; Back or Forward means the visitor went elsewhere.
+    // Any stage of the switch means it has the screen; Back or Forward means the visitor went elsewhere. A page restored
+    // from the back/forward cache (after a full-page load, e.g. Next's reload when a tab meets a new deploy) fires no
+    // popstate, so pageshow ends a status it was frozen with (11b).
     const onStage = () => stopRef.current();
     const onPop = () => stopRef.current();
+    const onShow = (event: PageTransitionEvent) => { if (event.persisted) stopRef.current(); };
     window.addEventListener("click", onClick, true);
     window.addEventListener("migrainz:open-route", onOpenRoute);
     window.addEventListener("migrainz:mode-stage", onStage);
     window.addEventListener("popstate", onPop);
+    window.addEventListener("pageshow", onShow);
     return () => {
       window.removeEventListener("click", onClick, true);
       window.removeEventListener("migrainz:open-route", onOpenRoute);
       window.removeEventListener("migrainz:mode-stage", onStage);
       window.removeEventListener("popstate", onPop);
+      window.removeEventListener("pageshow", onShow);
       clear();
     };
   }, []);
@@ -109,13 +119,15 @@ export default function NavigationStatus() {
   }, [shown]);
 
   const sys = shown ? "SYS:" + (shown.path === "/" ? "/HOME" : shown.path.toUpperCase()) : "";
+  // Plain words for screen readers ("Loading page: projects / blushland"), not the SYS: path read letter by letter.
+  const place = shown ? (shown.path === "/" ? "home" : readable(shown.path)) : "";
   return <>
     {/* Always present, so screen readers announce the text when it is filled in. */}
-    <div className="visually-hidden" role="status">{shown ? `Loading ${sys}${late ? "; no answer yet" : ""}` : ""}</div>
+    <div className="visually-hidden" role="status">{shown ? `Loading page: ${place}${late ? "; no answer yet" : ""}` : ""}</div>
     {shown && <div className="nav-status" aria-hidden="true">
       <p>&gt; ACCESSING {sys}</p>
       <p>  request sent</p>
-      <p>  waiting for node ........ {(elapsed / 1000).toFixed(1)} s</p>
+      <p>  waiting for node <span className="nav-status-leader">........ </span>{(elapsed / 1000).toFixed(1)} s</p>
       {late ? <p>  no answer yet; the page may still arrive</p> : <p>&gt; <span className="nav-status-cursor">_</span></p>}
     </div>}
   </>;

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useId, useRef, useState, type MutableRefObject, type PointerEvent } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type MutableRefObject, type PointerEvent } from "react";
 import { RetroWindow, useWindowManager, viewerClosedKey, type ViewerImage } from "@/components/WindowManager";
 
 // scale null = fitted: to the whole frame by default, or to the frame's height or width (the comic reader's FIT HEIGHT
@@ -31,12 +31,15 @@ export function keepFocusAfterChange(area: Element | null, fallback: HTMLElement
   if (!area || !area.contains(document.activeElement)) return () => {};
   const frame = requestAnimationFrame(() => requestAnimationFrame(() => {
     const active = document.activeElement;
-    if (active && active !== document.body && active.isConnected) return;
+    if (active && active !== document.body && active.isConnected && !active.matches(":disabled")) return;
     const next = fallback?.querySelector<HTMLElement>(".art-viewer-canvas[tabindex]") ?? fallback;
     next?.focus({ preventScroll: true });
   }));
   return () => cancelAnimationFrame(frame);
 }
+
+/** Whether an element's text is long enough to scroll. */
+const scrolls = (element: HTMLElement) => element.scrollHeight > element.clientHeight + 1;
 
 /** A key the canvas can act on (zoom, fit, pan); returns true when it did. */
 export type CanvasKeys = (key: string) => boolean;
@@ -52,7 +55,7 @@ function fileLabel(src?: string) {
  * `keys`: filled with the canvas's key handler, so a window can let the canvas act on a key wherever focus is inside it.
  * `scan`: a slow image scans in when it arrives (Art Viewer); the comic reader shows it at once, so page turns stay quick.
  */
-export function ArtworkCanvas({ image, view, onChange, schematic = false, reader = false, onFitChosen, keys, scan = false }: { image: ViewerImage; view: View; onChange: (view: View) => void; schematic?: boolean; reader?: boolean; onFitChosen?: (fit: "height" | "width") => void; keys?: MutableRefObject<CanvasKeys | null>; scan?: boolean }) {
+export function ArtworkCanvas({ image, view, onChange, schematic = false, reader = false, onFitChosen, keys, scan = false, several = false }: { image: ViewerImage; view: View; onChange: (view: View) => void; schematic?: boolean; reader?: boolean; onFitChosen?: (fit: "height" | "width") => void; keys?: MutableRefObject<CanvasKeys | null>; scan?: boolean; several?: boolean }) {
   const canvas = useRef<HTMLDivElement>(null);
   const [space, setSpace] = useState({ width: 0, height: 0 });
   const [natural, setNatural] = useState({ width: 0, height: 0 });
@@ -267,7 +270,7 @@ export function ArtworkCanvas({ image, view, onChange, schematic = false, reader
       <output aria-label="Artwork scale" data-scale={ready ? Math.round(scale * 100) : undefined}>{failed ? "UNAVAILABLE" : ready ? `${Math.round(scale * 100)}%` : "LOADING"}</output>
     </div>}
     <div ref={canvas} className="art-viewer-canvas" data-pannable={pannable} data-dragging={dragging}
-      tabIndex={failed ? undefined : 0} role="group" aria-label={reader ? "Comic page; plus and minus zoom; drag or arrow keys pan when zoomed; left and right arrows turn the page at the edge" : "Artwork; plus and minus zoom, 0 fits; drag or arrow keys pan when zoomed; left and right arrows change the image at the edge"}
+      tabIndex={failed ? undefined : 0} role="group" aria-label={reader ? "Comic page; plus and minus zoom, 0 fits; drag or arrow keys pan when zoomed; left and right arrows turn the page at the edge" : `Artwork; plus and minus zoom, 0 fits; drag or arrow keys pan when zoomed${several ? "; left and right arrows change the image at the edge" : ""}`}
       onKeyDown={(event) => {
         if (event.altKey || event.ctrlKey || event.metaKey || event.nativeEvent.isComposing) return;
         if (act(event.key)) event.preventDefault();
@@ -323,15 +326,6 @@ export default function ArtViewer() {
   // The caption takes keyboard focus only when its text is long enough to scroll (10b).
   const meta = useRef<HTMLDivElement>(null);
   const [captionScrolls, setCaptionScrolls] = useState(false);
-  useEffect(() => {
-    const element = meta.current;
-    if (!element) return;
-    const measure = () => setCaptionScrolls(element.scrollHeight > element.clientHeight + 1);
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(element);
-    return () => observer.disconnect();
-  });
   const [views, setViews] = useState<Record<string, View>>({});
   const normalViews = useRef<Record<string, View>>({});
   // Restored tabs reopen the viewer after a reload only if it was open (bugs.md 2026-10-27).
@@ -342,6 +336,16 @@ export default function ArtViewer() {
 
   useEffect(() => setImageIndex(0), [active?.id]);
   const count = active?.images.length ?? 0;
+  // Measured when the panel appears or resizes (one observer per panel element), and when the shown caption changes;
+  // not on every render (11b: a pan or a window drag re-renders the viewer many times a second).
+  const observeMeta = useCallback((element: HTMLDivElement | null) => {
+    meta.current = element;
+    if (!element) return;
+    const observer = new ResizeObserver(() => setCaptionScrolls(scrolls(element)));
+    observer.observe(element);
+    return () => { observer.disconnect(); if (meta.current === element) meta.current = null; };
+  }, []);
+  useEffect(() => { if (meta.current) setCaptionScrolls(scrolls(meta.current)); }, [active?.id, imageIndex, count]);
   // The shown image's thumbnail stays in view in the filmstrip; only the strip scrolls, never the page.
   useEffect(() => {
     const row = strip.current, current = row?.querySelector<HTMLElement>('[aria-current="true"]');
@@ -430,11 +434,11 @@ export default function ArtViewer() {
       toggleMaximizeWindow("art-viewer");
     }}
   >
-    {image ? <ArtworkCanvas key={viewKey} schematic={!artwork} scan keys={canvasKeys} image={image} view={views[viewKey] ?? fitView} onChange={(view) => setViews((current) => ({ ...current, [viewKey]: view }))} /> : <div className="art-viewer-canvas"><div className="art-viewer-placeholder">NO PUBLIC ARTWORK FILED<br /><Link className="art-viewer-page-link" href={active.href} prefetch={false} onClick={() => closeWindow("art-viewer")}>OPEN {active.title.toUpperCase()} PAGE</Link></div></div>}
+    {image ? <ArtworkCanvas key={viewKey} schematic={!artwork} scan several={count > 1} keys={canvasKeys} image={image} view={views[viewKey] ?? fitView} onChange={(view) => setViews((current) => ({ ...current, [viewKey]: view }))} /> : <div className="art-viewer-canvas"><div className="art-viewer-placeholder">NO PUBLIC ARTWORK FILED<br /><Link className="art-viewer-page-link" href={active.href} prefetch={false} onClick={() => closeWindow("art-viewer")}>OPEN {active.title.toUpperCase()} PAGE</Link></div></div>}
     {/* Caption (board 9): beside the canvas in a window at least 760 px wide, under it otherwise (CSS container query).
         A plain group, not a landmark: it sits inside the window's own region. It scrolls when the text is long, so it
         takes focus for keyboard scrolling. */}
-    <div ref={meta} className="art-viewer-meta" role="group" aria-labelledby={headingId} tabIndex={captionScrolls ? 0 : undefined}>
+    <div ref={observeMeta} className="art-viewer-meta" role="group" aria-labelledby={headingId} tabIndex={captionScrolls ? 0 : undefined}>
       {count > 1 && <output className="art-viewer-position">IMAGE {Math.min(imageIndex, count - 1) + 1} / {count}</output>}
       <h2 id={headingId}>{active.title}</h2>
       <p className="art-viewer-context">{active.project}{active.role ? ` / ${active.role}` : ""}</p>

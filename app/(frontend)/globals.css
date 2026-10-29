@@ -193,7 +193,8 @@ html[data-phosphor="amber"] {
   --watcher-base: url("/images/watcher/watcher-base.amber.webp");
   --watcher-noise: url("/images/watcher/crt-noise.amber.png");
 }
-html[data-phosphor="amber"] .equipment-panel a { text-decoration: underline; text-underline-offset: 3px; }
+html[data-phosphor="amber"] .equipment-panel a,
+html[data-phosphor="amber"] .operations-log-text a { text-decoration: underline; text-underline-offset: 3px; }
 html[data-crt="reduced"] { --crt-scanline-alpha: 0.03; --crt-vignette: none; --crt-overlay-vignette: none; --crt-glow-body-value: none; }
 html[data-crt="off"] {
   --crt-scanline-alpha: 0; --crt-vignette: none; --crt-overlay-vignette: none; --crt-glow-filter: 0 0 0 transparent;
@@ -2688,10 +2689,49 @@ html[data-crt="off"] .startup-sequence[data-collapsing] .startup-log { animation
   width: min(440px, calc(100vw - 32px)); padding: 12px 16px;
   border: 1px solid rgba(var(--crt-border-rgb), .3); background: var(--crt-panel); color: var(--crt-text);
   font-size: 14px; line-height: 1.7; white-space: pre; pointer-events: none;
+  /* Fades in, so a page that lands just after 300 ms barely shows it (11b). */
+  animation: nav-status-in 200ms ease-out both;
 }
+@keyframes nav-status-in { from { opacity: 0; } }
 .nav-status p { margin: 0; overflow: hidden; text-overflow: ellipsis; }
+/* Phones: lines wrap instead of being cut, and the dot leader goes so the waiting time always shows (11b). */
+@media (max-width: 420px) {
+  .nav-status { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .nav-status p { text-overflow: clip; padding-left: 2ch; text-indent: -2ch; } /* a wrapped line keeps the indent */
+  .nav-status-leader { display: none; }
+}
 .nav-status p:first-child { color: var(--crt-bright); }
 html[data-crt="on"] .nav-status p:first-child { text-shadow: var(--crt-glow-ui); }
 .nav-status-cursor { animation: nav-status-blink 1.1s steps(1) infinite; }
 @keyframes nav-status-blink { 50% { opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .nav-status-cursor { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .nav-status, .nav-status-cursor { animation: none; } }
+
+/* Batch 12: operations log on the tracker page (design canvas board 12). */
+.operations-log { margin: 0 0 32px; }
+.operations-log h2 { margin: 0 0 4px; font-size: 14px; letter-spacing: .12em; }
+.operations-log-status { margin: 0 0 12px; font-size: 12px; letter-spacing: .08em; color: var(--crt-accent); }
+.operations-log ol { margin: 0; padding: 0; list-style: none; border: 1px solid rgba(var(--crt-border-rgb), .18); background: var(--crt-panel); }
+.operations-log li { display: grid; grid-template-columns: 92px 64px 4ch minmax(0, 1fr) 70px; gap: 14px; align-items: center; padding: 12px 16px; border-left: 3px solid transparent; font-size: 14px; line-height: 1.6; }
+.operations-log li + li { border-top: 1px solid rgba(var(--crt-border-rgb), .1); }
+.operations-log li[data-new] { border-left-color: var(--crt-accent); }
+.operations-log time, .operations-log-code { font-size: 12px; color: var(--crt-dim); }
+.operations-log-text { min-width: 0; overflow-wrap: anywhere; }
+.operations-log-text a { color: var(--crt-accent); text-underline-offset: 3px; }
+.operations-log-text a:hover { text-decoration: underline; }
+/* Its own grid cell, empty on the server, so marking a row NEW after load never rewraps the text. */
+.operations-log-new { font-size: 12px; line-height: 1.5; text-align: center; }
+.operations-log li[data-new] .operations-log-new { background: var(--crt-accent); color: var(--crt-bg); }
+.operations-log-thumb { display: block; width: 70px; height: 50px; object-fit: cover; border: 1px solid rgba(var(--crt-border-rgb), .18); background: var(--crt-deep); }
+/* An update without a picture keeps the column (rows stay aligned) but draws no empty frame. */
+span.operations-log-thumb { border-color: transparent; background: none; }
+@media (max-width: 700px) {
+  .operations-log li { grid-template-columns: auto auto minmax(0, 1fr) 70px; grid-template-areas: "time new . thumb" "text text text thumb"; gap: 4px 10px; padding: 12px; }
+  .operations-log li > time { grid-area: time; }
+  .operations-log-new { grid-area: new; padding: 0 4px; }
+  /* Phones: an update without a picture gives its text the full width. */
+  .operations-log li:has(> span.operations-log-thumb) { grid-template-columns: auto auto minmax(0, 1fr); grid-template-areas: "time new ." "text text text"; }
+  span.operations-log-thumb { display: none; }
+  .operations-log-code { display: none; }
+  .operations-log-text { grid-area: text; }
+  .operations-log-thumb { grid-area: thumb; }
+}

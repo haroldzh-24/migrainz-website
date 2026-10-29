@@ -1,5 +1,10 @@
 # Features
 
+## Implemented - 2026-10-29 / Operations log (batch 12, board 12)
+
+- The tracker page opens with an operations log: the newest public updates of every project, one line each with date, project, title, a link to the project and the update's picture, and NEW on updates this browser has not seen before (kept in this browser only).
+- 11b: the slow-page status wraps on phones and fades in; the reader keeps keyboard focus when PREV or NEXT turns disabled at the first or last page.
+
 ## Implemented - 2026-10-29 / Slow-page status (batch 11, board 10)
 
 - A terminal page that is slow to arrive shows an in-world ACCESSING panel with the real waiting time; fast pages never show it.
@@ -7,7 +12,7 @@
 ## Implemented - 2026-10-29 / Art Viewer filmstrip and captions, decoding art (batch 10, boards 9 and 10)
 
 - Art Viewer: a caption panel beside the picture in a wide window (under it in a narrow one, kept when maximized) with `IMAGE n / m`, the record's name, project and role, the image's caption and the record's description, and OPEN RECORD on any page but the record's own; a larger filmstrip with the shown image marked; Left / Right step through the images and + / − / 0 zoom and fit with focus anywhere in the window.
-- Artwork that is slow to arrive shows a blurred copy of its thumbnail at its final size with a DECODING label; in the Art Viewer it then scans in from the top (CRT "on", motion allowed). The comic reader shows the placeholder only, so page turns stay quick; 0 in the reader goes back to its own fit.
+- Artwork that is slow to arrive shows a blurred copy of its thumbnail at its final size with a DECODING label; in the Art Viewer it then scans in from the top (CRT "on", motion allowed). Since 10b the placeholder uses only a thumbnail the filmstrip has already shown, so the comic reader and single-image tabs show the DECODING label without it; the reader never scans, so page turns stay quick; 0 in the reader goes back to its own fit.
 
 ## Implemented - 2026-10-29 / Harold's design calls (batch 9)
 
