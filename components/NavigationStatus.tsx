@@ -65,6 +65,7 @@ export default function NavigationStatus() {
       timers.current.push(window.setTimeout(() => {
         if (pending.current !== run) return;
         if (moved(run)) { stopRef.current(); return; }
+        setElapsed(performance.now() - run.started); // never the previous run's time, not even for a frame (12b)
         setShown({ path: run.path, started: run.started });
       }, DELAY_MS));
       timers.current.push(window.setTimeout(() => {

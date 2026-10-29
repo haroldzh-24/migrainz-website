@@ -54,7 +54,7 @@ export default async function Page() {
           </div>
           <p className="eyebrow">SAMPLE PRODUCTION LOG</p>
           <div className="activity-feed">
-            {(projects[0]?.notes ?? []).map((note, index) => note.classification ? <ClassifiedPlaceholder key={index} classification={note.classification} label={note.safeLabel} variant="inline" /> : (
+            {(projects[0]?.notes ?? []).map((note, index) => note.classification ? <ClassifiedPlaceholder key={note.listingOrder ?? index} classification={note.classification} label={note.safeLabel} variant="inline" /> : (
               <p key={note.listingOrder ?? index}>
                 <time dateTime={note.date}>
                   {note.date.slice(5).replace("-", "/")}

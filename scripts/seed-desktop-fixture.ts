@@ -67,7 +67,7 @@ try {
   for (const data of [
     { title: 'Fixture update: storyboards pinned', project: project.id, date: '2026-08-20T12:00:00.000Z', ...pub },
     { title: 'Fixture update: cover rough filed', project: project.id, date: '2026-08-20T12:00:00.000Z', images: [{ media: poster.id, caption: 'Synthetic cover rough' }], ...pub },
-    { title: 'Fixture update: stalker field notes', project: other.id, date: '2026-08-25T12:00:00.000Z', ...pub },
+    { title: 'Fixture update: stalker field notes', project: other.id, date: '2026-08-28T12:00:00.000Z', ...pub },
     { title: 'SENTINEL-UPDATE-REDACTED-7Q', description: 'SENTINEL-UPDATE-REDACTED-DESC-7Q', project: project.id, date: '2026-08-26T12:00:00.000Z', listingSummary: 'sealed update', _status: 'published' as const, accessLevel: 'redacted' as const, listingVisibility: 'public' as const },
     { title: 'SENTINEL-UPDATE-PATRON-7Q', description: 'SENTINEL-UPDATE-PATRON-DESC-7Q', project: project.id, date: '2026-08-26T12:00:00.000Z', listingSummary: 'patron update', _status: 'published' as const, accessLevel: 'patron' as const, listingVisibility: 'public' as const },
   ]) await cms.create({ collection: 'project-updates', data });

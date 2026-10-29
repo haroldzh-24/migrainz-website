@@ -52,9 +52,9 @@ try {
     for (const sentinel of ['SENTINEL-UPDATE-REDACTED-7Q', 'SENTINEL-UPDATE-REDACTED-DESC-7Q', 'SENTINEL-UPDATE-PATRON-7Q', 'SENTINEL-UPDATE-PATRON-DESC-7Q'])
       assert.ok(!html.includes(sentinel), `${sentinel} not in the page`);
     await ready(page);
-    await page.waitForTimeout(300);
+    await page.waitForFunction(key => localStorage.getItem(key) !== null, SEEN);
     const list = await rows(page);
-    assert.ok(list.length >= 6, `the public updates are listed (${list.length})`);
+    assert.ok(list.length >= 6 && list.length < 12, `the public updates are listed, all of them (${list.length})`);
     const dates = list.map(row => row.date);
     assert.deepEqual(dates, [...dates].sort().reverse(), 'newest first');
     assert.ok(list.some(row => row.href === '/projects/stalker') && list.some(row => row.href === '/projects/blushland'), 'updates of both projects');
@@ -66,7 +66,11 @@ try {
     assert.match(await page.locator('.operations-log-status').textContent(), /^LATEST \d{4}-\d{2}-\d{2}$/);
     assert.equal(await page.locator('.operations-log ol').getAttribute('role'), 'list');
     const seen = await page.evaluate(key => JSON.parse(localStorage.getItem(key)), SEEN);
-    assert.ok(Array.isArray(seen) && seen.length >= list.length, 'the shown updates are recorded as seen');
+    // Exactly the listed (public) updates: a REDACTED or PATRON update's ID would make the list longer (12b).
+    assert.ok(Array.isArray(seen) && seen.length === list.length && seen.every(Number.isInteger), `exactly the public updates are recorded as seen (${seen.length} of ${list.length})`);
+    // 12b: a row without a picture is one line tall; the link is never split.
+    const plainRow = await page.locator('.operations-log li:has(> span.operations-log-thumb)').first().evaluate(row => row.getBoundingClientRect().height);
+    assert.ok(plainRow < 60, `a row without a picture is one line (${plainRow} px)`);
     await page.screenshot({ path: path.join(out, 'operations-1366.png') });
     pass('operations log: public updates of every project newest first, link, thumbnail, no sentinels; first visit marks nothing new');
 
@@ -86,7 +90,16 @@ try {
     await page.waitForFunction(() => document.querySelectorAll('.operations-log li[data-new]').length === 2);
     const after = await page.evaluate(key => JSON.parse(localStorage.getItem(key)), SEEN);
     assert.ok(seen.every(id => after.includes(id)), 'all updates now recorded as seen');
-    pass('returning visit: unseen updates marked NEW (also after OPEN and Back), then recorded as seen');
+    // 12b: the tab's baseline counts as a new visit after 30 minutes (here: made 31 minutes old), so the marks go.
+    await page.evaluate(() => {
+      const key = 'migrainz-operations-baseline-v1', stored = JSON.parse(sessionStorage.getItem(key));
+      sessionStorage.setItem(key, JSON.stringify({ ...stored, at: Date.now() - 31 * 60 * 1000 }));
+    });
+    await page.reload();
+    await ready(page);
+    await page.waitForFunction(() => /^LATEST /.test(document.querySelector('.operations-log-status').textContent));
+    assert.equal(await page.locator('.operations-log li[data-new]').count(), 0, 'a later visit in the same tab: nothing new');
+    pass('returning visit: unseen updates marked NEW (also after OPEN and Back), then recorded as seen; a later visit in the same tab starts afresh');
     await context.close();
   }
 
@@ -107,6 +120,7 @@ try {
     await page.goto(base + '/tracker');
     await ready(page);
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `no sideways scroll at ${width}`);
+    assert.ok(await page.locator('.operations-log-text a').evaluateAll(links => links.every(link => link.getClientRects().length === 1)), `no link split across lines at ${width}`);
     if (width === 390) await page.locator('.operations-log').screenshot({ path: path.join(out, 'operations-390.png') });
     await context.close();
   }

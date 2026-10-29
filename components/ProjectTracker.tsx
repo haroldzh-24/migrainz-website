@@ -54,7 +54,7 @@ export default function ProjectTracker({ project }: { project: Project }) {
       </div>
       <div className={`hidden-log${open ? " open" : ""}`} id={logId}>
         <p>PUBLIC PRODUCTION LOG</p>
-        {project.notes.map((note, index) => note.classification ? <ClassifiedPlaceholder key={index} classification={note.classification} label={note.safeLabel} variant="inline" /> : (
+        {project.notes.map((note, index) => note.classification ? <ClassifiedPlaceholder key={note.listingOrder ?? index} classification={note.classification} label={note.safeLabel} variant="inline" /> : (
           <p key={note.listingOrder ?? index}>
             <time dateTime={note.date}>{note.date}</time> — {note.text}
           </p>

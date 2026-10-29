@@ -1,5 +1,25 @@
 # Changelog
 
+## Changed - 2026-10-29 / Batch 13: page transitions between terminal pages, motion tokens (feat/batch-13-motion)
+
+Design canvas boards 19 and 18 (part), from Harold's "everything else on the road map" (2026-10-29). Plan reviewed by a fresh agent first; its points are built in (wipe only the part on screen; restart and clean up per move; skip during the boot's power-on; CRT "off" as a cut like the mode switch; follow the board's directions; no row rise after a wipe). Code-only; no schema, migration, Blob or env change.
+
+- Moving between terminal pages (the tracker, about, Patreon preview, the equipment directory, the 404) wipes the new page in: from the top when going deeper or to a page at the same depth, from the bottom when going back up (Back included), in 460 ms, with a bright band leading the edge in CRT "on". Only the part of the page on screen is wiped (so a long page reads as a wipe, not a pop), the band never crosses the header, the phone tab bar or windows, and the clip is gone the moment the wipe ends. Clicks during the wipe go through.
+- Not for: the first load, the boot's power-on, the grey-window desktop and the switch into or out of it, arrival at the home screen (the main open screen keeps its own arrival), a change of query only. CRT "reduced": the wipe without the band. CRT "off" or reduced motion: a cut.
+- Motion tokens (board 18) in `:root`: durations, easing, stagger and distances; the reticle lock-on, the boot power-on and the homepage rise now read them (same values).
+- Not built: "a card grows into the page it opens" (no terminal card opens a terminal page any more); board 18's DECODE, TYPE, COUNT and TICKER (a later batch); its row sweep and SYSTEM ▸ MOTION (main open screen and SYSTEM menu: Harold's call).
+- Tests: new `scripts/verify-page-transition.mjs` (regression): home → tracker wipes down with the band and everything is gone when it ends; same depth and deeper wipe down; Back up a level wipes up; nothing into the home screen or the grey-window desktop, on the first load or during the power-on (its class, simulated); two quick moves restart; Enter on a link; CRT reduced (no band), CRT off (a cut), amber band colours; on a tall tracker at 390 and 320 px the band leads the clip edge mid-wipe (animations paused at 230 ms) with no sideways scroll; reduced motion is a cut.
+
+**12b (fixes from the independent review of batch 12, which found nothing blocking; batch 12 went live at 21:50 UTC):**
+- Update keys in the project cards' VIEW LOG and the archive feed: classified placeholders used their place in the project and public updates their place across all projects, so the two could clash (React warning, a row reused for another); both now use the place across all projects. The fixture's STALKER update now sits between BLUSHLAND's public and classified ones, so a clash would show in the tests.
+- Operations log: a visit's NEW marks hold for 30 minutes in a tab (they held for the tab's life); a full storage keeps the marks just read; nothing is recorded when there are no public updates (an empty list would have made the next visit count every update as new); the unused picture caption is no longer sent.
+- Operations log look: a line without a picture is one line tall (the empty picture slot kept 50 px); `OPEN <code> ▸` is underlined in every phosphor (colour alone was not enough on green) and never split across lines.
+- Slow-page status: a new status starts at the real time, never the previous one's for a frame.
+- Docs: the 300-ID limit explained correctly; the roadmap says "no search control yet" was the plan's recommended answer that Harold accepted.
+- Tests: exactly the public updates are recorded as seen (a classified ID would show); storage is read once written, not after a fixed wait; a line without a picture is under 60 px; no log link split across lines at 390 and 320 px; a baseline older than 30 minutes starts a new visit.
+
+- Check: `check-20261029-221110`: all 16 steps passed (simulated: headless Chromium on throwaway SQLite fixtures).
+
 ## Changed - 2026-10-29 / Batch 12 (with 11b): operations log on the tracker (feat/batch-12-activity-log)
 
 Design canvas board 12, from Harold's "everything else on the road map" (2026-10-29). Plan reviewed by a fresh agent first (its points are built in: seen updates kept as IDs, not a date; a session baseline so NEW survives Back; classified updates kept out of the merged log; thumbnails from the update's own images; fixed slots so nothing rewraps). Code-only; no schema, migration, Blob or env change.
