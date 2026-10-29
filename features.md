@@ -9,7 +9,7 @@
 
 - Directory and terminal left, the Watcher centre with the one-line glowing title over it, node status right (transmissions, session clock, a real-world signal globe with NODE 01 in Texas, clearance), recent files below (latest page, newest schematic turning on the shared clock, operations). Fits 1366x768; phones start with the Watcher.
 - A small terminal (`help`, `ls`, `cd`, `open`, `system`, `crt`, `phosphor`, `sound`, `boot` and more) that only navigates to existing pages and changes the display settings.
-- Text-mode static behind the Watcher, a text lens under the mouse, directory previews on hover and keyboard focus; all of it still with reduced motion or CRT "reduced" and hidden with CRT "off".
+- Text-mode static behind the Watcher, a text lens under the mouse, directory previews on hover and keyboard focus. The static and the globe move only with CRT "on" and motion allowed (held still otherwise); the lens runs only for a mouse with motion allowed and CRT "on"; CRT "off" hides the static and the lens; the previews show in every mode. Panels are headings for screen readers (batch 6b).
 - Boot counter, `SIGNAL LOCKED`, the checklist collapsing to a line and the page powering on (board 17).
 
 ## Implemented - 2026-10-28 / Real 404s, Art Viewer touch targets and focus (batch 4)

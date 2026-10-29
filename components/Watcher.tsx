@@ -22,7 +22,8 @@ export const WATCHER_GLANCE_EVENT = "migrainz:watcher-glance";
 export default function Watcher({ children }: { children?: ReactNode }) {
   const root = useRef<HTMLDivElement>(null);
   const jitter = useRef<HTMLDivElement>(null);
-  // Jitter: written straight to the wrapper's data-jitter (no React state, so the Watcher still never re-renders).
+  // Jitter: written straight to the wrapper's data-jitter (no React state, so the jitter itself never re-renders the
+  // Watcher; on the homepage it re-renders only when the hovered directory row changes its children).
   // The checks run at each tick, so switching CRT mode or reduced motion takes effect without a reload.
   useEffect(() => {
     const element = jitter.current!;

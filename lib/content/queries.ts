@@ -217,18 +217,22 @@ function schematicOf(item: Equipment) {
     ratio: poster && !poster.classification && poster.width && poster.height ? poster.width / poster.height : undefined };
 }
 
-/** The most recently updated public equipment record with a schematic, for the homepage's turning thumbnail. */
+/** The most recently updated equipment record this visitor may see (public, or patron for entitled patrons) with a
+ * schematic, for the homepage's turning thumbnail. */
 export const getNewestSchematic = cache(async () => {
   const cms = await getPayload({ config });
   const req = await contentRequest();
-  const result = await cms.find({ req, collection: 'equipment', overrideAccess: false, depth: 1, limit: 1, sort: '-updatedAt',
+  // A few candidates: the newest item may have no video or poster this visitor can load; then the next one is used.
+  const result = await cms.find({ req, collection: 'equipment', overrideAccess: false, depth: 1, limit: 5, sort: '-updatedAt',
     where: { and: [publicWhere, { schematicEnabled: { equals: true } }] } });
-  const item = result.docs[0];
-  const project = item && typeof item.project === 'object' && item.project ? item.project : undefined;
-  const schematic = item ? schematicOf(item) : undefined;
-  if (!item || !project?.slug || !schematic || (!schematic.src && !schematic.poster)) return undefined;
-  return { name: item.name, file: `${item.name.replace(/\s+/g, '_')}.EQP`, href: `/projects/${project.slug}/equipment/${item.slug}`,
-    src: schematic.src, poster: schematic.poster };
+  for (const item of result.docs) {
+    const project = typeof item.project === 'object' && item.project ? item.project : undefined;
+    const schematic = schematicOf(item);
+    if (!project?.slug || !schematic || (!schematic.src && !schematic.poster)) continue;
+    return { name: item.name, file: `${item.name.replace(/\s+/g, '_')}.EQP`, href: `/projects/${project.slug}/equipment/${item.slug}`,
+      src: schematic.src, poster: schematic.poster };
+  }
+  return undefined;
 });
 
 export const getHomepageData = cache(async () => {

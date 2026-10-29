@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSound } from "@/components/SoundProvider";
 import { openRoute } from "@/lib/graphics-mode";
 
-type Line = { text: string; kind: "in" | "out" | "ok" | "err" | "dim" };
+type Line = { text: string; kind: "in" | "out" | "ok" | "err" | "dim"; id?: number };
 export type TerminalProject = { slug: string; code: string; title: string; status: string };
 
 // Directory names the shell knows, in the order `ls` prints them; each goes to an existing route or opens a promo window.
@@ -38,9 +38,12 @@ export default function HomeTerminal({ projects, clearance }: { projects: Termin
   const router = useRouter();
   const { enabled: soundOn, setEnabled: setSound } = useSound();
   const [lines, setLines] = useState<Line[]>([
-    { text: "MIGRAINZ PUBLIC TERMINAL v0.3", kind: "ok" },
-    { text: "Type help for commands, or ls to list files.", kind: "dim" },
+    { text: "MIGRAINZ PUBLIC TERMINAL v0.3", kind: "ok", id: 0 },
+    { text: "Type help for commands, or ls to list files.", kind: "dim", id: 1 },
   ]);
+  // Every printed line gets a stable id (its React key), so trimming old lines never rewrites the ones still shown and
+  // screen readers in the log region hear only new lines.
+  const nextId = useRef(2);
   const [value, setValue] = useState("");
   const [cwd, setCwd] = useState("~");
   const history = useRef<string[]>([]);
@@ -49,7 +52,10 @@ export default function HomeTerminal({ projects, clearance }: { projects: Termin
 
   useEffect(() => { if (log.current) log.current.scrollTop = log.current.scrollHeight; }, [lines]);
 
-  const print = (next: Line[], reset = false) => setLines(current => (reset ? next : [...current, ...next]).slice(-OUTPUT_LIMIT));
+  const print = (next: Line[], reset = false) => {
+    const numbered = next.map(line => ({ ...line, id: nextId.current++ }));
+    setLines(current => (reset ? numbered : [...current, ...numbered]).slice(-OUTPUT_LIMIT));
+  };
   const find = (name: string) => {
     const wanted = name.toLowerCase().replace(/^\/+|\/+$/g, "");
     if (/^\d{1,2}$/.test(wanted)) return SECTIONS[Number(wanted) - 1];
@@ -188,10 +194,10 @@ export default function HomeTerminal({ projects, clearance }: { projects: Termin
   };
 
   return (
-    <section className="pnl home-terminal-panel" aria-label="Terminal">
-      <div className="pnl-h"><span><b>TERMINAL</b><i> .SH</i></span><span className="pnl-end">TYPE help</span></div>
+    <section className="pnl home-terminal-panel" aria-labelledby="home-terminal">
+      <div className="pnl-h"><h2 className="pnl-title" id="home-terminal"><b>TERMINAL</b><i> .SH</i></h2><span className="pnl-end" aria-hidden="true">TYPE help</span></div>
       <div className="home-term-log" ref={log} role="log" aria-live="polite" tabIndex={0} aria-label="Terminal output">
-        {lines.map((line, index) => <p key={index} data-kind={line.kind}>{line.text}</p>)}
+        {lines.map(line => <p key={line.id} data-kind={line.kind}>{line.text}</p>)}
       </div>
       <div className="home-term-input">
         <label htmlFor="home-terminal-input" className="visually-hidden">Terminal command</label>

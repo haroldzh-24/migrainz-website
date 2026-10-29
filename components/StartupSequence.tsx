@@ -85,7 +85,13 @@ export default function StartupSequence({ children }: { children: ReactNode }) {
   }, [state]);
   // Line and end-of-boot timers; a skip cancels them so nothing fires (or writes storage) after the boot is over.
   const bootTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  // The boot finishes once: a second key or click during the collapse, or the boot data arriving then, changes nothing.
+  const finishing = useRef(false);
+  const showTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(showTimer.current), []);
   const finishBoot = () => {
+    if (finishing.current) return;
+    finishing.current = true;
     bootTimers.current.forEach(clearTimeout);
     bootTimers.current = [];
     try { sessionStorage.setItem(bootSeenKey, "1"); } catch { /* Optional storage. */ }
@@ -106,7 +112,7 @@ export default function StartupSequence({ children }: { children: ReactNode }) {
     if (plain) { show(); return; }
     setCount(100);
     setCollapsing(true);
-    bootTimers.current = [setTimeout(show, COLLAPSE_MS)];
+    showTimer.current = setTimeout(show, COLLAPSE_MS);
   };
   useEffect(() => {
     let dismissed = false, seen = false;
@@ -133,7 +139,7 @@ export default function StartupSequence({ children }: { children: ReactNode }) {
   // Reveal one line at a time; once every line is out and the data has arrived (or the wait ended), hold, then the ad.
   // Reduced motion: every line at once.
   useEffect(() => {
-    if (state !== "boot" || !running) return;
+    if (state !== "boot" || !running || finishing.current) return;
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     let timer: ReturnType<typeof setTimeout> | undefined;
     if (reduced && stage !== lines.length) setStage(lines.length);

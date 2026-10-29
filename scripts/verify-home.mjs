@@ -64,7 +64,14 @@ try {
     assert.ok(fold.watcher <= fold.height && fold.menu <= fold.height, `directory and Watcher above the fold (${JSON.stringify(fold)})`);
     assert.equal(await page.locator('.desktop-launchers').count(), 0, 'old launcher row gone');
     await page.screenshot({ path: path.join(out, 'home-1366.png') });
-    pass('one-line title; directory and Watcher fit 1366x768; no classified text');
+    // Panels are headings for screen-reader navigation, and keyboard focus runs left to right: the first control after
+    // the header is the directory's first file (the Watcher column comes first in the source but has no controls).
+    const headings = await page.locator('.home-screen h2, .home-recent h2').allTextContents();
+    for (const title of ['DIRECTORY', 'TERMINAL', 'WATCHER', 'SESSION', 'SIGNAL', 'CLEARANCE', 'RECENT FILES']) assert.ok(headings.some(text => text.startsWith(title)), `${title} is a heading (${headings})`);
+    await page.locator('.system-menu-button').focus(); // the header's last control
+    await page.keyboard.press('Tab');
+    assert.ok(await page.evaluate(() => !!document.activeElement?.closest('.terminal-nav')), 'after the header, focus goes to the directory');
+    pass('one-line title; directory and Watcher fit 1366x768; no classified text; headings; focus order');
 
     // Static: dots only, and it changes over time with CRT on.
     const first = await text(page, '.home-static');
@@ -77,7 +84,11 @@ try {
     // Lens: a mouse over the Watcher shows the text layer in a circle and masks the art there.
     const watcher = page.locator('.home-signal .watcher');
     const box = await watcher.boundingBox();
-    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    // The first move samples the image (lazily); keep moving until the lens shows.
+        for (let step = 0; step < 40 && !(await watcher.evaluate(el => el.hasAttribute('data-lens'))); step++) {
+      await page.mouse.move(box.x + box.width / 2 + (step % 2), box.y + box.height / 2);
+      await page.waitForTimeout(150);
+    }
     await page.waitForFunction(() => document.querySelector('.home-signal .watcher').hasAttribute('data-lens'));
     assert.match(await text(page, '.home-lens'), /[.:=+*cxbXA#-]/, 'lens text drawn from the Watcher image');
     assert.notEqual(await page.locator('.home-signal .watcher-jitter').evaluate(el => getComputedStyle(el).maskImage), 'none', 'art masked under the lens');
@@ -130,9 +141,29 @@ try {
     assert.equal(await input.inputValue(), 'help ', 'Tab completes a command');
     await input.fill(''); await input.press('Tab');
     assert.ok(!(await input.evaluate(el => el === document.activeElement)), 'Tab with nothing to complete leaves the field');
-    await input.fill('cd 4'); await input.press('Enter');
+    // Display commands write the same settings as the SYSTEM menu, and its buttons follow.
+    await input.fill('crt reduced'); await input.press('Enter');
+    assert.equal(await page.evaluate(() => document.documentElement.dataset.crt), 'reduced');
+    assert.match(await page.locator('.crt-toggle').first().textContent(), /CRT: REDUCED/, 'SYSTEM menu shows the mode the terminal set');
+    await input.fill('phosphor amber'); await input.press('Enter');
+    assert.equal(await page.evaluate(() => [document.documentElement.dataset.phosphor, localStorage.getItem('crt-phosphor')].join()), 'amber,amber');
+    assert.match(await page.locator('.phosphor-toggle').first().textContent(), /PHOSPHOR: AMBER/);
+    await input.fill('phosphor green'); await input.press('Enter');
+    await input.fill('crt on'); await input.press('Enter');
+    await input.fill('sound on'); await input.press('Enter');
+    assert.equal(await page.locator('[data-sound-toggle]').first().getAttribute('aria-pressed'), 'true', 'sound on, as the SYSTEM menu shows');
+    await input.fill('sound off'); await input.press('Enter');
+    // cd 6 opens the store window (a promo, not a page).
+    await input.fill('cd 6'); await input.press('Enter');
+    await page.locator('#shop-promo').waitFor({ state: 'visible' });
+    await page.keyboard.press('Escape');
+    await input.fill('open blushland'); await input.press('Enter');
+    await page.waitForURL(/\/projects\/blushland$/);
+    await page.goBack();
+    await page.locator('#home-terminal-input').waitFor();
+    await page.locator('#home-terminal-input').fill('cd 4'); await page.locator('#home-terminal-input').press('Enter');
     await page.waitForURL(/\/archive$/);
-    pass('terminal: help, ls, unknown command, history, Tab, cd navigation');
+    pass('terminal: help, ls, unknown command, history, Tab, crt/phosphor/sound with the SYSTEM menu following, cd 6 store, open project, cd navigation');
     await context.close();
   }
 
@@ -154,13 +185,13 @@ try {
   {
     const { context, page } = await open({ crt: 'off' });
     await home(page);
-    assert.equal(await page.locator('.home-static').evaluate(el => getComputedStyle(el).display), 'none');
+    for (const layer of ['.home-static', '.home-lens', '.home-lens-ring']) assert.equal(await page.locator(layer).evaluate(el => getComputedStyle(el).display), 'none', `CRT off hides ${layer}`);
     await context.close();
     const reduced = await open({ crt: 'reduced' });
     await home(reduced.page);
-    const before = await text(reduced.page, '.home-static');
+    const before = [await text(reduced.page, '.home-static'), await text(reduced.page, '.home-globe-map')];
     await reduced.page.waitForTimeout(700);
-    assert.equal(await text(reduced.page, '.home-static'), before, 'CRT reduced holds the static');
+    assert.deepEqual([await text(reduced.page, '.home-static'), await text(reduced.page, '.home-globe-map')], before, 'CRT reduced holds the static and the globe');
     await reduced.context.close();
     pass('CRT off hides the text layers; CRT reduced holds them');
   }
