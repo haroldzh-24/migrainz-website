@@ -207,7 +207,7 @@ export const getEquipment = cache(async (project: number, slug: string) => {
 
 // The schematic video and poster of an equipment record fetched with overrideAccess:false: only a published public or
 // patron mp4 plays, and only an authorized poster image is used.
-function schematicOf(item: Equipment) {
+function schematicOf(item: Pick<Equipment, 'schematicEnabled' | 'schematicVideo' | 'schematicPoster'>) {
   if (!item.schematicEnabled) return undefined;
   const video = item.schematicVideo;
   const authorizedVideo = video && typeof video === 'object' && video.mimeType === 'video/mp4' && video._status === 'published' && ['public', 'patron'].includes(video.accessLevel);
@@ -311,4 +311,18 @@ export const getEquipmentDirectory = cache(async (project: number) => {
   const result = await findListing(cms, { collection: 'equipment', overrideAccess: false, depth: 1, pagination: false,
     where: { and: [publicWhere, { project: { equals: project } }] }, sort: ['order', 'name'], select: equipmentListingSelect });
   return result.docs.map(equipmentListing);
+});
+
+// The equipment directory's cards (design canvas board 22): the listing plus each item's turning schematic. A separate
+// select, so the project window's tabs (getEquipmentDirectory) never load video records. Same access rules as the item
+// page: only a published public or patron mp4 plays, and /api/media/file checks access again on every request.
+export const getEquipmentTiles = cache(async (project: number) => {
+  const cms = await getPayload({ config });
+  const result = await findListing(cms, { collection: 'equipment', overrideAccess: false, depth: 1, pagination: false,
+    where: { and: [publicWhere, { project: { equals: project } }] }, sort: ['order', 'name'],
+    select: { ...equipmentListingSelect, schematicVideo: true } });
+  return result.docs.map(item => {
+    const spin = item.classification ? undefined : schematicOf(item);
+    return { ...equipmentListing(item), spin: spin && (spin.src || spin.poster) ? { src: spin.src, poster: spin.poster } : undefined };
+  });
 });

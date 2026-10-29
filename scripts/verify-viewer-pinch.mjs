@@ -73,7 +73,7 @@ try {
  const result=await canvas.evaluate(async el=>{
  const pause=()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
  const toolbar=el.previousElementSibling;
- const output=()=>parseInt(toolbar.querySelector('output').textContent);
+ const output=()=>Number(toolbar.querySelector('output').dataset.scale); // the scale in percent (the reader's readout is in words)
  const r=el.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;
  const fire=(type,id,x,y)=>el.dispatchEvent(new PointerEvent(type,{bubbles:true,cancelable:true,pointerType:'touch',pointerId:id,clientX:x,clientY:y,button:0}));
  // Synthetic pointer events cannot acquire native capture; emulate capture for this unit of browser input.
@@ -94,9 +94,10 @@ try {
  toolbar.querySelector('button').click();await pause();
  return {initial,pinch,released,trackpad,scroll,safari,reset:output(),prevented:wheel.defaultPrevented,ordinaryPrevented:ordinary.defaultPrevented,touchAction:getComputedStyle(el).touchAction};
  });
- console.log(result);assert(result.pinch>result.initial);assert.equal(result.pinch,result.released);assert(result.trackpad<result.pinch);assert.equal(result.scroll,result.trackpad);assert(result.safari<result.scroll);assert.equal(result.reset,result.initial);assert(result.prevented);assert(!result.ordinaryPrevented);assert.equal(result.touchAction,'none');
+ console.log(result);assert(result.pinch>result.initial);assert.equal(result.pinch,result.released);assert(result.trackpad<result.pinch);assert.equal(result.scroll,result.trackpad);assert(result.safari<result.scroll);assert.equal(result.reset,result.initial);assert(result.prevented);if(!reader)assert(!result.ordinaryPrevented); // the reader's plain wheel scrolls a zoomed page (batch 8)
+assert.equal(result.touchAction,'none');
  console.log(JSON.stringify({width,reader,...result}));
- if(reader) {await page.locator('.comic-reader-window').getByRole('button',{name:'Zoom in',exact:true}).evaluate(el=>el.click());await page.getByRole('button',{name:'NEXT',exact:true}).evaluate(el=>el.click());await page.waitForTimeout(150);assert.equal(await page.locator('.comic-reader-window').getByRole('button',{name:'FIT',exact:true}).getAttribute('aria-pressed'),'true');}
+ if(reader) {await page.locator('.comic-reader-window').getByRole('button',{name:'Zoom in',exact:true}).evaluate(el=>el.click());await page.getByRole('button',{name:'NEXT',exact:true}).evaluate(el=>el.click());await page.waitForTimeout(150);assert.match(await page.locator('.comic-reader-window .reader-toolbar output').textContent(),/^FIT (HEIGHT|WIDTH)$/,'a new page starts fitted again');}
  }
  await page.close();
  }

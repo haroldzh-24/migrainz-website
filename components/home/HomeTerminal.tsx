@@ -51,6 +51,12 @@ export default function HomeTerminal({ projects, clearance }: { projects: Termin
   const log = useRef<HTMLDivElement>(null);
 
   useEffect(() => { if (log.current) log.current.scrollTop = log.current.scrollHeight; }, [lines]);
+  // Escape during the switch cancels the move: say so and stay home.
+  useEffect(() => {
+    const cancelled = () => { setCwd("~"); setLines(current => [...current, { text: "^C cancelled; still at ~", kind: "dim" as const, id: nextId.current++ }].slice(-OUTPUT_LIMIT)); };
+    window.addEventListener("migrainz:open-route-cancelled", cancelled);
+    return () => window.removeEventListener("migrainz:open-route-cancelled", cancelled);
+  }, []);
 
   const print = (next: Line[], reset = false) => {
     const numbered = next.map(line => ({ ...line, id: nextId.current++ }));
@@ -195,7 +201,7 @@ export default function HomeTerminal({ projects, clearance }: { projects: Termin
 
   return (
     <section className="pnl home-terminal-panel" aria-labelledby="home-terminal">
-      <div className="pnl-h"><h2 className="pnl-title" id="home-terminal"><b>TERMINAL</b><i> .SH</i></h2><span className="pnl-end" aria-hidden="true">TYPE help</span></div>
+      <div className="pnl-h"><h2 className="pnl-title" id="home-terminal"><b>TERMINAL</b><i aria-hidden="true"> .SH</i></h2><span className="pnl-end" aria-hidden="true">TYPE help</span></div>
       <div className="home-term-log" ref={log} role="log" aria-live="polite" tabIndex={0} aria-label="Terminal output">
         {lines.map(line => <p key={line.id} data-kind={line.kind}>{line.text}</p>)}
       </div>

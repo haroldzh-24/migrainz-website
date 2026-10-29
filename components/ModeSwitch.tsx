@@ -172,7 +172,10 @@ export default function ModeSwitch() {
       event.preventDefault();
       event.stopPropagation();
       if (event.repeat || !skippable(stage)) return;
-      if (event.key === "Escape" && forward.current && !forward.current.pushed) finishRef.current();
+      if (event.key === "Escape" && forward.current && !forward.current.pushed) {
+        finishRef.current();
+        window.dispatchEvent(new Event("migrainz:open-route-cancelled"));
+      }
       else skipRef.current();
     };
     window.addEventListener("keydown", onKey, true);

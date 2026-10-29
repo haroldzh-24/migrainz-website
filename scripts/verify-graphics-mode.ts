@@ -4,8 +4,8 @@
 import assert from 'node:assert/strict';
 import { fileForPath, isGraphicsPath } from '../lib/graphics-mode';
 
-for (const path of ['/projects', '/projects/', '/projects/blushland', '/projects/blushland/characters/x', '/projects/blushland/equipment', '/projects/blushland/equipment/fixture-scanner', '/comics', '/comics/blushland/chapter-01', '/archive']) assert.ok(isGraphicsPath(path), `${path} opens a grey window`);
-for (const path of ['/', '/about', '/tracker', '/patreon', '/projectsx', '/archives', '/comicstrip']) assert.ok(!isGraphicsPath(path), `${path} stays in the terminal`);
+for (const path of ['/projects', '/projects/', '/projects/blushland', '/projects/blushland/characters/x', '/projects/blushland/equipment/fixture-scanner', '/comics', '/comics/blushland/chapter-01', '/archive']) assert.ok(isGraphicsPath(path), `${path} opens a grey window`);
+for (const path of ['/', '/about', '/tracker', '/patreon', '/projectsx', '/archives', '/comicstrip', '/projects/blushland/equipment', '/projects/blushland/equipment/']) assert.ok(!isGraphicsPath(path), `${path} stays in the terminal`);
 assert.equal(fileForPath('/projects'), 'projects.db');
 assert.equal(fileForPath('/projects/blushland/characters'), 'blushland.prj');
 assert.equal(fileForPath('/comics'), 'comics/');

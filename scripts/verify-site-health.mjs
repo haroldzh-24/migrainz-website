@@ -86,6 +86,7 @@ const NOT_FOUND = [
   '/comics/no-such-comic/no-such-chapter',
   '/projects/no-such-project',
   '/projects/no-such-project/characters',
+  '/projects/no-such-project/equipment', // a terminal page outside the project window since batch 8
   '/projects/blushland/characters/no-such-character',
   '/projects/blushland/equipment/no-such-item',
   '/projects/blushland/factions/no-such-faction',

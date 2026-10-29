@@ -13,6 +13,7 @@ import localFont from "next/font/local";
 import InlineScript from "@/components/InlineScript";
 import HighlightEffects from "@/components/HighlightEffects";
 import ModeSwitch from "@/components/ModeSwitch";
+import PhoneTabBar from "@/components/PhoneTabBar";
 import { site } from "@/data/site";
 import "./globals.css";
 
@@ -100,6 +101,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
             <span>© 2026 MIGRAINZ</span>
             <span>{viewer.signedIn ? 'PATREON ID VERIFIED' : 'PUBLIC NODE / UNAUTHENTICATED ACCESS'}</span>
           </footer>
+          <PhoneTabBar />
         </StartupSequence></WindowManagerProvider></SoundProvider></PatreonAccessProvider></body>
     </html>
   );

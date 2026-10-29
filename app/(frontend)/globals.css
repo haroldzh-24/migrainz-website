@@ -2228,7 +2228,7 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
 /* Panel and strip titles are real headings (h2) styled as labels. */
 .pnl-h .pnl-title, .strip .strip-title { margin: 0; font: inherit; letter-spacing: inherit; line-height: inherit; color: inherit; text-shadow: none; }
 .strip .strip-title { color: var(--crt-dim); }
-.strip .terminal-button { padding: 0 8px; min-height: 24px; font-size: 12px; letter-spacing: .08em; }
+.strip .terminal-button { padding: 0 8px; min-height: 24px; margin: -4px 0; font-size: 12px; letter-spacing: .08em; }
 .strip:has(.terminal-button) { align-items: center; }
 .home-pad { padding: 10px 12px 12px; }
 
@@ -2526,4 +2526,75 @@ html[data-crt="off"] .startup-sequence[data-collapsing] .startup-log { animation
   :root:has(.graphics-route) .public-window-layer { top: calc(var(--header-bottom, 0px) + 4px); }
   :root:has(.graphics-route) .taskbar-terminal { min-height: 44px; }
   .mode-switch-log { bottom: 84px; font-size: 13px; }
+}
+
+/* EQUIPMENT DIRECTORY out of the project window (design canvas board 22; batch 8): a terminal page with the project's
+   section tabs and cards whose schematics turn together (components/SchematicSpinner.tsx). */
+.equipment-tabs { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 2px; margin-top: 18px; border-bottom: 1px solid rgba(var(--crt-border-rgb), .3); }
+.equipment-tabs-project { padding: 9px 16px 9px 0; font-size: 12px; letter-spacing: .12em; color: var(--crt-dim); }
+.equipment-tabs-project b { color: var(--crt-bright); font-weight: 400; }
+.equipment-tabs a { padding: 9px 14px; font-size: 12px; letter-spacing: .1em; color: var(--crt-mid); border: 1px solid transparent; border-bottom: 0; white-space: nowrap; }
+.equipment-tabs a:hover { color: var(--crt-bright); }
+.equipment-tabs a[aria-current="page"] { color: var(--crt-bright); border-color: rgba(var(--crt-border-rgb), .3); background: var(--crt-bg); margin-bottom: -1px; text-shadow: var(--crt-glow-ui); }
+.equipment-directory-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 10px 24px; margin-top: 18px; }
+.equipment-directory-head .lede { margin: 0; }
+.equipment-sync { margin: 0; font-size: 12px; letter-spacing: .12em; line-height: 1.7; color: var(--crt-mid); text-align: right; }
+.equipment-sync span { color: var(--crt-text); font-variant-numeric: tabular-nums; }
+.equipment-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); gap: 16px; margin: 18px 0 40px; }
+.equipment-tile { position: relative; display: flex; flex-direction: column; border: 1px solid var(--crt-border); background: var(--crt-panel); color: var(--crt-text); }
+.equipment-tile:hover, .equipment-tile:focus-visible { border-color: rgba(var(--crt-border-rgb), .45); }
+.equipment-tile-view {
+  position: relative; display: block; height: 190px; overflow: hidden; border-bottom: 1px solid rgba(var(--crt-border-rgb), .14);
+  background-color: var(--crt-deep);
+  background-image: linear-gradient(rgba(var(--crt-border-rgb), .05) 1px, transparent 1px), linear-gradient(90deg, rgba(var(--crt-border-rgb), .05) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+/* Concept art keeps its own colours (redesign plan "Theme": the recolour filter is never on concept art). */
+.equipment-tile-art { display: block; width: 100%; height: 100%; object-fit: contain; filter: none; }
+.equipment-tile-none { display: grid; place-items: center; height: 100%; font-size: 12px; letter-spacing: .1em; color: var(--crt-dim); }
+.equipment-tile-copy { display: flex; flex-direction: column; gap: 3px; padding: 12px 14px 14px; }
+.equipment-tile-file { font-size: 12px; color: var(--crt-dim); }
+.equipment-tile-name { font-size: 20px; letter-spacing: .04em; color: var(--crt-text); }
+.equipment-tile:is(:hover, :focus-visible) .equipment-tile-name { color: var(--crt-bright); text-shadow: var(--crt-glow-ui); }
+.equipment-tile-meta { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; color: var(--crt-mid); }
+.equipment-tile-open { color: var(--crt-accent); opacity: 0; transform: translateX(-4px); transition: opacity 120ms, transform 240ms cubic-bezier(.2, .7, 0, 1); }
+.equipment-tile:is(:hover, :focus-visible) .equipment-tile-open { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) { .equipment-tile-open { transition: none; } }
+@media (max-width: 700px) {
+  /* One scrolling row of tabs on phones, so the current tab's joined border never breaks across lines. */
+  .equipment-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; }
+  .equipment-tabs-project { display: none; }
+  .equipment-sync { text-align: left; }
+}
+
+/* COMIC READER (design canvas board 4): opens maximized; the page fits the height (the width on portrait screens) and
+   the toolbar names the size in words. Short labels on phones so the row fits 320 px. */
+.reader-toolbar { flex-wrap: wrap; }
+.reader-toolbar .label-short { display: none; }
+.reader-toolbar output { min-width: 9ch; }
+@media (max-width: 700px) {
+  .reader-toolbar .label-long { display: none; }
+  .reader-toolbar .label-short { display: inline; }
+}
+
+/* PHONE AND TABLET TAB BAR (design canvas board 5): terminal pages at 860 px and narrower, where the header's section links
+   are hidden. Hidden on the grey-window desktop (its taskbar), while a window or the SYSTEM monitor is open, and while a
+   text field has focus (the on-screen keyboard). Under the scanlines and the bezel, like the page. */
+.phone-tabs { display: none; }
+@media (max-width: 860px) {
+  .phone-tabs {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 19; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+    border-top: 1px solid rgba(var(--crt-border-rgb), .3); background: var(--crt-panel);
+  }
+  .phone-tabs a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 56px; font-size: 12px; letter-spacing: .06em; color: var(--crt-text); }
+  .phone-tabs a[aria-current] { color: var(--crt-bright); text-shadow: var(--crt-glow-ui); }
+  body:has(.phone-tabs) { padding-bottom: 57px; }
+  /* Scroll padding: when the browser scrolls a focused control into view, it stops above the bar (stronger than the
+     bezel rule); PhoneTabBar moves a control the browser leaves under the bar (WCAG 2.4.11, tested). */
+  html[data-crt] { scroll-padding-bottom: 72px; }
+  body:has(.public-windows > .retro-window, .pixel-monitor:not([hidden]), :is(input, textarea, select):focus) .phone-tabs,
+  :root:has(.graphics-route) .phone-tabs { display: none; }
+  :root:has(.graphics-route) body { padding-bottom: 0; }
+  /* The window dock sits above the bar while the bar shows. */
+  body:not(:has(.public-windows > .retro-window, .pixel-monitor:not([hidden]), .graphics-route)) .public-window-dock { bottom: 64px; }
 }

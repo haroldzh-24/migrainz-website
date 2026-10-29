@@ -193,7 +193,7 @@ copied cookie remains usable until expiry while Patreon still validates its toke
 - `cms/access.ts`, `cms/fields.ts`, `collections/index.ts`, `payload-types.ts`.
 - `app/auth/patreon/{start,callback,signout}/route.ts`.
 - `app/(frontend)/{layout.tsx,globals.css,patreon/page.tsx}`.
-- `app/(frontend)/projects/[slug]/page.tsx`, its `characters/page.tsx`,
+- `app/(frontend)/projects/[slug]/(window)/page.tsx`, its `characters/page.tsx`,
   `characters/[character]/page.tsx`, `factions/page.tsx`,
   `factions/[faction]/page.tsx`, `equipment/[equipment]/page.tsx`, and
   `app/(frontend)/comics/[project]/[chapter]/page.tsx` (locked route fallbacks).

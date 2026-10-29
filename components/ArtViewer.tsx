@@ -4,10 +4,14 @@ import Link from "next/link";
 import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { RetroWindow, useWindowManager, viewerClosedKey, type ViewerImage } from "@/components/WindowManager";
 
-export type View = { scale: number | null; x: number; y: number };
+// scale null = fitted: to the whole frame by default, or to the frame's height or width (the comic reader's FIT HEIGHT
+// and FIT WIDTH, design canvas board 4). `top` starts a fitted page that is taller than the frame at its top edge.
+export type View = { scale: number | null; x: number; y: number; fit?: "height" | "width"; top?: boolean };
 export const fitView: View = { scale: null, x: 0, y: 0 };
+export const fitHeightView: View = { scale: null, x: 0, y: 0, fit: "height" };
+export const fitWidthView: View = { scale: null, x: 0, y: 0, fit: "width", top: true };
 
-export function ArtworkCanvas({ image, view, onChange, schematic = false }: { image: ViewerImage; view: View; onChange: (view: View) => void; schematic?: boolean }) {
+export function ArtworkCanvas({ image, view, onChange, schematic = false, reader = false }: { image: ViewerImage; view: View; onChange: (view: View) => void; schematic?: boolean; reader?: boolean }) {
   const canvas = useRef<HTMLDivElement>(null);
   const [space, setSpace] = useState({ width: 0, height: 0 });
   const [natural, setNatural] = useState({ width: 0, height: 0 });
@@ -29,17 +33,46 @@ export function ArtworkCanvas({ image, view, onChange, schematic = false }: { im
   }, []);
 
   const ready = natural.width > 0 && natural.height > 0 && space.width > 0 && space.height > 0;
-  const fit = ready ? Math.min(space.width / natural.width, space.height / natural.height) : 1;
+  const fit = !ready ? 1 : view.fit === "height" ? space.height / natural.height : view.fit === "width" ? space.width / natural.width
+    : Math.min(space.width / natural.width, space.height / natural.height);
   const minimum = Math.min(0.1, fit);
-  const maximum = Math.max(4, fit);
+  // Zoom in up to 4x, or 4x the fitted size for a small image fitted large (the reader's FIT HEIGHT), so pinching in always works.
+  const maximum = Math.max(4, fit * 4);
   const scale = view.scale === null ? fit : Math.max(minimum, Math.min(maximum, view.scale));
   const limitX = Math.max(0, (natural.width * scale - space.width) / 2);
   const limitY = Math.max(0, (natural.height * scale - space.height) / 2);
   const x = Math.max(-limitX, Math.min(limitX, view.x));
-  const y = Math.max(-limitY, Math.min(limitY, view.y));
+  const y = view.scale === null && view.top ? limitY : Math.max(-limitY, Math.min(limitY, view.y));
   const pannable = ready && (limitX > 0 || limitY > 0);
   const live = useRef({ scale, x, y });
   if (frame.current === null) live.current = { scale, x, y };
+  const viewNow = useRef(view);
+  viewNow.current = view;
+  // Moves are batched into one change per frame. A pure pan (drag, wheel, keys) keeps a fitted view fitted, so FIT WIDTH
+  // stays FIT WIDTH while the page scrolls; any zoom makes the scale explicit.
+  const pending = useRef<"pan" | "zoom" | null>(null);
+  const schedule = (kind: "pan" | "zoom") => {
+    pending.current = pending.current === "zoom" || kind === "zoom" ? "zoom" : "pan";
+    if (frame.current === null) frame.current = requestAnimationFrame(() => {
+      frame.current = null;
+      const zoomed = pending.current === "zoom";
+      pending.current = null;
+      const now = viewNow.current;
+      change.current(zoomed || now.scale !== null ? live.current : { scale: null, fit: now.fit, x: live.current.x, y: live.current.y });
+    });
+  };
+  const pan = (dx: number, dy: number) => {
+    if (!ready) return false;
+    const current = live.current;
+    const lx = Math.max(0, (natural.width * current.scale - space.width) / 2);
+    const ly = Math.max(0, (natural.height * current.scale - space.height) / 2);
+    const nx = Math.max(-lx, Math.min(lx, current.x - dx));
+    const ny = Math.max(-ly, Math.min(ly, current.y - dy));
+    if (nx === current.x && ny === current.y) return false;
+    live.current = { scale: current.scale, x: nx, y: ny };
+    schedule("pan");
+    return true;
+  };
   const transform = (factor: number, from: { x: number; y: number }, to = from) => {
     if (!ready) return;
     const current = live.current;
@@ -48,15 +81,13 @@ export function ArtworkCanvas({ image, view, onChange, schematic = false }: { im
     const lx = Math.max(0, (natural.width * bounded - space.width) / 2);
     const ly = Math.max(0, (natural.height * bounded - space.height) / 2);
     live.current = { scale: bounded, x: Math.max(-lx, Math.min(lx, to.x - (from.x - current.x) * ratio)), y: Math.max(-ly, Math.min(ly, to.y - (from.y - current.y) * ratio)) };
-    if (frame.current === null) frame.current = requestAnimationFrame(() => {
-      frame.current = null;
-      change.current(live.current);
-    });
+    schedule(factor === 1 ? "pan" : "zoom");
   };
   const zoom = (next: number) => transform(next / live.current.scale, { x: 0, y: 0 });
   const reset = (next: View) => {
     if (frame.current !== null) cancelAnimationFrame(frame.current);
     frame.current = null;
+    pending.current = null;
     live.current = { scale: next.scale ?? fit, x: next.x, y: next.y };
     onChange(next);
   };
@@ -66,8 +97,8 @@ export function ArtworkCanvas({ image, view, onChange, schematic = false }: { im
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
   };
 
-  const input = useRef({ transform, ready });
-  input.current = { transform, ready };
+  const input = useRef({ transform, ready, pan, reader });
+  input.current = { transform, ready, pan, reader };
   useEffect(() => {
     const element = canvas.current;
     if (!element) return;
@@ -77,6 +108,12 @@ export function ArtworkCanvas({ image, view, onChange, schematic = false }: { im
       return { x: clientX - rect.left - rect.width / 2, y: clientY - rect.top - rect.height / 2 };
     };
     const wheel = (event: WheelEvent) => {
+      // Reader: the wheel (without Ctrl) scrolls a page that is larger than the frame; at its edge the page scrolls.
+      if (!event.ctrlKey && input.current.reader && event.cancelable) {
+        const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? element.clientHeight : 1;
+        if (input.current.pan(event.deltaX * unit, event.deltaY * unit)) event.preventDefault();
+        return;
+      }
       if (!event.ctrlKey || !event.cancelable || !input.current.ready) return;
       event.preventDefault();
       if (safariScale !== null) return;
@@ -114,19 +151,31 @@ export function ArtworkCanvas({ image, view, onChange, schematic = false }: { im
   }, []);
 
   return <>
-    <div className="art-viewer-toolbar" role="group" aria-label="Artwork zoom">
+    {reader ? <div className="art-viewer-toolbar reader-toolbar" role="group" aria-label="Page size">
+      {/* Short labels on phones (CSS), so the row fits 320 px; the visible text is the accessible name either way. */}
+      <button type="button" disabled={!ready} aria-pressed={view.scale === null && view.fit === "height"} onClick={() => reset(fitHeightView)}><span className="label-long">FIT HEIGHT</span><span className="label-short">HEIGHT</span></button>
+      <button type="button" disabled={!ready} aria-pressed={view.scale === null && view.fit === "width"} onClick={() => reset(fitWidthView)}><span className="label-long">FIT WIDTH</span><span className="label-short">WIDTH</span></button>
+      <button type="button" disabled={!ready} aria-pressed={view.scale === 1} onClick={() => reset({ scale: 1, x: 0, y: 0 })}><span className="label-long">ACTUAL SIZE</span><span className="label-short">1:1</span></button>
+      <button type="button" aria-label="Zoom out" disabled={!ready || scale <= minimum} onClick={() => zoom(scale / 1.25)}>−</button>
+      <button type="button" aria-label="Zoom in" disabled={!ready || scale >= maximum} onClick={() => zoom(scale * 1.25)}>+</button>
+      <output aria-label="Page size" data-scale={ready ? Math.round(scale * 100) : undefined}>{failed ? "UNAVAILABLE" : !ready ? "LOADING" : view.scale === null ? (view.fit === "width" ? "FIT WIDTH" : "FIT HEIGHT") : view.scale === 1 ? "ACTUAL SIZE" : `ZOOM ${Math.round(scale * 100)}%`}</output>
+    </div> : <div className="art-viewer-toolbar" role="group" aria-label="Artwork zoom">
       <button type="button" disabled={!ready} aria-pressed={view.scale === null} onClick={() => reset(fitView)}>FIT</button>
       <button type="button" disabled={!ready} aria-pressed={view.scale === 1} onClick={() => reset({ scale: 1, x: 0, y: 0 })}>100%</button>
       <button type="button" aria-label="Zoom out" disabled={!ready || scale <= minimum} onClick={() => zoom(scale / 1.25)}>−</button>
       <button type="button" aria-label="Zoom in" disabled={!ready || scale >= maximum} onClick={() => zoom(scale * 1.25)}>+</button>
-      <output aria-label="Artwork scale">{failed ? "UNAVAILABLE" : ready ? `${Math.round(scale * 100)}%` : "LOADING"}</output>
-    </div>
+      <output aria-label="Artwork scale" data-scale={ready ? Math.round(scale * 100) : undefined}>{failed ? "UNAVAILABLE" : ready ? `${Math.round(scale * 100)}%` : "LOADING"}</output>
+    </div>}
     <div ref={canvas} className="art-viewer-canvas" data-pannable={pannable} data-dragging={dragging}
       tabIndex={pannable ? 0 : undefined} role="group" aria-label="Artwork canvas; drag or use arrow keys to pan when zoomed"
       onKeyDown={(event) => {
         if (!pannable || !["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) return;
+        const nx = Math.max(-limitX, Math.min(limitX, x + (event.key === "ArrowLeft" ? 40 : event.key === "ArrowRight" ? -40 : 0)));
+        const ny = Math.max(-limitY, Math.min(limitY, y + (event.key === "ArrowUp" ? 40 : event.key === "ArrowDown" ? -40 : 0)));
+        // An arrow that cannot move the artwork further is left alone (the reader turns the page with it).
+        if (nx === x && ny === y) return;
         event.preventDefault();
-        onChange({ scale, x: Math.max(-limitX, Math.min(limitX, x + (event.key === "ArrowLeft" ? 40 : event.key === "ArrowRight" ? -40 : 0))), y: Math.max(-limitY, Math.min(limitY, y + (event.key === "ArrowUp" ? 40 : event.key === "ArrowDown" ? -40 : 0))) });
+        onChange({ scale: view.scale, fit: view.fit, x: nx, y: ny });
       }}
       onContextMenu={(event) => event.preventDefault()}
       onPointerDown={(event) => {

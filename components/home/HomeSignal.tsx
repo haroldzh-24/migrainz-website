@@ -10,7 +10,7 @@ export type HomeChannel = { name: string; ext: string; caption: string; lines: s
 const TITLE = ["MIGRAINZ", "ARCHIVE & PROJECTS"] as const;
 // The idle line says what the visitor can do here: move over the Watcher only where the lens runs (a mouse, motion
 // allowed, CRT "on"); otherwise preview files by hover or focus; on touch a tap simply opens the file.
-const IDLE = "Move over the Watcher to read its signal. Hover a file to preview it.";
+const IDLE = "Move over the Watcher; hover a file to preview it.";
 const IDLE_STILL = "Hover or focus a file to preview it.";
 const IDLE_TOUCH = "Signal steady. Tap a file to open it.";
 const idleText = () => !finePointer() ? IDLE_TOUCH : !reducedMotion() && crtMode() === "on" ? IDLE : IDLE_STILL;
@@ -73,6 +73,7 @@ export default function HomeSignal({ channels }: { channels: Record<string, Home
       sampledFor = key;
       const image = new Image();
       image.onload = () => {
+        if (sampledFor !== key) return; // a resize or phosphor switch made this sample stale meanwhile
         try {
           const canvas = document.createElement("canvas");
           canvas.width = cols; canvas.height = rows;
@@ -215,7 +216,7 @@ function HomeTitle() {
 
   return (
     <div className="home-title">
-      <h1>
+      <h1 id="home-title">
         <span className="visually-hidden">MIGRAINZ ARCHIVE &amp; PROJECTS</span>
         <span className="home-title-main" aria-hidden="true">{title[0].done}<span className="home-title-noise">{title[0].noise}</span></span>
         <span className="home-title-sub" aria-hidden="true">{title[1].done}<span className="home-title-noise">{title[1].noise}</span></span>
@@ -227,6 +228,16 @@ function HomeTitle() {
 /** The caption under the Watcher: types out the active channel's line (all at once under reduced motion). */
 function HomeCaption({ active }: { active: HomeChannel | null }) {
   const [caption, setCaption] = useState(IDLE);
+  // The idle line depends on the display mode and reduced motion: re-type it when either changes.
+  const [mode, setMode] = useState(0);
+  useEffect(() => {
+    const bump = () => setMode(value => value + 1);
+    const observer = new MutationObserver(bump);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-crt"] });
+    const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    motion.addEventListener("change", bump);
+    return () => { observer.disconnect(); motion.removeEventListener("change", bump); };
+  }, []);
   useEffect(() => {
     const text = active ? active.caption : idleText();
     if (reducedMotion()) { setCaption(text); return; }
@@ -238,6 +249,6 @@ function HomeCaption({ active }: { active: HomeChannel | null }) {
     };
     tick();
     return () => clearTimeout(timer);
-  }, [active]);
+  }, [active, mode]);
   return <p className="home-caption" aria-hidden="true"><span>{active ? `▸ ${active.name.toLowerCase()}${active.ext.toLowerCase()}` : "▸ watcher"}</span> {caption}<span className="home-caret">_</span></p>;
 }

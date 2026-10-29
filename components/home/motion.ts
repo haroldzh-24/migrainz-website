@@ -5,19 +5,22 @@
  * drawn. Returns the cleanup.
  */
 export function watchMotion(element: Element, change: (running: boolean) => void): () => void {
-  let visible = false, last: boolean | null = null;
+  let visible = false, last: boolean | null = null, disposed = false;
   const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
   const update = () => {
+    if (disposed) return;
     const running = visible && !document.hidden && !motion.matches && (document.documentElement.dataset.crt ?? "on") === "on";
     if (running !== last) { last = running; change(running); }
   };
-  const seen = new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; update(); });
+  // Entries can arrive batched: the last one is the current state.
+  const seen = new IntersectionObserver(entries => { visible = entries[entries.length - 1].isIntersecting; update(); });
   seen.observe(element);
   const mode = new MutationObserver(update);
   mode.observe(document.documentElement, { attributes: true, attributeFilter: ["data-crt"] });
   document.addEventListener("visibilitychange", update);
   motion.addEventListener("change", update);
   return () => {
+    disposed = true;
     seen.disconnect();
     mode.disconnect();
     document.removeEventListener("visibilitychange", update);

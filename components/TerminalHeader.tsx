@@ -18,7 +18,7 @@ export default function TerminalHeader() {
       <Link className="brand" href="/#top">
         MIGRAINZ<span className="brand-full"> // PUBLIC ACCESS TERMINAL</span>
       </Link>
-      {/* Menu bar (phase 2, design canvas board 23); hidden on phones, where the homepage directory comes first. */}
+      {/* Menu bar (phase 2, design canvas board 23); hidden at 860 px and narrower, where the tab bar (board 5) takes over. */}
       <nav className="topbar-nav" aria-label="Sections">
         <Link href="/projects">PROJECTS</Link>
         <Link href="/comics">COMICS</Link>

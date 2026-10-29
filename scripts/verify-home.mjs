@@ -67,7 +67,8 @@ try {
     // Panels are headings for screen-reader navigation, and keyboard focus runs left to right: the first control after
     // the header is the directory's first file (the Watcher column comes first in the source but has no controls).
     const headings = await page.locator('.home-screen h2, .home-recent h2').allTextContents();
-    for (const title of ['DIRECTORY', 'TERMINAL', 'WATCHER', 'SESSION', 'SIGNAL', 'CLEARANCE', 'RECENT FILES']) assert.ok(headings.some(text => text.startsWith(title)), `${title} is a heading (${headings})`);
+    for (const title of ['DIRECTORY', 'TERMINAL', 'SESSION', 'SIGNAL', 'CLEARANCE', 'RECENT FILES']) assert.ok(headings.some(text => text.startsWith(title)), `${title} is a heading (${headings})`);
+    assert.equal(await page.locator('main :is(h1, h2, h3)').first().evaluate(el => el.tagName), 'H1', 'the page title is the first heading');
     await page.locator('.system-menu-button').focus(); // the header's last control
     await page.keyboard.press('Tab');
     assert.ok(await page.evaluate(() => !!document.activeElement?.closest('.terminal-nav')), 'after the header, focus goes to the directory');
@@ -161,6 +162,7 @@ try {
     await page.waitForURL(/\/projects\/blushland$/);
     await page.goBack();
     await page.locator('#home-terminal-input').waitFor();
+    await page.locator('.mode-switch').waitFor({ state: 'hidden' }); // keys are held while the reverse covers the page
     await page.locator('#home-terminal-input').fill('cd 4'); await page.locator('#home-terminal-input').press('Enter');
     await page.waitForURL(/\/archive$/);
     pass('terminal: help, ls, unknown command, history, Tab, crt/phosphor/sound with the SYSTEM menu following, cd 6 store, open project, cd navigation');
