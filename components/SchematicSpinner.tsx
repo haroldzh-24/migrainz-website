@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
 /**
  * Every turning schematic on the site shares one clock, so all of them show the same angle at the same moment, and each
@@ -28,16 +28,26 @@ function quiet() {
  */
 export function SpinAngle() {
   const [degrees, setDegrees] = useState(0);
+  // Follows a change of the reduced-motion or reduced-data setting while the page is open, like the spinners.
+  const [held, setHeld] = useState(true);
   useEffect(() => {
-    if (quiet()) return;
+    const update = () => setHeld(quiet());
+    update();
+    const queries = ["(prefers-reduced-motion: reduce)", "(prefers-reduced-data: reduce)"].map(query => window.matchMedia(query));
+    queries.forEach(query => query.addEventListener("change", update));
+    return () => queries.forEach(query => query.removeEventListener("change", update));
+  }, []);
+  useEffect(() => {
+    if (held) { setDegrees(0); return; }
     const timer = window.setInterval(() => { if (!document.hidden) setDegrees(Math.floor((Date.now() % SPIN_PERIOD_MS) / SPIN_PERIOD_MS * 360)); }, 250);
     return () => clearInterval(timer);
-  }, []);
+  }, [held]);
   return <>{String(degrees).padStart(3, "0")}</>;
 }
 
 /** `decorative`: inside a link or card that already names the item, the media is hidden from screen readers. */
-export default function SchematicSpinner({ src, poster, label, decorative = false }: { src?: string; poster?: string; label: string; decorative?: boolean }) {
+/** `fallback`: shown instead of "NO SCHEMATIC" when there is no poster (for example the item's concept art). */
+export default function SchematicSpinner({ src, poster, label, decorative = false, fallback }: { src?: string; poster?: string; label: string; decorative?: boolean; fallback?: ReactNode }) {
   const video = useRef<HTMLVideoElement>(null);
   const [still, setStill] = useState(true);
   const [failed, setFailed] = useState(false);
@@ -96,6 +106,7 @@ export default function SchematicSpinner({ src, poster, label, decorative = fals
 
   if (still || failed || !src || !near) {
     const waiting = !still && !failed && Boolean(src);
+    if (!poster && fallback && !waiting) return fallback;
     return poster
       ? <img ref={hold} className="schematic-spinner" src={poster} alt={decorative ? "" : label} loading="lazy" />
       : <span ref={hold} className="schematic-spinner schematic-spinner-empty" role={decorative ? undefined : "img"} aria-label={decorative ? undefined : label} aria-hidden={decorative || undefined}>{waiting ? "" : "NO SCHEMATIC"}</span>;

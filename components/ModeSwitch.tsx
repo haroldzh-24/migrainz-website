@@ -18,7 +18,7 @@ import { GRAPHICS_LINES, LAST_TERMINAL_KEY, fileForPath, isGraphicsPath } from "
 export const MODE_TIMING = { step: 70, hold: 120, collapse: 200, line: 170, black: 140, reveal: 240, fade: 160, rblack: 60, rline: 170, ropen: 200, settle: 400, slow: 1200, wait: 15000, doubleClick: 250 };
 
 type Stage = "idle" | "print" | "collapse" | "line" | "black" | "reveal" | "fade-in" | "fade-out" | "rblack" | "rline" | "ropen";
-type Forward = { from: string; pushed: boolean; started: number; push: () => void };
+type Forward = { from: string; pushed: boolean; started: number; push: () => void; source?: string };
 
 const graphicsShown = () => Boolean(document.querySelector(".graphics-route"));
 const plain = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches || document.documentElement.dataset.crt === "off";
@@ -73,14 +73,14 @@ export default function ModeSwitch() {
   };
 
   // Forward: terminal page to a grey-window route.
-  const open = (href: string) => {
+  const open = (href: string, source?: string) => {
     const url = new URL(href, window.location.href);
     const path = url.pathname + url.search + url.hash;
     clear();
     // The routes are dynamic, which Next does not prefetch on its own: ask for the full route now (what
     // <Link prefetch={true}> does), so the server works while the animation runs and the push finds it ready.
     try { routerRef.current.prefetch(path, { kind: "full" } as unknown as Parameters<ReturnType<typeof useRouter>["prefetch"]>[1]); } catch { /* best effort */ }
-    const run: Forward = { from: window.location.pathname, pushed: false, started: performance.now(), push: () => { if (!run.pushed) { run.pushed = true; routerRef.current.push(path); } } };
+    const run: Forward = { from: window.location.pathname, pushed: false, started: performance.now(), source, push: () => { if (!run.pushed) { run.pushed = true; routerRef.current.push(path); } } };
     forward.current = run;
     if (plain()) {
       setLines([]);
@@ -127,11 +127,11 @@ export default function ModeSwitch() {
   // Links and the homepage terminal. Capture on window runs before React's handlers, so next/link sees the click as
   // handled (defaultPrevented) and leaves the navigation to this component.
   useEffect(() => {
-    const follow = (href: string) => {
+    const follow = (href: string, source?: string) => {
       const url = new URL(href, window.location.href);
       if (url.origin !== window.location.origin || !isGraphicsPath(url.pathname) || url.pathname === window.location.pathname) return false;
       if (graphicsShown() || forward.current) return false;
-      openRef.current(url.href);
+      openRef.current(url.href, source);
       return true;
     };
     const onClick = (event: MouseEvent) => {
@@ -141,8 +141,8 @@ export default function ModeSwitch() {
       if (follow(anchor.href)) event.preventDefault();
     };
     const onOpenRoute = (event: Event) => {
-      const href = (event as CustomEvent<{ href?: string }>).detail?.href;
-      if (href && follow(href)) event.preventDefault();
+      const detail = (event as CustomEvent<{ href?: string; source?: string }>).detail;
+      if (detail?.href && follow(detail.href, detail.source)) event.preventDefault();
     };
     // Browser Back or Forward during a run: the visitor has gone elsewhere, so the run ends at once (before the push it
     // never navigates; after it, the cover simply lifts on wherever history went).
@@ -173,8 +173,9 @@ export default function ModeSwitch() {
       event.stopPropagation();
       if (event.repeat || !skippable(stage)) return;
       if (event.key === "Escape" && forward.current && !forward.current.pushed) {
+        const source = forward.current.source;
         finishRef.current();
-        window.dispatchEvent(new Event("migrainz:open-route-cancelled"));
+        window.dispatchEvent(new CustomEvent("migrainz:open-route-cancelled", { detail: { source } }));
       }
       else skipRef.current();
     };

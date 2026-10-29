@@ -248,7 +248,24 @@ try {
     await page.locator('#home-terminal-input').fill('cd 4');
     await page.locator('#home-terminal-input').press('Enter');
     await page.waitForURL(/\/archive$/, { timeout: 30000 });
-    pass('homepage terminal: cd plays the switch; Back mid-fade ends it and the terminal works at once');
+    // Escape cancels a terminal move and the terminal says so; a cancelled click on a directory row prints nothing (8b).
+    await page.goBack();
+    await page.locator('#home-terminal-input').waitFor();
+    await idle(page);
+    await page.locator('#home-terminal-input').fill('cd 2');
+    await page.locator('#home-terminal-input').press('Enter');
+    await page.locator('.mode-switch[data-stage="print"]').waitFor();
+    await page.keyboard.press('Escape');
+    await idle(page);
+    assert.match(await page.locator('.home-term-log').textContent(), /\^C cancelled; still at ~/);
+    const log = await page.locator('.home-term-log').textContent();
+    await page.locator('.terminal-nav a[data-channel="projects"]').click();
+    await page.locator('.mode-switch[data-stage="print"]').waitFor();
+    await page.keyboard.press('Escape');
+    await idle(page);
+    assert.equal(await page.locator('.home-term-log').textContent(), log, 'no terminal line for a cancelled click');
+    assert.equal(new URL(page.url()).pathname, '/', 'still home after the cancelled click');
+    pass('homepage terminal: cd plays the switch; Back mid-fade ends it and the terminal works at once; Escape cancel lines');
     await context.close();
   }
 

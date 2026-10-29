@@ -5,6 +5,7 @@
 - The equipment directory is a terminal page outside the project window: section tabs and cards whose schematics all turn in step on one 12 s clock, each loop starting on the item's right side.
 - The comic reader opens maximized with the page fitted to the height (width on portrait screens): FIT HEIGHT, FIT WIDTH, ACTUAL SIZE and zoom, in words; the wheel scrolls a large page; arrows turn pages.
 - A HOME / PROJECTS / COMICS / ARCHIVE tab bar at the bottom of terminal pages at 860 px and narrower.
+- 8b: on phones the current equipment tab scrolls into view; an item whose video has no poster shows its concept art as the still; the clock readout follows a live reduced-motion change; the reader keeps a fit only when FIT HEIGHT or FIT WIDTH is pressed; the homepage terminal prints its cancel line only for moves it started.
 
 ## Implemented - 2026-10-29 / Terminal to desktop switch (batch 7, design canvas boards 2 and 14)
 

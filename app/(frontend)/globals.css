@@ -2585,10 +2585,11 @@ html[data-crt="off"] .startup-sequence[data-collapsing] .startup-log { animation
   .phone-tabs {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 19; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
     border-top: 1px solid rgba(var(--crt-border-rgb), .3); background: var(--crt-panel);
+    padding-bottom: max(8px, env(safe-area-inset-bottom)); /* 8b: room above a phone's home indicator */
   }
   .phone-tabs a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 56px; font-size: 12px; letter-spacing: .06em; color: var(--crt-text); }
   .phone-tabs a[aria-current] { color: var(--crt-bright); text-shadow: var(--crt-glow-ui); }
-  body:has(.phone-tabs) { padding-bottom: 57px; }
+  body:has(.phone-tabs) { padding-bottom: 65px; }
   /* Scroll padding: when the browser scrolls a focused control into view, it stops above the bar (stronger than the
      bezel rule); PhoneTabBar moves a control the browser leaves under the bar (WCAG 2.4.11, tested). */
   html[data-crt] { scroll-padding-bottom: 72px; }
@@ -2596,5 +2597,11 @@ html[data-crt="off"] .startup-sequence[data-collapsing] .startup-log { animation
   :root:has(.graphics-route) .phone-tabs { display: none; }
   :root:has(.graphics-route) body { padding-bottom: 0; }
   /* The window dock sits above the bar while the bar shows. */
-  body:not(:has(.public-windows > .retro-window, .pixel-monitor:not([hidden]), .graphics-route)) .public-window-dock { bottom: 64px; }
+  body:not(:has(.public-windows > .retro-window, .pixel-monitor:not([hidden]), .graphics-route)) .public-window-dock { bottom: 72px; }
 }
+
+/* Batch 8b (review of batch 8). Equipment tabs on phones: the reticle stays inside the scrolling row, and the focused
+   tab brightens (the tab colour rule outranked the shared focus colour). */
+.equipment-tabs a:focus-visible { color: var(--crt-bright); }
+/* At 700 px and narrower the tab row scrolls sideways, which clips anything drawn outside it: the reticle stays inside each tab. */
+@media (max-width: 700px) { .equipment-tabs a::after { --reticle-inset: 0px; --reticle-from: 0px; } }

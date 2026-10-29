@@ -34,7 +34,7 @@ export const LAST_TERMINAL_KEY = "migrainz-last-terminal";
  * Navigate from code (the homepage terminal): asks ModeSwitch to run the switch when the target is a grey-window route,
  * otherwise (or if nothing handles the request) calls `push` directly.
  */
-export function openRoute(push: (href: string) => void, href: string) {
-  const request = new CustomEvent("migrainz:open-route", { detail: { href }, cancelable: true });
+export function openRoute(push: (href: string) => void, href: string, source?: string) {
+  const request = new CustomEvent("migrainz:open-route", { detail: { href, source }, cancelable: true });
   if (window.dispatchEvent(request)) push(href);
 }
