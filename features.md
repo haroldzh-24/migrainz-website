@@ -1,5 +1,10 @@
 # Features
 
+## Implemented - 2026-10-29 / Page transitions and motion tokens (batch 13, boards 19 and 18)
+
+- Moving between terminal pages wipes the new page in from the top (deeper or same depth) or the bottom (back up), with a scan band in CRT "on"; a cut with reduced motion or CRT off.
+- One set of motion tokens (durations, easing, distances) for the site's animations.
+
 ## Implemented - 2026-10-29 / Operations log (batch 12, board 12)
 
 - The tracker page opens with an operations log: the newest public updates of every project, one line each with date, project, title, a link to the project and the update's picture, and NEW on updates this browser has not seen before (kept in this browser only).

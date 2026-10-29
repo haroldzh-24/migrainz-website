@@ -6,12 +6,14 @@ import { useEffect, useState } from "react";
 // Operations log (design canvas board 12): the newest public project updates, with NEW on the ones this browser has not
 // seen before. "Seen" lives only on this device (localStorage, a list of update IDs); nothing about the visitor goes to the
 // server. The first visit on a device marks nothing new.
-export type OperationsEntry = { id: number; code: string; href: string; title: string; date: string; thumb?: { src: string; alt: string } };
+export type OperationsEntry = { id: number; code: string; href: string; title: string; date: string; thumb?: { src: string } };
 
 const SEEN_KEY = "migrainz-operations-seen-v1";
-// This visit's baseline: copied from SEEN_KEY on the first mount in a browser session, so a second mount (React's dev
-// double run, or coming Back from a project) shows the same NEW marks.
+// This visit's baseline: copied from SEEN_KEY on the first mount of a visit, so a second mount (React's dev double run,
+// or coming Back from a project) shows the same NEW marks. A tab lives on (reloads, phones restoring tabs), so the
+// baseline counts as a new visit after VISIT_MS (12b).
 const BASELINE_KEY = "migrainz-operations-baseline-v1";
+const VISIT_MS = 30 * 60 * 1000;
 const SEEN_LIMIT = 300;
 
 function readIDs(raw: string | null): number[] | null {
@@ -26,23 +28,28 @@ export default function OperationsLog({ entries, allIDs }: { entries: Operations
   // null until mounted (the server knows nothing about this browser), then the IDs that are new on this visit.
   const [fresh, setFresh] = useState<Set<number> | null>(null);
   useEffect(() => {
+    let fresh = new Set<number>();
     try {
-      // The session copy: {"seen": [...]} for a returning device, {"seen": null} for its first visit.
-      let stored: { seen: number[] | null } | null = null;
+      // The visit's copy: {"seen": [...], "at": ms} for a returning device, {"seen": null, ...} for its first visit.
+      let stored: { seen: number[] | null; at: number } | null = null;
       try { stored = JSON.parse(sessionStorage.getItem(BASELINE_KEY) ?? "null"); } catch { stored = null; }
-      if (!stored || !("seen" in stored)) {
-        stored = { seen: readIDs(localStorage.getItem(SEEN_KEY)) };
+      if (!stored || !("seen" in stored) || typeof stored.at !== "number" || Date.now() - stored.at > VISIT_MS) {
+        stored = { seen: readIDs(localStorage.getItem(SEEN_KEY)), at: Date.now() };
         sessionStorage.setItem(BASELINE_KEY, JSON.stringify(stored));
       }
       const baseline = Array.isArray(stored.seen) ? stored.seen.filter((id): id is number => Number.isInteger(id)) : null;
       const known = new Set(baseline ?? []);
       // A device that has never seen the log: nothing is "new".
-      setFresh(new Set(baseline ? allIDs.filter(id => !known.has(id)) : []));
+      fresh = new Set(baseline ? allIDs.filter(id => !known.has(id)) : []);
+    } catch { /* Storage blocked: the log works, without NEW. */ }
+    setFresh(fresh);
+    // Recorded on its own, so a full storage keeps the marks just read; nothing to record without public updates (an
+    // empty list would make the next visit count every update as new).
+    if (!allIDs.length) return;
+    try {
       const seen = [...new Set([...allIDs, ...(readIDs(localStorage.getItem(SEEN_KEY)) ?? [])])].slice(0, SEEN_LIMIT);
       localStorage.setItem(SEEN_KEY, JSON.stringify(seen));
-    } catch {
-      setFresh(new Set()); // Storage blocked: the log works, without NEW.
-    }
+    } catch { /* not recorded this time */ }
   }, [allIDs]);
 
   if (!entries.length) return null;

@@ -85,6 +85,21 @@
 .content-gallery figcaption { color: var(--green2); font-size: 14px; margin-top: 8px; }
 
 :root {
+  /* Motion (design canvas board 18, "seven moves, one rhythm"): durations, easing and distances. Body text never
+     animates; reduced motion lands everything in its final state (the global rule near the end of this file). */
+  --motion-ease: cubic-bezier(.2, .7, 0, 1);
+  --motion-ease-leave: cubic-bezier(.6, 0, .8, .2);
+  --motion-lock: 120ms;        /* lock, colour, focus */
+  --motion-sweep: 240ms;       /* sweep bars, arrows */
+  --motion-reveal: 460ms;      /* reveals and page wipes (board range 380-560 ms) */
+  --motion-power-off: 320ms;
+  --motion-power-on: 560ms;
+  --motion-decode: 1100ms;     /* hero decode, once a visit */
+  --motion-stagger: 55ms;      /* between list rows; 8 rows at most */
+  --motion-rise: 14px;
+  --motion-drop: 10px;
+  --motion-nudge: 5px;
+  --motion-max-travel: 24px;   /* nothing travels further */
   /* Terminal theme: the single source of colour. The legacy names below are aliases. */
   --crt-bg: #0a0e0b;
   --crt-panel: #0f1511;
@@ -2109,7 +2124,7 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
 :where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .retro-window-titlebar, .desktop-file, .public-window-dock, :root:has(.graphics-route) .application-desktop) *):not(:where(.skip-link, .equipment-card a, .patron-locked-trigger, p a, dd a, .content-writing a)):is(:focus-visible, :active)::after,
 .equipment-card:has(a:focus-visible, a:active)::after {
   opacity: 1;
-  animation: reticle-lock 120ms ease-out;
+  animation: reticle-lock var(--motion-lock) ease-out;
 }
 /* Hover only where a real pointer hovers, so a tap on a phone doesn't leave the reticle stuck. */
 @media (hover: hover) {
@@ -2119,7 +2134,7 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
   }
   :where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .retro-window-titlebar, .desktop-file, .public-window-dock, :root:has(.graphics-route) .application-desktop) *):not(:where(.skip-link, .equipment-card a, .patron-locked-trigger, p a, dd a, .content-writing a)):hover::after {
     opacity: 1;
-    animation: reticle-lock 120ms ease-out;
+    animation: reticle-lock var(--motion-lock) ease-out;
   }
 }
 /* Links inside running text: colour and glow only; brackets around wrapped text read as broken. */
@@ -2391,7 +2406,7 @@ video.schematic-spinner:not([poster]):not([data-playing]) { opacity: 0; }
   62% { transform: scale(1, .01); filter: brightness(2); }
   100% { transform: scale(0, .01); filter: brightness(2); }
 }
-main.shell.power-on { animation: power-on 560ms cubic-bezier(.2, .7, 0, 1) backwards; transform-origin: 50% 240px; }
+main.shell.power-on { animation: power-on var(--motion-power-on) var(--motion-ease) backwards; transform-origin: 50% 240px; }
 main.shell.power-on .home-col > *,
 main.shell.power-on .home-recent { animation: home-rise 520ms cubic-bezier(.2, .7, 0, 1) backwards; }
 main.shell.power-on .home-col > :nth-child(2) { animation-delay: 60ms; }
@@ -2404,7 +2419,7 @@ main.shell.power-on .home-recent { animation-delay: 300ms; }
   35% { transform: scale(1, .004); filter: brightness(2); }
   100% { transform: none; filter: none; }
 }
-@keyframes home-rise { from { opacity: 0; transform: translateY(14px); } }
+@keyframes home-rise { from { opacity: 0; transform: translateY(var(--motion-rise)); } }
 @media (prefers-reduced-motion: reduce) {
   .home-caret, .home-preview, main.shell.power-on, main.shell.power-on .home-col > *, main.shell.power-on .home-recent,
   .startup-sequence[data-collapsing] .startup-log { animation: none !important; }
@@ -2716,14 +2731,14 @@ html[data-crt="on"] .nav-status p:first-child { text-shadow: var(--crt-glow-ui);
 .operations-log li[data-new] { border-left-color: var(--crt-accent); }
 .operations-log time, .operations-log-code { font-size: 12px; color: var(--crt-dim); }
 .operations-log-text { min-width: 0; overflow-wrap: anywhere; }
-.operations-log-text a { color: var(--crt-accent); text-underline-offset: 3px; }
-.operations-log-text a:hover { text-decoration: underline; }
+/* Underlined in every phosphor (colour alone is not enough on green), and never split across lines (12b). */
+.operations-log-text a { color: var(--crt-accent); text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; }
 /* Its own grid cell, empty on the server, so marking a row NEW after load never rewraps the text. */
 .operations-log-new { font-size: 12px; line-height: 1.5; text-align: center; }
 .operations-log li[data-new] .operations-log-new { background: var(--crt-accent); color: var(--crt-bg); }
 .operations-log-thumb { display: block; width: 70px; height: 50px; object-fit: cover; border: 1px solid rgba(var(--crt-border-rgb), .18); background: var(--crt-deep); }
 /* An update without a picture keeps the column (rows stay aligned) but draws no empty frame. */
-span.operations-log-thumb { border-color: transparent; background: none; }
+span.operations-log-thumb { height: 0; border-color: transparent; background: none; } /* no picture: a one-line row (12b) */
 @media (max-width: 700px) {
   .operations-log li { grid-template-columns: auto auto minmax(0, 1fr) 70px; grid-template-areas: "time new . thumb" "text text text thumb"; gap: 4px 10px; padding: 12px; }
   .operations-log li > time { grid-area: time; }
@@ -2735,3 +2750,33 @@ span.operations-log-thumb { border-color: transparent; background: none; }
   .operations-log-text { grid-area: text; }
   .operations-log-thumb { grid-area: thumb; }
 }
+
+/* Batch 13: page transitions between terminal pages (design canvas board 19; components/PageTransition.tsx). Only the
+   part of <main> on screen is wiped (--enter-top / --enter-bottom, px from main's top); fill mode backwards, so the clip
+   is gone when the animation ends. Reduced motion and CRT off never get the attribute. */
+main.shell[data-page-enter="down"] { animation: page-enter-down var(--motion-reveal) var(--motion-ease) backwards; }
+main.shell[data-page-enter="up"] { animation: page-enter-up var(--motion-reveal) var(--motion-ease) backwards; }
+@keyframes page-enter-down {
+  from { clip-path: inset(0 0 calc(100% - var(--enter-top, 0px)) 0); }
+  to { clip-path: inset(0 0 calc(100% - var(--enter-bottom, 100%)) 0); }
+}
+@keyframes page-enter-up {
+  from { clip-path: inset(var(--enter-bottom, 100%) 0 0 0); }
+  to { clip-path: inset(var(--enter-top, 0px) 0 0 0); }
+}
+/* The band leads the clip edge across the same span; under the header, tab bar, status panel and windows. CRT "on" only. */
+.page-band { position: fixed; left: 0; right: 0; z-index: 1; overflow: hidden; pointer-events: none; }
+.page-band i { position: absolute; left: 0; right: 0; height: 60px; }
+.page-band[data-direction="down"] i {
+  top: -60px;
+  background: linear-gradient(to bottom, transparent, rgba(var(--crt-border-rgb), .07) 55%, rgba(var(--crt-border-rgb), .18) 92%, rgba(var(--crt-bright-rgb), .95) 97%, transparent);
+  animation: page-band-down var(--motion-reveal) var(--motion-ease) both;
+}
+.page-band[data-direction="up"] i {
+  top: 100%;
+  background: linear-gradient(to top, transparent, rgba(var(--crt-border-rgb), .07) 55%, rgba(var(--crt-border-rgb), .18) 92%, rgba(var(--crt-bright-rgb), .95) 97%, transparent);
+  animation: page-band-up var(--motion-reveal) var(--motion-ease) both;
+}
+@keyframes page-band-down { to { transform: translateY(var(--band-span)); } }
+@keyframes page-band-up { to { transform: translateY(calc(-1 * var(--band-span))); } }
+@media (prefers-reduced-motion: reduce) { .page-band { display: none; } }

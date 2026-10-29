@@ -14,11 +14,18 @@
 - No dedicated test yet (6c/7c, listed by the 8b review): the idle caption following a CRT-mode or reduced-motion change, the lens dropping a sample that went stale while loading, the motion helper reading the latest visibility entry.
 - Status: Open; questions for Harold.
 
+### 2026-10-29 - Batch 13: page transition limits
+
+- The old page does not stay under the new one during a wipe (the board shows both): the site has one `main`, so the part not yet revealed is the empty screen for up to 460 ms.
+- Back with a restored scroll position: the visible area is measured when the new page is put in, before the browser may restore the scroll; the wipe may then cover a different strip than the one shown (not seen in tests; not checked on real devices).
+- Paint cost of animating clip-path on a long, glowing page on phones not measured; Safari and Firefox not checked.
+- Status: Open (recorded).
+
 ### 2026-10-29 - Batch 12: operations log limits
 
 - Each line links to its project's page, not to the exact record the update is about (the board's "View pages", "Open"): updates have no link field, and adding one is a schema change (production lane, Harold's call).
 - Thumbnails come only from the update's own pictures; most updates migrated from the old data have none, so most lines have no thumbnail today.
-- NEW is per browser: clearing site data, another browser or a private window counts as a first visit (nothing marked). Updates newer than the 300 most recently seen IDs could be marked NEW again only after more than 300 public updates.
+- NEW is per browser: clearing site data, another browser or a private window counts as a first visit (nothing marked). A visit's marks hold for 30 minutes in a tab (12b: before, they held for the tab's whole life, across reloads and restored tabs). The browser keeps at most 300 seen IDs: with more than 300 public updates, the older ones are never kept, so they would count toward "N NEW" on every visit (never as marks, since only 12 lines show).
 - The log shows the 12 newest; NEW is counted over all public updates, so the count can be larger than the NEW marks shown.
 - Status: Open (recorded; per-record links wait for a CMS field).
 

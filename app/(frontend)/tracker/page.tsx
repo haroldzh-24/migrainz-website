@@ -14,7 +14,7 @@ export default async function TrackerPage() {
   const entries: OperationsEntry[] = updates.slice(0, 12).map(({ project, note }) => {
     const picture = note.images?.find(image => !image.classification && image.src);
     return { id: note.id!, code: project.id, href: projectHref(project), title: note.title || note.text.split("\n")[0], date: note.date,
-      thumb: picture ? { src: picture.thumbnailSrc ?? picture.src, alt: picture.alt } : undefined };
+      thumb: picture ? { src: picture.thumbnailSrc ?? picture.src } : undefined }; // decorative: the line names the update
   });
   return (
     <Directory path="SYS:/OPERATIONS/" title="PROJECT TRACKER">
