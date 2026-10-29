@@ -4,10 +4,12 @@
 
 ### 2026-10-29 - Batch 8: open questions and limits
 
-- Cost (Harold asked for always-turning thumbnails): every card on screen plays its schematic video through `/api/media/file` (a function call and a Blob read per request; responses are `private, no-store`). In the fixture two clips made 3 requests on load and none per loop; the real number per visit is about one to two requests per card on screen, times the video size. Videos only load within 200 px of the screen and pause off screen; once loaded they stay in memory until the page is left.
+- Cost (Harold asked for always-turning thumbnails): every card on screen plays its schematic video through `/api/media/file` (a function call and a Blob read per request; responses are `private, no-store`). Measured in the fixture (corrected in 8b): one request per video file on load, three files (the two test clips and the scanner's stub video, which fails and shows its poster), and no request during a full 12 s loop. Not measured: real-size schematic files (the test clips are 33 KB and 49 KB; with `no-store` a browser may fetch a large file again when it loops), production request counts, Vercel or Blob usage. Since 8b the cards and the phone tab bar do not prefetch their pages (in production every link on screen would otherwise prefetch; `next dev`, which the tests use, never does, so this is not tested); the switch still fetches the route at the click. Videos only load within 200 px of the screen and pause off screen; once loaded they stay in memory until the page is left.
 - Reader: FIT HEIGHT gives 533 px at 1366x768 and 665 px at 1440x900 instead of board 4's 690/850, because the page-turn row stays separate from the size row.
 - Tab bar: board 5's four tabs leave TRACKER without a phone tab (it is in the homepage directory). Harold's call.
 - A spinner's video, once near the screen, stays loaded while the page is open (paused off screen).
+- Tab bar on iPhones: the bar pads its bottom by the safe area (8b), but the site sets no `viewport-fit=cover`, so that value is 0 and the bar sits above the home indicator area as any fixed bar does; not checked on a device. Board 5 shows 14 px of bottom padding; the build has 8 px.
+- Not tested (8b): the concept-art fallback for an item whose video has no poster (no fixture item has a video without a poster).
 - Status: Open; questions for Harold.
 
 ### 2026-10-29 - Homepage: left as is after the batch 6 review (6b)

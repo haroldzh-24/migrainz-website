@@ -1,5 +1,20 @@
 # Changelog
 
+## Changed - 2026-10-29 / Batch 8b: fixes from the independent review of batch 8 (fix/batch-8b-review-fixes)
+
+Code-only; no schema, migration, Blob or env change.
+
+- Phone tab bar: its keyboard-focus nudge no longer scrolls the page when a script focuses a large container (the main section is focused with `preventScroll` after the reverse switch, the startup sequence and a window closing; at 860 px and narrower the nudge used to push the header off screen). The cards and the tab bar no longer prefetch their pages (the old Win95 rows did not either; the switch fetches the route at the click). The bar gets 8 px of bottom padding, more where the phone reports a safe area; the page padding and the window dock above the bar move up to match.
+- Equipment directory on phones: the current section tab is scrolled into view in its sideways-scrolling row; a keyboard-focused tab brightens and its reticle is drawn inside the tab, so the row no longer cuts it off.
+- An equipment card whose video has no poster shows the item's first concept art as its still (reduced motion, data saver or a failed load) instead of "NO SCHEMATIC".
+- The directory page builds its EQUIPMENT tab from the cards it already loaded instead of a second equipment listing.
+- The clock readout ("ROTATION 123°") follows a live reduced-motion or data-saver change: it holds at 000 while the cards hold still and runs again when they turn.
+- Reader: only the FIT HEIGHT and FIT WIDTH buttons choose a fit to keep for the next pages; scrolling a fitted page no longer locks it in, so the landscape/portrait default still applies after turning the phone.
+- Homepage terminal: "^C cancelled; still at ~" is printed only when the terminal started the move (the open-route event now says who started it); Escape on a move started by a directory row prints nothing.
+- Tests: `verify-equipment-directory.mjs` adds the scroll position after a script focus of the main section with the tab bar showing, the current tab inside its row at 390 px, the focused tab's colour and reticle, the readout holding at 000 under emulated reduced motion, and a reader that keeps fitting by shape after a wheel scroll; `verify-mode-switch.mjs` adds Escape on a terminal move (cancel line) and on a directory-row click (no line, still home). Not tested: the concept-art fallback (no fixture item has a video without a poster).
+- Docs: `scripts/fixtures/README.md` says how the test clips were made; `verify-equipment-navigation.mjs` notes that its list page models the faction pages' Win95 list, not the real equipment directory; the redesign plan records the equipment directory as the exception to "art opens in graphics mode" and the reader decisions; bugs.md corrects the cost note.
+- **Corrections to batch 8's entry:** "two clips made 3 requests on load" was one request for each of three files (the two clips and the scanner's stub video, which fails and shows its poster), and "none per loop" was measured only with 33 KB and 49 KB test clips, not real schematic files; the decorative spinner and its following a live reduced-motion change shipped in 6b, not batch 8; only Left and Right turn pages, Up and Down only scroll; the 4x-of-fit zoom ceiling also applies to the Art Viewer; the equipment directory's cards are plain links, so the directory no longer opens the Art Viewer or the Properties panel from its list (item pages still do).
+
 ## Changed - 2026-10-29 / Batch 8 (with 6c/7c): equipment directory out of the window, reader fitted to the page, phone tab bar (feat/batch-8-equipment-reader)
 
 Harold, 2026-10-29: "take the equipment menu out of the white windows tab and make it so that its thumbnails are always spinning and in sync of each other in terms of showing the right side of it as the starting loop" (design canvas board 22), and "everything else on the road map" (boards 4 and 5). Code-only; no schema, migration, Blob or env change.

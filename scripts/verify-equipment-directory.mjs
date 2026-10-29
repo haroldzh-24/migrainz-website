@@ -78,6 +78,11 @@ try {
       assert.ok(Math.abs(rate - duration / (SPIN_PERIOD_MS / 1000)) < 0.01, 'played at duration / 12 s');
     }
     assert.match(await page.locator('.equipment-sync span').textContent(), /ROTATION \d{3}° · LOOP START: RIGHT SIDE/);
+    // The readout follows a live reduced-motion change (8b): it holds at 000 while motion is reduced.
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.waitForFunction(() => /ROTATION 000°/.test(document.querySelector('.equipment-sync span').textContent));
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await page.waitForFunction(() => !/ROTATION 000°/.test(document.querySelector('.equipment-sync span').textContent), null, { timeout: 5000 }).catch(() => {}); // 000 is also a real angle once per loop
     await page.screenshot({ path: path.join(out, 'equipment-1366.png') });
     // Requests over one more full loop: a looping clip should not be fetched again and again.
     const before = media.length;
@@ -167,6 +172,17 @@ try {
     for (const width of [390, 320]) {
       const { context, page, measure } = await reader(width, 844);
       assert.equal((await measure()).readout, 'FIT WIDTH', 'portrait screen: FIT WIDTH');
+      if (width === 390) {
+        // Scrolling a fitted page does not choose that fit (8b): after turning the phone (here: a landscape window), the
+        // next page is fitted for the new shape.
+        await page.mouse.move(195, 400);
+        await page.mouse.wheel(0, 200);
+        await page.waitForTimeout(200);
+        await page.setViewportSize({ width: 1366, height: 768 });
+        await page.getByRole('button', { name: 'NEXT', exact: true }).click();
+        await page.waitForFunction(() => document.querySelector('.reader-toolbar output').textContent === 'FIT HEIGHT');
+        await page.setViewportSize({ width, height: 844 });
+      }
       assert.ok(await page.locator('.reader-toolbar').evaluate(bar => [...bar.children].every(child => child.getBoundingClientRect().right <= bar.getBoundingClientRect().right + 0.5)), `toolbar fits ${width} px`);
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `no sideways scroll at ${width}`);
       if (width === 390) await page.screenshot({ path: path.join(out, 'reader-390.png') });
@@ -184,8 +200,28 @@ try {
     assert.equal(await bar.locator('a[aria-current="true"]').textContent(), '▤PROJECTS', 'PROJECTS marked as the current section');
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'no sideways scroll at 390');
     await page.screenshot({ path: path.join(out, 'equipment-390.png'), fullPage: true });
+    // The current section tab is scrolled into view in its sideways-scrolling row (8b).
+    assert.ok(await page.locator('.equipment-tabs').evaluate(nav => { const tab = nav.querySelector('[aria-current]').getBoundingClientRect(), row = nav.getBoundingClientRect(); return tab.left >= row.left - 0.5 && tab.right <= row.right + 0.5; }), 'current tab visible in the row');
+    // A keyboard-focused tab brightens and keeps its whole reticle inside the scrolling row (8b).
+    {
+      const first = page.locator('.equipment-tabs a').first();
+      await first.focus();
+      await page.keyboard.press('Shift+Tab');
+      await page.keyboard.press('Tab');
+      const look = await first.evaluate(a => ({ focused: a.matches(':focus-visible'), color: getComputedStyle(a).color, bright: getComputedStyle(document.documentElement).getPropertyValue('--crt-bright').trim(), inset: getComputedStyle(a, '::after').top }));
+      assert.ok(look.focused, 'tab focused by keyboard');
+      assert.equal(look.inset, '0px', 'reticle drawn inside the tab');
+      const probe = await page.evaluate(value => { const el = document.createElement('i'); el.style.color = value; document.body.append(el); const c = getComputedStyle(el).color; el.remove(); return c; }, look.bright);
+      assert.equal(look.color, probe, 'focused tab uses the bright text shade');
+    }
     await page.goto(base + '/');
     assert.equal(await bar.locator('a[aria-current="page"]').textContent(), '▣HOME');
+    // A container focused by script (the main section, with preventScroll, after keyboard use) never scrolls the page (8b).
+    await page.keyboard.press('Tab');
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.evaluate(() => document.getElementById('top').focus({ preventScroll: true }));
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    assert.equal(await page.evaluate(() => scrollY), 0, 'script focus on the main section does not scroll the page');
     const top = await bar.evaluate(el => el.getBoundingClientRect().top);
     await page.locator('#top').focus();
     for (let index = 0; index < 30; index++) {

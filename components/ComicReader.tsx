@@ -23,10 +23,8 @@ export default function ComicReader({
   const chosenFit = useRef<"height" | "width" | null>(null);
   const fitted = () => (chosenFit.current ?? (window.innerHeight > window.innerWidth ? "width" : "height")) === "width" ? fitWidthView : fitHeightView;
   useEffect(() => setView(fitted()), []); // eslint-disable-line react-hooks/exhaustive-deps
-  const changeView = (next: View) => {
-    if (next.scale === null && next.fit) chosenFit.current = next.fit;
-    setView(next);
-  };
+  // Only the FIT buttons choose a fit; scrolling a fitted page does not.
+  const chooseFit = (fit: "height" | "width") => { chosenFit.current = fit; };
   const pageSelectID = useId();
   const { toggleMaximizeWindow, unregisterWindow } = useWindowManager();
   const unregisterRef = useRef(unregisterWindow);
@@ -74,7 +72,7 @@ export default function ComicReader({
       <section className="comic-reader-content" aria-label="Comic reader" tabIndex={0} onKeyDown={keyboard}>
         <div className="comic-page-stage">
           {current?.classification ? <ClassifiedPlaceholder classification={current.classification} label={current.safeLabel} variant="media" />
-            : current?.src ? <ArtworkCanvas key={`${page}-${current.src}`} reader image={current} view={view} onChange={changeView} />
+            : current?.src ? <ArtworkCanvas key={`${page}-${current.src}`} reader image={current} view={view} onChange={setView} onFitChosen={chooseFit} />
             : <p className="comic-page-empty" role="status">{current ? "PAGE UNAVAILABLE" : "NO PUBLIC PAGES FILED"}</p>}
         </div>
         <footer className="comic-reader-navigation">

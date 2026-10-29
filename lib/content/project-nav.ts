@@ -6,10 +6,11 @@ import { getEquipmentDirectory, getFactions, getProject, getProjectIdentity } fr
  * window's tab row and the equipment directory, which sits outside the window (design canvas board 22). Sections with
  * nothing public are left out. Undefined for a missing or classified project.
  */
-export async function projectSections(slug: string) {
+export async function projectSections(slug: string, knownEquipment?: readonly unknown[]) {
   const [project, identity] = await Promise.all([getProject(slug), getProjectIdentity(slug)]);
   if (!project || !identity) return undefined;
-  const [factions, equipment] = await Promise.all([getFactions(identity.id), getEquipmentDirectory(identity.id)]);
+  // The equipment directory passes the listing it already loaded, so the EQUIPMENT tab costs no second listing there.
+  const [factions, equipment] = await Promise.all([getFactions(identity.id), knownEquipment ?? getEquipmentDirectory(identity.id)]);
   const base = `/projects/${project.slug}`;
   const navigation = [{ label: 'OVERVIEW', href: base },
     ...(factions.length ? [{ label: 'FACTIONS', href: `${base}#factions` }] : []),

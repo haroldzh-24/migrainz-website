@@ -11,7 +11,7 @@ export const fitView: View = { scale: null, x: 0, y: 0 };
 export const fitHeightView: View = { scale: null, x: 0, y: 0, fit: "height" };
 export const fitWidthView: View = { scale: null, x: 0, y: 0, fit: "width", top: true };
 
-export function ArtworkCanvas({ image, view, onChange, schematic = false, reader = false }: { image: ViewerImage; view: View; onChange: (view: View) => void; schematic?: boolean; reader?: boolean }) {
+export function ArtworkCanvas({ image, view, onChange, schematic = false, reader = false, onFitChosen }: { image: ViewerImage; view: View; onChange: (view: View) => void; schematic?: boolean; reader?: boolean; onFitChosen?: (fit: "height" | "width") => void }) {
   const canvas = useRef<HTMLDivElement>(null);
   const [space, setSpace] = useState({ width: 0, height: 0 });
   const [natural, setNatural] = useState({ width: 0, height: 0 });
@@ -153,8 +153,8 @@ export function ArtworkCanvas({ image, view, onChange, schematic = false, reader
   return <>
     {reader ? <div className="art-viewer-toolbar reader-toolbar" role="group" aria-label="Page size">
       {/* Short labels on phones (CSS), so the row fits 320 px; the visible text is the accessible name either way. */}
-      <button type="button" disabled={!ready} aria-pressed={view.scale === null && view.fit === "height"} onClick={() => reset(fitHeightView)}><span className="label-long">FIT HEIGHT</span><span className="label-short">HEIGHT</span></button>
-      <button type="button" disabled={!ready} aria-pressed={view.scale === null && view.fit === "width"} onClick={() => reset(fitWidthView)}><span className="label-long">FIT WIDTH</span><span className="label-short">WIDTH</span></button>
+      <button type="button" disabled={!ready} aria-pressed={view.scale === null && view.fit === "height"} onClick={() => { onFitChosen?.("height"); reset(fitHeightView); }}><span className="label-long">FIT HEIGHT</span><span className="label-short">HEIGHT</span></button>
+      <button type="button" disabled={!ready} aria-pressed={view.scale === null && view.fit === "width"} onClick={() => { onFitChosen?.("width"); reset(fitWidthView); }}><span className="label-long">FIT WIDTH</span><span className="label-short">WIDTH</span></button>
       <button type="button" disabled={!ready} aria-pressed={view.scale === 1} onClick={() => reset({ scale: 1, x: 0, y: 0 })}><span className="label-long">ACTUAL SIZE</span><span className="label-short">1:1</span></button>
       <button type="button" aria-label="Zoom out" disabled={!ready || scale <= minimum} onClick={() => zoom(scale / 1.25)}>−</button>
       <button type="button" aria-label="Zoom in" disabled={!ready || scale >= maximum} onClick={() => zoom(scale * 1.25)}>+</button>

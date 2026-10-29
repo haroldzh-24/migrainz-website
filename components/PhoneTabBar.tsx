@@ -32,7 +32,9 @@ export default function PhoneTabBar() {
         if (element.closest(".public-window-layer, .pixel-monitor, .promo-window, .startup-sequence")) return;
         const top = own.getBoundingClientRect().top;
         const rect = element.getBoundingClientRect();
-        if (rect.bottom <= top - 4) return;
+        // Not for containers focused by script (the page's main section after a window closes, with preventScroll) or
+        // anything taller than the space above the bar: moving those would only scroll the header away.
+        if (rect.bottom <= top - 4 || element.tabIndex < 0 || rect.height > top - 16) return;
         window.scrollBy({ top: Math.max(0, Math.min(rect.bottom - top + 16, rect.top - 8)), behavior: "instant" as ScrollBehavior });
       });
     };
@@ -43,7 +45,7 @@ export default function PhoneTabBar() {
     <nav ref={bar} className="phone-tabs" aria-label="Main">
       {TABS.map(tab => (
         // "page" on the section's own page, "true" anywhere inside the section.
-        <Link key={tab.href} href={tab.href} aria-current={pathname === tab.href ? "page" : tab.section.test(pathname) ? "true" : undefined}>
+        <Link key={tab.href} href={tab.href} prefetch={false} aria-current={pathname === tab.href ? "page" : tab.section.test(pathname) ? "true" : undefined}>
           <span aria-hidden="true">{tab.icon}</span>{tab.label}
         </Link>
       ))}

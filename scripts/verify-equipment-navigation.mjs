@@ -3,6 +3,9 @@
 // Requires Playwright (PLAYWRIGHT_MODULE=path\to\playwright\index.mjs) and Chrome.
 // Optional: SCHEMATIC_CLIP_169 / SCHEMATIC_CLIP_21 = path prefix of renderer output (X.mp4 and X-poster.png)
 // to also capture module screenshots with the real encoded video.
+// The synthetic `/projects/fixture/equipment` page below is a Win95 list of EquipmentViewerLink rows, the list faction
+// pages still use. Since batch 8 the real `/projects/<slug>/equipment` is a terminal directory of plain links outside
+// the window; scripts/verify-equipment-directory.mjs tests that page.
 import { build } from 'esbuild';
 import { createServer } from 'node:http';
 import { readFile, mkdir } from 'node:fs/promises';

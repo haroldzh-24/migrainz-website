@@ -51,9 +51,11 @@ export default function HomeTerminal({ projects, clearance }: { projects: Termin
   const log = useRef<HTMLDivElement>(null);
 
   useEffect(() => { if (log.current) log.current.scrollTop = log.current.scrollHeight; }, [lines]);
-  // Escape during the switch cancels the move: say so and stay home.
+  // Escape during the switch cancels a move this terminal started: say so and stay home.
   useEffect(() => {
-    const cancelled = () => { setCwd("~"); setLines(current => [...current, { text: "^C cancelled; still at ~", kind: "dim" as const, id: nextId.current++ }].slice(-OUTPUT_LIMIT)); };
+    const cancelled = (event: Event) => {
+      if ((event as CustomEvent<{ source?: string }>).detail?.source !== "terminal") return; // only moves the terminal began
+      setCwd("~"); setLines(current => [...current, { text: "^C cancelled; still at ~", kind: "dim" as const, id: nextId.current++ }].slice(-OUTPUT_LIMIT)); };
     window.addEventListener("migrainz:open-route-cancelled", cancelled);
     return () => window.removeEventListener("migrainz:open-route-cancelled", cancelled);
   }, []);
@@ -75,7 +77,7 @@ export default function HomeTerminal({ projects, clearance }: { projects: Termin
     }
     out.push({ text: `> cd /${section.key} ............ OK`, kind: "ok" });
     setCwd(`~/${section.key}`);
-    openRoute(href => router.push(href), section.href);
+    openRoute(href => router.push(href), section.href, "terminal");
   };
 
   const run = (raw: string) => {
@@ -121,7 +123,7 @@ export default function HomeTerminal({ projects, clearance }: { projects: Termin
       const project = projects.find(item => item.slug === wanted || item.code.toLowerCase() === wanted || item.title.toLowerCase() === wanted);
       if (project) {
         out.push({ text: `> opening /projects/${project.slug} ............ OK`, kind: "ok" });
-        openRoute(href => router.push(href), `/projects/${project.slug}`);
+        openRoute(href => router.push(href), `/projects/${project.slug}`, "terminal");
       } else {
         const section = find(wanted);
         if (section) go(section, out); else out.push({ text: `open: ${argument || "?"}: not found. Try ls projects.`, kind: "err" });
