@@ -99,7 +99,7 @@ const NOT_FOUND = [
 // A PATRON record answers 200 with the locked page (and none of its protected text; see SENTINELS).
 const PATRON_LOCKED = '/projects/blushland/characters/patron-dossier';
 // Titles of REDACTED fixture records: they must never reach any page (scripts/seed-desktop-fixture.ts).
-const SENTINELS = ['SENTINEL-PHASE-TITLE-7Q', 'SENTINEL-CHAPTER-TITLE-7Q', 'sentinel-chapter-7q',
+const SENTINELS = ['SENTINEL-UPDATE-REDACTED-7Q', 'SENTINEL-UPDATE-REDACTED-DESC-7Q', 'SENTINEL-UPDATE-PATRON-7Q', 'SENTINEL-UPDATE-PATRON-DESC-7Q', 'SENTINEL-PHASE-TITLE-7Q', 'SENTINEL-CHAPTER-TITLE-7Q', 'sentinel-chapter-7q',
   'SENTINEL-PATRON-NAME-7Q', 'SENTINEL-PATRON-ROLE-7Q', 'SENTINEL-PATRON-DESC-7Q',
   'SENTINEL-REDACTED-CHARACTER-7Q', 'SENTINEL-REDACTED-DESC-7Q', 'SENTINEL-REDACTED-EQUIPMENT-7Q', 'SENTINEL-REDACTED-FACTION-7Q',
   'redacted-dossier', 'redacted-equipment', 'redacted-faction'];

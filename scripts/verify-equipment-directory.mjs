@@ -231,6 +231,16 @@ try {
         wide = await measure();
         assert.equal(wide.readout, 'FIT WIDTH', 'the chosen fit is kept for the next page');
         assert.ok(Math.abs(wide.image.top - wide.inner.top) <= 2, 'the next page starts at its top');
+        // 11b: focus on NEXT, Right to the last page (NEXT turns disabled): focus moves to the page, so Left still works.
+        const total = Number((await page.locator('.comic-reader-navigation output').textContent()).split('/')[1]);
+        await page.locator('.comic-reader-navigation select').selectOption({ value: String(total - 2) }); // option values are page indexes (labels are page numbers)
+        await page.waitForFunction(last => new RegExp(`PAGE ${last - 1} /`).test(document.querySelector('.comic-reader-navigation output').textContent), total);
+        await page.getByRole('button', { name: 'NEXT', exact: true }).focus();
+        await page.keyboard.press('ArrowRight');
+        await page.waitForFunction(last => new RegExp(`PAGE ${last} /`).test(document.querySelector('.comic-reader-navigation output').textContent), total);
+        await page.waitForFunction(() => { const active = document.activeElement; return active?.closest('.comic-reader-content') && !active.matches(':disabled'); });
+        await page.keyboard.press('ArrowLeft');
+        await page.waitForFunction(last => new RegExp(`PAGE ${last - 1} /`).test(document.querySelector('.comic-reader-navigation output').textContent), total);
       }
       await context.close();
     }

@@ -14,6 +14,14 @@
 - No dedicated test yet (6c/7c, listed by the 8b review): the idle caption following a CRT-mode or reduced-motion change, the lens dropping a sample that went stale while loading, the motion helper reading the latest visibility entry.
 - Status: Open; questions for Harold.
 
+### 2026-10-29 - Batch 12: operations log limits
+
+- Each line links to its project's page, not to the exact record the update is about (the board's "View pages", "Open"): updates have no link field, and adding one is a schema change (production lane, Harold's call).
+- Thumbnails come only from the update's own pictures; most updates migrated from the old data have none, so most lines have no thumbnail today.
+- NEW is per browser: clearing site data, another browser or a private window counts as a first visit (nothing marked). Updates newer than the 300 most recently seen IDs could be marked NEW again only after more than 300 public updates.
+- The log shows the 12 newest; NEW is counted over all public updates, so the count can be larger than the NEW marks shown.
+- Status: Open (recorded; per-record links wait for a CMS field).
+
 ### 2026-10-29 - Regression server restarted for memory mid-run (batch 11 check)
 
 - `check-20261029-183710`: every browser script passed, then `next dev` logged "Server is approaching the used memory threshold, restarting..." during the site-health crawl, and the next request got ECONNRESET. The suite had grown by two browser scripts (batches 10 and 11). Not a site defect: a dev-server limit on the 8 GB, 2-core check machine.
@@ -25,6 +33,7 @@
 - It follows in-app (client-side) navigations only. A plain link that loads a whole new document (none in the site's own navigation today) shows the browser's own loading indicator instead.
 - The "fast page shows nothing" case is simulated in the test (the address changes 100 ms after the click): under `next dev` every dynamic page takes a second or more, and an attempt to answer the page data from a recording did not complete the navigation. Real timing on Vercel not checked.
 - A link whose own click handler cancels the navigation without `data-mode-switch="off"` would leave the panel up until its 20 s limit; the site's terminal pages have none today (bugs.md "Mode switch: known limits" asks for that attribute on such links).
+- 11b (from the batch 11 review): lines were cut off at 320 px (fixed: they wrap, the dot leader goes); a page arriving just after 300 ms flashed the panel for a few frames (now it fades in over 200 ms; how often this happens on Vercel is not measured); a page restored from the back/forward cache kept a frozen panel (fixed with `pageshow`; the test dispatches the event, real Safari and Firefox behaviour not checked).
 - Status: Open (recorded).
 
 ### 2026-10-29 - Batch 10: Art Viewer and decoding limits

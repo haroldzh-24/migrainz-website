@@ -15,10 +15,10 @@ const problems = fixtureEnvProblems(env, fixture);
 if (problems.length) { rmSync(fixture, { recursive: true, force: true }); console.error('Refusing to start. Offending variables: ' + problems.join(', ')); process.exit(1); }
 mkdirSync(env.CMS_MEDIA_DIR);
 const children = new Set();
-function launch(args, extraEnv = {}) {
+function launch(args) {
   // Own process group on Linux/macOS so stop() can end next dev and its workers together. Under `npm run check` the
   // group is also listed in CHECK_PGID_FILE so a forced stop of the whole check can reach it.
-  const child = spawn(process.execPath, args, { env: { ...env, ...extraEnv }, stdio: 'inherit', windowsHide: true, detached: process.platform !== 'win32' });
+  const child = spawn(process.execPath, args, { env: { ...env }, stdio: 'inherit', windowsHide: true, detached: process.platform !== 'win32' });
   children.add(child);
   if (child.pid && process.env.CHECK_PGID_FILE) { try { appendFileSync(process.env.CHECK_PGID_FILE, `${child.pid}\n`); } catch {} }
   // When a step ends, end anything it left in its group at once (later its group id could be reused).
@@ -54,7 +54,7 @@ try {
   await completed(launch(['--import', 'tsx', 'scripts/migrate-legacy-content.ts', '--apply']));
   await completed(launch(['--import', 'tsx', 'scripts/verify-content-migration.ts']));
   await completed(launch(['--import', 'tsx', 'scripts/seed-desktop-fixture.ts']));
-  const port = await new Promise((resolve, reject) => {
+  const freePort = () => new Promise((resolve, reject) => {
     const probe = net.createServer();
     probe.once('error', reject);
     probe.listen(0, '127.0.0.1', () => {
@@ -62,11 +62,13 @@ try {
       probe.close(() => resolve(address.port));
     });
   });
-  env.BASE_URL = `http://127.0.0.1:${port}`;
   // The dev server, started fresh twice: `next dev` grows with every route it compiles and, near its heap limit, restarts
   // itself mid-request (batch 11: after the browser scripts, during the site-health crawl). Site health gets its own
-  // fresh server, so its crawl never meets that restart.
+  // fresh server, so its crawl never meets that restart. Each server gets a newly probed port (11b), so the second never
+  // waits for the first one's port to be released; BASE_URL follows it.
   async function startServer() {
+    const port = await freePort();
+    env.BASE_URL = `http://127.0.0.1:${port}`;
     const server = launch(['node_modules/next/dist/bin/next', 'dev', '--hostname', '127.0.0.1', '--port', String(port)]);
     let serverFailure;
     server.once('error', error => { serverFailure = error; });
@@ -99,6 +101,7 @@ try {
   await completed(launch(['scripts/verify-art-viewer-keys.mjs']));
   await completed(launch(['scripts/verify-art-viewer.mjs']));
   await completed(launch(['scripts/verify-nav-status.mjs']));
+  await completed(launch(['scripts/verify-operations-log.mjs']));
   await completed(launch(['scripts/verify-home.mjs']));
   await completed(launch(['--import', 'tsx', 'scripts/verify-mode-switch.mjs']));
   await completed(launch(['scripts/verify-equipment-directory.mjs']));

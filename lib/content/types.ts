@@ -17,7 +17,7 @@ export type Project = Classified & {
   hero?: ComicPage; galleries: Gallery[];
   phases: (Classified & { label: string; percent: number })[];
   milestones: (Classified & { title: string; status: string })[];
-  notes: (Classified & { date: string; text: string; title?: string; writing?: Writing | null; images?: ComicPage[]; listingOrder?: number })[];
+  notes: (Classified & { id?: number; date: string; text: string; title?: string; writing?: Writing | null; images?: ComicPage[]; listingOrder?: number })[];
   characters: Character[]; chapters: Chapter[];
 };
 export const projectHref = (project: Pick<Project, 'slug'>) => `/projects/${project.slug}`;

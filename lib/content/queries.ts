@@ -87,7 +87,7 @@ export const getProjects = cache(async (): Promise<Project[]> => {
       phases: projectTracker.filter((item) => item.kind === 'phase').map((item) => ({ ...classificationOf(item), label: item.title, percent: item.percentage ?? 0 })),
       milestones: projectTracker.filter((item) => item.kind === 'milestone').map((item) => ({ ...classificationOf(item), title: item.title, status: item.status || '' })),
       notes: updates.docs.filter((update) => idOf(update.project) === project.id).map((update) => ({
-        ...classificationOf(update), listingOrder: update.listingOrder, date: update.date.slice(0, 10), text: update.description || update.title, title: update.title,
+        ...classificationOf(update), id: update.classification ? undefined : update.id, listingOrder: update.listingOrder, date: update.date.slice(0, 10), text: update.description || update.title, title: update.title,
         writing: update.writing, images: images(update.images),
       })),
       characters: characters.docs.filter((character) => idOf(character.project) === project.id).map((character) => ({

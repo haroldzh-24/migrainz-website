@@ -61,6 +61,16 @@ try {
   const satchel = await cms.create({ collection: 'equipment', data: { name: 'Fixture Satchel', slug: 'fixture-satchel', project: project.id, category: 'Carry', images: [{ media: media.id, caption: 'Synthetic satchel' }], ...pub } });
   await cms.create({ collection: 'characters', data: { name: 'Fixture Operative', slug: 'fixture-operative', project: project.id,
     equipmentAssignments: [{ equipment: scanner.id, designation: 'Unit 7', quantity: 1, notes: 'Synthetic assignment', order: 1 }, { equipment: satchel.id, order: 2 }], ...pub } });
+  // Project updates for the operations log (batch 12): two BLUSHLAND updates on one day (one with an image), one STALKER
+  // update, and a REDACTED and a PATRON update whose SENTINEL-UPDATE-* text must never reach a page. Fixed dates, older
+  // than the legacy updates, so the homepage's latest transmissions stay the same.
+  for (const data of [
+    { title: 'Fixture update: storyboards pinned', project: project.id, date: '2026-08-20T12:00:00.000Z', ...pub },
+    { title: 'Fixture update: cover rough filed', project: project.id, date: '2026-08-20T12:00:00.000Z', images: [{ media: poster.id, caption: 'Synthetic cover rough' }], ...pub },
+    { title: 'Fixture update: stalker field notes', project: other.id, date: '2026-08-25T12:00:00.000Z', ...pub },
+    { title: 'SENTINEL-UPDATE-REDACTED-7Q', description: 'SENTINEL-UPDATE-REDACTED-DESC-7Q', project: project.id, date: '2026-08-26T12:00:00.000Z', listingSummary: 'sealed update', _status: 'published' as const, accessLevel: 'redacted' as const, listingVisibility: 'public' as const },
+    { title: 'SENTINEL-UPDATE-PATRON-7Q', description: 'SENTINEL-UPDATE-PATRON-DESC-7Q', project: project.id, date: '2026-08-26T12:00:00.000Z', listingSummary: 'patron update', _status: 'published' as const, accessLevel: 'patron' as const, listingVisibility: 'public' as const },
+  ]) await cms.create({ collection: 'project-updates', data });
   // Access-control fixtures for route windows (scripts/verify-site-health.mjs): a PATRON character answers 200 with the
   // locked page and none of its protected text; REDACTED character, equipment and faction answer 404 like missing
   // records. Their SENTINEL-* text must never reach any page or response.
