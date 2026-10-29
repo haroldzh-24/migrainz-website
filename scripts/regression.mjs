@@ -83,6 +83,7 @@ try {
   await completed(launch(['scripts/verify-interaction-polish.mjs']));
   await completed(launch(['scripts/verify-art-viewer-keys.mjs']));
   await completed(launch(['scripts/verify-home.mjs']));
+  await completed(launch(['--import', 'tsx', 'scripts/verify-mode-switch.mjs']));
   await completed(launch(['scripts/verify-site-health.mjs']));
   await completed(launch(['scripts/verify-site-health.mjs', '--self-test']));
 } catch (error) {

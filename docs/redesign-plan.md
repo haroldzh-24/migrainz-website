@@ -133,7 +133,7 @@ Why: artwork looks wrong on the green terminal; it needs a neutral background.
 
 - **Two modes.** Terminal = text mode (navigation, lore, text). Anything with art (projects, Art Viewer, comic reader, equipment galleries) opens in graphics mode: the Win95 desktop.
 - **In-world reason.** Opening a file prints `$ open blushland.prj` / `mounting volume ........ ok` / `image data detected` / `switching to graphics mode ...`.
-- **The switch.** Terminal collapses to a bright line (scaleY, ~200ms) → the line shrinks (scaleX, ~170ms) → ~140ms black → desktop fades in (~240ms). Full sequence on the first switch per visit; afterwards a quick flick (~250ms). Reduced motion or effects off: crossfade.
+- **The switch.** Terminal collapses to a bright line (scaleY, ~200ms) → the line shrinks (scaleX, ~170ms) → ~140ms black → desktop fades in (~240ms). ~~Full sequence on the first switch per visit; afterwards a quick flick (~250ms).~~ **Changed 2026-10-29 (Harold, 03:25 CT): "the terminal to windows grey transition everytime you go into the grey windows": the full sequence plays every time** (built in batch 7, phones included); the flick is left for arriving by browser Forward. Reduced motion or effects off: crossfade.
 - **Desktop behind windows.** Muted dark teal `#2e4646`; taskbar with a `◂ TERMINAL` button and open-window buttons (extend the existing `public-window-dock`). Art sits on neutral grey inside windows. Windows never sit directly on the terminal.
 - **Win95 zoom outline.** A stepping dotted outline (`steps(7)`, ~280ms) from the clicked item to the window; on close, window → its taskbar button, then the reverse switch.
 - **Navigation.** Browser Back runs the reverse; every window keeps its URL.

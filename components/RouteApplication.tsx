@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { RetroWindow, useWindowManager } from './WindowManager';
+import { GraphicsRouteMarker } from './GraphicsRouteMarker';
 
 export default function RouteApplication({ id, title, navigation = [], children }: {
   id: string; title: string; navigation?: { label: string; href: string }[]; children: ReactNode;
@@ -22,6 +23,7 @@ export default function RouteApplication({ id, title, navigation = [], children 
   }, [id]);
   useEffect(() => () => latest.current.unregisterWindow(id), [id]);
   return <>
+    <GraphicsRouteMarker />
     <div className="application-desktop"><p>STUDIO MIGRAINZ / APPLICATION WORKSPACE</p>
       <button className="terminal-button" onClick={() => manager.restoreWindow(id)}>OPEN {title}</button>
       <Link href="/">RETURN TO TERMINAL</Link>

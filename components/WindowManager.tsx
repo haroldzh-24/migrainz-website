@@ -11,6 +11,8 @@ import {
 } from "react";
 import { useSound } from "@/components/SoundProvider";
 import { createPortal } from "react-dom";
+import Link from "next/link";
+import { LAST_TERMINAL_KEY } from "@/lib/graphics-mode";
 
 type WindowPosition = { x: number; y: number };
 type WindowSize = { width: number; height: number };
@@ -342,7 +344,9 @@ export function RetroWindow({ id, title, defaultPosition, defaultSize, defaultOp
   // then really renders on the server, so a missing record's notFound() sets HTTP 404 (bugs.md 2026-10-27, roadmap 2.2).
   // This relies on nothing deferring the window's content during the server render: no Suspense boundary or
   // loading.tsx between the root layout and route windows, and `cacheComponents` off (it wraps segments in
-  // <Activity>). If either changes, scripts/verify-site-health.mjs's 404 list fails.
+  // <Activity>). If either changes, scripts/verify-site-health.mjs's 404 list fails. The desktop look (ModeSwitch's
+  // .graphics-route marker, keyed by :root:has() in globals.css) relies on the same: a previous route kept hidden in the
+  // DOM would turn terminal pages teal.
   renderBeforeWorkspace?: boolean;
 }) {
   const manager = useWindowManager();
@@ -439,6 +443,19 @@ export function WindowTaskbar({ system = false }: { system?: boolean }) {
   </nav>;
 }
 
+// The desktop taskbar's way back (design canvas board 2): the last terminal page this tab showed. Hidden by CSS on
+// terminal pages. The accessible name is "TERMINAL"; the arrow is decoration.
+function TerminalReturn() {
+  const [href, setHref] = useState("/");
+  useEffect(() => {
+    const read = () => { try { setHref(window.sessionStorage.getItem(LAST_TERMINAL_KEY) || "/"); } catch { /* optional storage */ } };
+    read();
+    window.addEventListener("migrainz:mode", read);
+    return () => window.removeEventListener("migrainz:mode", read);
+  }, []);
+  return <Link className="taskbar-terminal" href={href}><span aria-hidden="true">◂ </span>TERMINAL</Link>;
+}
+
 export function PublicWindowWorkspace() {
   const { setWorkspace, windows } = useWindowManager();
   const systemFocused = windows.some((window) => window.id === "system" && window.focused);
@@ -446,6 +463,7 @@ export function PublicWindowWorkspace() {
     <div className="public-window-layer" data-system-focused={systemFocused || undefined}>
       <div ref={setWorkspace} className="public-windows" role="region" aria-label="Public terminal window workspace" />
     </div>
-    <div className="public-window-dock"><WindowTaskbar /></div>
+    {/* A labelled landmark: on the desktop it holds ◂ TERMINAL as well as the window buttons. */}
+    <nav className="public-window-dock" aria-label="Taskbar"><TerminalReturn /><WindowTaskbar /></nav>
   </>;
 }
