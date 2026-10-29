@@ -2069,10 +2069,10 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
    Terminal: the Watcher's reticle, four corner brackets drawn as an overlay (no layout shift).
    Win95 (windows, monitor, promo/startup windows, taskbar, desktop icons): navy bars, bevels and a dotted focus rectangle.
    Selectors stay inside :where() so they never outrank component rules; the state rules carry one pseudo-class. */
-:where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .retro-window-titlebar, .desktop-file) *):not(:where(.skip-link, .equipment-card a, .patron-locked-trigger, p a, dd a, .content-writing a)) {
+:where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .retro-window-titlebar, .desktop-file, .public-window-dock, :root:has(.graphics-route) .application-desktop) *):not(:where(.skip-link, .equipment-card a, .patron-locked-trigger, p a, dd a, .content-writing a)) {
   position: relative;
 }
-:where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .retro-window-titlebar, .desktop-file) *):not(:where(.skip-link, .equipment-card a, .patron-locked-trigger, p a, dd a, .content-writing a))::after {
+:where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .retro-window-titlebar, .desktop-file, .public-window-dock, :root:has(.graphics-route) .application-desktop) *):not(:where(.skip-link, .equipment-card a, .patron-locked-trigger, p a, dd a, .content-writing a))::after {
   --reticle: var(--hot);
   content: "";
   position: absolute;
@@ -2099,7 +2099,7 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
 /* In: ~120ms lock-on, the corners closing in from further out. Out: instant. Nothing is scaled at rest: an invisible
    scaled overlay still counts as overflow and widened the page on phones. */
 @keyframes reticle-lock { from { inset: var(--reticle-from, -9px); opacity: 0; } }
-:where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .retro-window-titlebar, .desktop-file) *):not(:where(.skip-link, .equipment-card a, .patron-locked-trigger, p a, dd a, .content-writing a)):is(:focus-visible, :active),
+:where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .retro-window-titlebar, .desktop-file, .public-window-dock, :root:has(.graphics-route) .application-desktop) *):not(:where(.skip-link, .equipment-card a, .patron-locked-trigger, p a, dd a, .content-writing a)):is(:focus-visible, :active),
 .equipment-card:has(a:focus-visible, a:active) {
   color: var(--hot);
   text-shadow: var(--crt-glow-ui);
@@ -2107,18 +2107,18 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
   outline: 2px solid transparent;
   outline-offset: 2px;
 }
-:where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .retro-window-titlebar, .desktop-file) *):not(:where(.skip-link, .equipment-card a, .patron-locked-trigger, p a, dd a, .content-writing a)):is(:focus-visible, :active)::after,
+:where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .retro-window-titlebar, .desktop-file, .public-window-dock, :root:has(.graphics-route) .application-desktop) *):not(:where(.skip-link, .equipment-card a, .patron-locked-trigger, p a, dd a, .content-writing a)):is(:focus-visible, :active)::after,
 .equipment-card:has(a:focus-visible, a:active)::after {
   opacity: 1;
   animation: reticle-lock 120ms ease-out;
 }
 /* Hover only where a real pointer hovers, so a tap on a phone doesn't leave the reticle stuck. */
 @media (hover: hover) {
-  :where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .retro-window-titlebar, .desktop-file) *):not(:where(.skip-link, .equipment-card a, .patron-locked-trigger, p a, dd a, .content-writing a)):hover {
+  :where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .retro-window-titlebar, .desktop-file, .public-window-dock, :root:has(.graphics-route) .application-desktop) *):not(:where(.skip-link, .equipment-card a, .patron-locked-trigger, p a, dd a, .content-writing a)):hover {
     color: var(--hot);
     text-shadow: var(--crt-glow-ui);
   }
-  :where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .retro-window-titlebar, .desktop-file) *):not(:where(.skip-link, .equipment-card a, .patron-locked-trigger, p a, dd a, .content-writing a)):hover::after {
+  :where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .retro-window-titlebar, .desktop-file, .public-window-dock, :root:has(.graphics-route) .application-desktop) *):not(:where(.skip-link, .equipment-card a, .patron-locked-trigger, p a, dd a, .content-writing a)):hover::after {
     opacity: 1;
     animation: reticle-lock 120ms ease-out;
   }
@@ -2136,7 +2136,7 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
 }
 
 /* Win95: dotted focus rectangle on every control inside Win95 chrome. */
-:where(.retro-window:not(.project-application), .retro-window-titlebar, .pixel-monitor, .promo-window, .startup-window, .window-taskbar, .project-app-nav) :is(a, button, select, summary, [tabindex="0"]):focus-visible,
+:where(.retro-window:not(.project-application), .retro-window-titlebar, .pixel-monitor, .promo-window, .startup-window, .window-taskbar, .project-app-nav, .public-window-dock, :root:has(.graphics-route) .application-desktop) :is(a, button, select, summary, [tabindex="0"]):focus-visible,
 .desktop-file-open:focus-visible,
 .desktop-file-info:focus-visible {
   outline: 1px dotted #000;
@@ -2422,4 +2422,103 @@ html[data-crt="off"] .startup-sequence[data-collapsing] .startup-log { animation
   .home-left { order: 1; }
   .home-activity-panel { order: 2; }
   .home-right { order: 3; }
+}
+
+/* GRAPHICS MODE (design canvas boards 2 and 14; batch 7). Pages that open a grey window render .graphics-route
+   (components/ModeSwitch.tsx); with it the page is a muted dark teal Win95 desktop: the terminal header stays as the top
+   bar, the page's own text is re-inked for the desktop, the window dock becomes a taskbar with ◂ TERMINAL. Keyed on the
+   server-rendered marker, so a direct load never flashes the terminal. */
+:root:has(.graphics-route) { --desktop: #2e4646; background: var(--desktop); }
+/* body stays transparent so the fixed background layer below (teal plus the screen vignette) shows evenly behind the
+   whole desktop instead of stopping where the page's own box ends. */
+:root:has(.graphics-route) body { background: transparent; }
+/* The header stays a full-width dark bar. border-image paints past the box without clipping the SYSTEM dropdown and
+   without making the page scroll sideways (its outset is ink overflow); it replaces the border, so the rule is redrawn. */
+:root:has(.graphics-route) .topbar {
+  border-image: linear-gradient(var(--crt-bg), var(--crt-bg)) fill 0 / 0 / 0 100vmax;
+  box-shadow: 0 1px 0 rgba(var(--crt-border-rgb), 0.18);
+}
+/* The fixed full-screen background layer (body::before) carries the desktop colour too, so the teal reaches the bottom
+   of the screen below a short page. */
+:root:has(.graphics-route) body::before { background: var(--crt-overlay-vignette), var(--desktop); }
+:root:has(.graphics-route) :is(main.shell, footer.footer) {
+  --crt-bg: #2e4646; --crt-panel: #355454; --crt-deep: #283f3f; --crt-deep-hi: #2b4444; --crt-deep-lo: #243939;
+  --crt-text: #dce8e8; --crt-bright: #ffffff; --crt-mid: #b9cdcd; --crt-dim: #a7bdbd; --crt-accent: #ffffff;
+  --crt-border: rgba(255, 255, 255, 0.3); --crt-text-rgb: 220, 232, 232; --crt-bright-rgb: 255, 255, 255; --crt-border-rgb: 255, 255, 255;
+  --crt-glow-head: none; --crt-glow-ui: none; --crt-glow-link: none; --crt-glow-body: none;
+  --bg: var(--crt-bg); --panel: var(--crt-panel); --green: var(--crt-text); --green2: var(--crt-mid); --dim: var(--crt-dim); --hot: var(--crt-bright); --line: var(--crt-border);
+  color: var(--crt-text); text-shadow: none;
+}
+:root:has(.graphics-route) .application-desktop > p { margin: 0; font: 700 12px/1.4 Arial, Helvetica, sans-serif; letter-spacing: .04em; }
+:root:has(.graphics-route) .application-desktop .terminal-button {
+  min-height: 32px; padding: 4px 12px; border: 2px outset #fff; border-radius: 0; background: #c0c0c0; color: #000;
+  font: 700 12px Arial, Helvetica, sans-serif; text-shadow: none; box-shadow: none;
+}
+:root:has(.graphics-route) .application-desktop .terminal-button:active { border-style: inset; }
+:root:has(.graphics-route) .application-desktop a { color: #fff; font: 700 12px Arial, Helvetica, sans-serif; text-decoration: underline; }
+:root:has(.graphics-route) .application-desktop a:focus-visible { outline: 1px dotted #fff; outline-offset: 3px; }
+
+/* Board 14: on the desktop, windows start below the header bar on every width, so SYSTEM stays clickable under a
+   maximized window (--header-bottom: the header's bottom edge on screen, set by ModeSwitch). */
+:root:has(.graphics-route) .public-window-layer { top: calc(var(--header-bottom, 0px) + 8px); }
+
+/* The taskbar. */
+.taskbar-terminal { display: none; }
+:root:has(.graphics-route) .public-window-dock {
+  left: 0; right: 0; bottom: 0; max-width: none; z-index: 42;
+  display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 4px 6px calc(4px + env(safe-area-inset-bottom));
+  background: #c0c0c0; border-top: 2px solid #fff; box-shadow: inset 0 1px 0 #dfdfdf;
+}
+:root:has(.graphics-route) .public-window-dock .window-taskbar { flex: 1; min-width: 0; justify-content: flex-start; flex-wrap: nowrap; overflow-x: auto; max-width: none; padding: 0; }
+:root:has(.graphics-route) .taskbar-terminal {
+  display: inline-flex; align-items: center; flex: none; min-height: 32px; padding: 0 12px;
+  border: 2px outset #fff; background: #c0c0c0; color: #000; font: 700 12px Arial, Helvetica, sans-serif; text-decoration: none;
+}
+:root:has(.graphics-route) .taskbar-terminal:active { border-style: inset; }
+:root:has(.graphics-route) .taskbar-terminal:focus-visible { outline: 1px dotted #000; outline-offset: -5px; }
+
+/* The switch itself (durations mirror MODE_TIMING in components/ModeSwitch.tsx). */
+.mode-switch { position: fixed; inset: 0; z-index: 90; overflow: hidden; pointer-events: auto; }
+.mode-switch[hidden] { display: none; }
+.mode-switch-bar { position: absolute; left: 0; right: 0; height: 50.5%; background: #000; transform: scaleY(0); }
+.mode-switch-bar[data-edge="top"] { top: 0; transform-origin: 50% 0; }
+.mode-switch-bar[data-edge="bottom"] { bottom: 0; transform-origin: 50% 100%; }
+.mode-switch-line {
+  position: absolute; left: 0; right: 0; top: calc(50% - 1.5px); height: 3px; opacity: 0;
+  background: #effff3; box-shadow: 0 0 12px 3px rgba(var(--crt-bright-rgb), .9), 0 0 40px rgba(var(--crt-border-rgb), .6);
+}
+.mode-switch-log {
+  position: absolute; left: max(16px, calc(50% - 590px)); bottom: 72px; margin: 0; padding: 10px 14px; list-style: none;
+  max-width: calc(100% - 32px); background: var(--crt-deep); border: 1px solid rgba(var(--crt-border-rgb), .45);
+  font: 14px / 1.7 var(--crt-font); color: var(--crt-bright); text-shadow: var(--crt-glow-ui); white-space: pre-wrap;
+}
+.mode-switch:not([data-stage="print"], [data-stage="collapse"]) .mode-switch-log { display: none; }
+.mode-switch-wait { position: absolute; left: 0; right: 0; top: calc(50% + 18px); margin: 0; text-align: center; font: 14px / 1 var(--crt-font); letter-spacing: .14em; color: var(--crt-mid); }
+.mode-switch-wait span { animation: startup-blink 1.6s step-end infinite; }
+.mode-switch:not([data-stage="black"]) .mode-switch-wait { display: none; }
+@media (prefers-reduced-motion: reduce) { .mode-switch-wait span { animation: none; } }
+.mode-switch:is([data-stage="line"], [data-stage="black"], [data-stage="rblack"], [data-stage="rline"]) .mode-switch-bar { transform: none; }
+.mode-switch[data-stage="collapse"] .mode-switch-bar { animation: mode-close 200ms cubic-bezier(.6, 0, .9, .4) forwards; }
+.mode-switch[data-stage="collapse"] .mode-switch-line { animation: mode-line-in 200ms ease-in forwards; }
+.mode-switch:is([data-stage="line"], [data-stage="black"], [data-stage="rblack"], [data-stage="rline"]) { background: #000; }
+.mode-switch[data-stage="line"] .mode-switch-line { opacity: 1; animation: mode-shrink 170ms ease-in forwards; }
+.mode-switch[data-stage="reveal"] { background: #000; animation: mode-fade-out 240ms ease-out forwards; }
+.mode-switch[data-stage="rline"] .mode-switch-line { opacity: 1; animation: mode-grow 170ms ease-out forwards; }
+.mode-switch[data-stage="ropen"] .mode-switch-bar { transform: none; animation: mode-open 200ms cubic-bezier(.1, .6, .4, 1) forwards; }
+.mode-switch[data-stage="ropen"] .mode-switch-line { opacity: 1; animation: mode-line-out 200ms ease-out forwards; }
+/* Reduced motion and CRT "off": a crossfade through the desktop colour. */
+.mode-switch[data-stage="fade-in"] { background: #2e4646; animation: mode-fade-in 160ms ease-in forwards; }
+.mode-switch[data-stage="fade-out"] { background: #2e4646; animation: mode-fade-out 160ms ease-out forwards; }
+@keyframes mode-close { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes mode-open { from { transform: scaleY(1); } to { transform: scaleY(0); } }
+@keyframes mode-shrink { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+@keyframes mode-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes mode-line-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes mode-line-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes mode-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes mode-fade-out { from { opacity: 1; } to { opacity: 0; } }
+@media (max-width: 700px) {
+  :root:has(.graphics-route) .public-window-layer { top: calc(var(--header-bottom, 0px) + 4px); }
+  :root:has(.graphics-route) .taskbar-terminal { min-height: 44px; }
+  .mode-switch-log { bottom: 84px; font-size: 13px; }
 }

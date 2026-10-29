@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useSound } from "@/components/SoundProvider";
+import { openRoute } from "@/lib/graphics-mode";
 
 type Line = { text: string; kind: "in" | "out" | "ok" | "err" | "dim" };
 export type TerminalProject = { slug: string; code: string; title: string; status: string };
@@ -62,7 +63,7 @@ export default function HomeTerminal({ projects, clearance }: { projects: Termin
     }
     out.push({ text: `> cd /${section.key} ............ OK`, kind: "ok" });
     setCwd(`~/${section.key}`);
-    router.push(section.href);
+    openRoute(href => router.push(href), section.href);
   };
 
   const run = (raw: string) => {
@@ -108,7 +109,7 @@ export default function HomeTerminal({ projects, clearance }: { projects: Termin
       const project = projects.find(item => item.slug === wanted || item.code.toLowerCase() === wanted || item.title.toLowerCase() === wanted);
       if (project) {
         out.push({ text: `> opening /projects/${project.slug} ............ OK`, kind: "ok" });
-        router.push(`/projects/${project.slug}`);
+        openRoute(href => router.push(href), `/projects/${project.slug}`);
       } else {
         const section = find(wanted);
         if (section) go(section, out); else out.push({ text: `open: ${argument || "?"}: not found. Try ls projects.`, kind: "err" });

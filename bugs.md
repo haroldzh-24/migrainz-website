@@ -2,6 +2,15 @@
 
 ## Open Bugs
 
+### 2026-10-29 - Mode switch: known limits (batch 7)
+
+- A link to a grey-window path that turns out to be missing or locked (for example `/projects/blushland/characters/no-such`, a locked chapter) prints "switching to graphics mode" and then lands on the terminal 404 or locked page, because the switch decides from the path before the page exists.
+- Windows opened over a terminal page (the Art Viewer, the access-denied window) stay open over the terminal after the reverse switch, although the redesign plan says windows never sit directly on the terminal.
+- The click is handled before next/link; a terminal-page link that runs its own click handler must carry `data-mode-switch="off"` to keep the switch out of it.
+- Real timing on Vercel (a cold function makes the black hold longer) and the full route fetch at the click are not checked live; the fixture runs `next dev`, where Next does not prefetch.
+- Pre-existing, found by the plan review: the fixed background layer (`body::before`, with the screen vignette) is painted under body's own background, so the vignette only shows below short pages (seen as a band at about y=715 in `test-results/site-health/1366_patreon.png`). docs/redesign-plan.md "Theme" describes a vignette that mostly is not drawn. Not changed here (the CRT look is Harold's call).
+- Status: Open; recorded for Harold.
+
 ### 2026-10-29 - New homepage checked only in headless Chromium
 
 - Batch 6 (board 23) was checked with `scripts/verify-home.mjs` and screenshots in headless Chromium at 1366x768 and 390x844, green and amber. Not checked: real phones (the touch caption "Tap a file to open it" and the absence of the lens and previews on touch were not seen, because headless Chromium reports a mouse), Safari, Firefox, the Macs from the Watcher stutter report (the static re-scatters every 220 ms and the globe redraws every 80 ms while on screen with CRT "on"), and a real schematic video on the homepage tile (the fixture's is a small test clip).

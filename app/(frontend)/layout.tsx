@@ -12,6 +12,7 @@ import { patreonConfig, patreonJoinURL } from '@/lib/patreon/server';
 import localFont from "next/font/local";
 import InlineScript from "@/components/InlineScript";
 import HighlightEffects from "@/components/HighlightEffects";
+import ModeSwitch from "@/components/ModeSwitch";
 import { site } from "@/data/site";
 import "./globals.css";
 
@@ -94,6 +95,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           <PixelMonitorDesktop />
           <ArtViewer />
           <AccessDeniedWindow />
+          <ModeSwitch />
           <footer className="shell footer">
             <span>© 2026 MIGRAINZ</span>
             <span>{viewer.signedIn ? 'PATREON ID VERIFIED' : 'PUBLIC NODE / UNAUTHENTICATED ACCESS'}</span>

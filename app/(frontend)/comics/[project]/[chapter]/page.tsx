@@ -1,6 +1,7 @@
 import { lockedPageOrNotFound } from "@/components/LockedContentPage";
 import { Directory } from "@/components/Directory";
 import ComicReader from "@/components/ComicReader";
+import { GraphicsRouteMarker } from "@/components/GraphicsRouteMarker";
 import { getProject } from "@/lib/content/queries";
 import { projectHref, chapterHref } from "@/lib/content/types";
 export const metadata = { title: "Comic reader" };
@@ -19,6 +20,7 @@ export default async function ReaderPage({
       path={`SYS:/COMICS/${project.slug.toUpperCase()}/${chapter.slug.toUpperCase()}/`}
       title={chapter.title}
     >
+      <GraphicsRouteMarker />
       <p className="lede">{chapter.description}</p>
       <ComicReader key={`${project.slug}/${chapter.slug}`} project={{ slug: project.slug, title: project.title }} chapter={chapter} />
     </Directory>
