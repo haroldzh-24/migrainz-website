@@ -80,17 +80,50 @@ try {
     assert.match(await page.locator('.equipment-sync span').textContent(), /ROTATION \d{3}° · LOOP START: RIGHT SIDE/);
     // The readout follows a live reduced-motion change (8b): it holds at 000 while motion is reduced.
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    await page.waitForFunction(() => /ROTATION 000°/.test(document.querySelector('.equipment-sync span').textContent));
+    await page.waitForFunction(() => /ROTATION 000°/.test(document.querySelector('.equipment-sync span').textContent), null, { timeout: 2000 });
+    // Held, not just passing through 000 (which a turning readout does for about 250 ms once per loop) (8c).
+    await page.waitForTimeout(700);
+    assert.match(await page.locator('.equipment-sync span').textContent(), /ROTATION 000°/, 'readout held at 000 under reduced motion');
     await page.emulateMedia({ reducedMotion: 'no-preference' });
-    await page.waitForFunction(() => !/ROTATION 000°/.test(document.querySelector('.equipment-sync span').textContent), null, { timeout: 5000 }).catch(() => {}); // 000 is also a real angle once per loop
+    // Turning again: two readings 500 ms apart differ (about 15° apart on the 12 s loop).
+    await page.waitForTimeout(400);
+    const first = await page.locator('.equipment-sync span').textContent();
+    await page.waitForTimeout(500);
+    assert.notEqual(await page.locator('.equipment-sync span').textContent(), first, 'readout turns again once motion is allowed');
     await page.screenshot({ path: path.join(out, 'equipment-1366.png') });
     // Requests over one more full loop: a looping clip should not be fetched again and again.
     const before = media.length;
     await page.waitForTimeout(SPIN_PERIOD_MS + 500);
     const perLoop = media.length - before;
-    console.log(`  schematic video requests during one 12 s loop of 2 playing clips: ${perLoop} (first load: ${before})`);
+    console.log(`  schematic video requests during one 12 s loop of ${phases.length} playing clips: ${perLoop} (first load: ${before})`);
     assert.ok(perLoop <= 4, `looping does not keep re-fetching the clips (${perLoop} requests in a loop)`);
     pass(`equipment directory: terminal page, tabs, ${hrefs.length} cards, decorative media, art unfiltered, clips in step (${phases.length})`);
+    await context.close();
+  }
+  // A video with no poster (Fixture Relay, 8c): the card shows the concept art until the clip's first frame plays, and is
+  // never blank on the way (the clip's request is held for a second to make the wait visible).
+  {
+    const { context, page } = await open();
+    await context.addInitScript(() => {
+      window.__relayBlank = 0;
+      const check = () => {
+        const card = document.querySelector('a.equipment-tile[href$="/fixture-relay"]');
+        if (!card) return;
+        const art = card.querySelector('img.equipment-tile-art'), playing = card.querySelector('video[data-playing]');
+        if (card.querySelector('.schematic-spinner-empty') || (!art && !playing)) window.__relayBlank++;
+      };
+      new MutationObserver(check).observe(document, { subtree: true, childList: true, attributes: true });
+    });
+    let held = false;
+    await page.route('**/api/media/file/fixture-fixture-relay.mp4', async route => { if (!held) { held = true; await new Promise(resolve => setTimeout(resolve, 1000)); } await route.continue(); });
+    await page.goto(base + DIRECTORY);
+    const relay = page.locator(`a.equipment-tile[href="${DIRECTORY}/fixture-relay"]`);
+    await relay.scrollIntoViewIfNeeded();
+    await relay.locator('.schematic-spinner-layered img.equipment-tile-art').waitFor();
+    await relay.locator('video[data-playing]').waitFor({ timeout: 30000 });
+    assert.equal(await page.evaluate(() => window.__relayBlank), 0, 'the relay card was never blank');
+    assert.equal(await relay.locator('video').evaluate(video => getComputedStyle(video).opacity), '1', 'the clip shows once it plays');
+    pass('a video with no poster: the card shows the concept art until the clip plays, never blank');
 
     // 3. Into the window and back: the switch plays forward, the window's EQUIPMENT tab plays the reverse.
     await page.evaluate(() => { window.__stages = []; });
@@ -144,6 +177,15 @@ try {
       assert.equal(fit.readout, 'FIT HEIGHT');
       assert.ok(Math.abs(fit.image.height - fit.inner.height) <= 2, `page fills the frame's height (${JSON.stringify(fit)})`);
       console.log(`  reader at ${width}x${height}: page ${Math.round(fit.image.height)} px tall`);
+      // Batch 9 (Harold: "taller reader page"): the size toolbar and the page bar share one row above the page, so the
+      // page is at least 20 px taller than with two bars (533 px at 1366x768 and 665 px at 1440x900 in batch 8).
+      const rows = await page.evaluate(() => {
+        const box = selector => document.querySelector(selector).getBoundingClientRect();
+        const tools = box('.comic-reader-window .reader-toolbar'), pages = box('.comic-reader-navigation'), canvas = box('.comic-reader-window .art-viewer-canvas');
+        return { tools: tools.top, pages: pages.top, pagesBottom: pages.bottom, canvas: canvas.top };
+      });
+      assert.ok(Math.abs(rows.tools - rows.pages) <= 1 && rows.pagesBottom <= rows.canvas + 1, `one bar row above the page (${JSON.stringify(rows)})`);
+      assert.ok(fit.image.height >= (width === 1366 ? 533 : 665) + 20, `page taller than with two bars (${Math.round(fit.image.height)} px)`);
       if (width === 1366) {
         await page.screenshot({ path: path.join(out, 'reader-1366.png') });
         await page.getByRole('button', { name: 'FIT WIDTH', exact: true }).click();
@@ -172,23 +214,46 @@ try {
     for (const width of [390, 320]) {
       const { context, page, measure } = await reader(width, 844);
       assert.equal((await measure()).readout, 'FIT WIDTH', 'portrait screen: FIT WIDTH');
-      if (width === 390) {
-        // Scrolling a fitted page does not choose that fit (8b): after turning the phone (here: a landscape window), the
-        // next page is fitted for the new shape.
-        await page.mouse.move(195, 400);
-        await page.mouse.wheel(0, 200);
-        await page.waitForTimeout(200);
-        await page.setViewportSize({ width: 1366, height: 768 });
-        await page.getByRole('button', { name: 'NEXT', exact: true }).click();
-        await page.waitForFunction(() => document.querySelector('.reader-toolbar output').textContent === 'FIT HEIGHT');
-        await page.setViewportSize({ width, height: 844 });
-      }
       assert.ok(await page.locator('.reader-toolbar').evaluate(bar => [...bar.children].every(child => child.getBoundingClientRect().right <= bar.getBoundingClientRect().right + 0.5)), `toolbar fits ${width} px`);
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `no sideways scroll at ${width}`);
-      if (width === 390) await page.screenshot({ path: path.join(out, 'reader-390.png') });
+      if (width === 390) {
+        await page.screenshot({ path: path.join(out, 'reader-390.png') });
+        // Phones keep the page bar at the bottom, within thumb reach.
+        const below = await page.evaluate(() => document.querySelector('.comic-reader-navigation').getBoundingClientRect().top >= document.querySelector('.comic-reader-window .art-viewer-canvas').getBoundingClientRect().bottom - 1);
+        assert.ok(below, 'page bar below the page at 390 px');
+      }
       await context.close();
     }
-    pass('reader: maximized, FIT HEIGHT on landscape, FIT WIDTH from the top on portrait, wheel, arrows, toolbar fits 320 px');
+    // Scrolling a fitted page does not choose that fit (8b; made a real test in 8c): on a portrait window where FIT WIDTH
+    // makes the page taller than the frame, the wheel scrolls it; after turning to landscape, the next page is fitted to
+    // the height again.
+    {
+      const { context, page, measure } = await reader(700, 1000);
+      const before = await measure();
+      assert.equal(before.readout, 'FIT WIDTH');
+      assert.ok(before.image.height > before.inner.height + 20, `the page overflows the frame at 700x1000 (${JSON.stringify(before)})`);
+      await page.mouse.move(350, 500);
+      await page.mouse.wheel(0, 200);
+      await page.waitForFunction(top => document.querySelector('.comic-reader-window .art-viewer-canvas img').getBoundingClientRect().top < top - 50, before.image.top);
+      assert.equal((await measure()).readout, 'FIT WIDTH', 'still FIT WIDTH while scrolled');
+      await page.setViewportSize({ width: 1366, height: 768 });
+      await page.getByRole('button', { name: 'NEXT', exact: true }).click();
+      await page.waitForFunction(() => document.querySelector('.reader-toolbar output').textContent === 'FIT HEIGHT');
+      await context.close();
+    }
+    // Just above the 760 px switch (a portrait tablet), every control of both bars stays inside the window.
+    {
+      const { context, page } = await reader(800, 1000);
+      const inside = await page.evaluate(() => {
+        const frame = document.querySelector('.comic-reader-window').getBoundingClientRect();
+        return [...document.querySelectorAll('.comic-reader-window .reader-toolbar button, .comic-reader-window .reader-toolbar output, .comic-reader-navigation button, .comic-reader-navigation output, .comic-reader-navigation select')]
+          .filter(el => { const r = el.getBoundingClientRect(); return r.left < frame.left - 0.5 || r.right > frame.right + 0.5 || r.width === 0; }).map(el => el.textContent);
+      });
+      assert.deepEqual(inside, [], 'every reader control inside the window at 800 px');
+      await page.screenshot({ path: path.join(out, 'reader-800.png') });
+      await context.close();
+    }
+    pass('reader: maximized, FIT HEIGHT on landscape, FIT WIDTH from the top on portrait, wheel, arrows, toolbar fits 320 px; one bar row on wide windows');
   }
 
   // 6. Tab bar: 860 px and narrower on terminal pages; the focused control is never under it; it steps aside for windows.
@@ -198,6 +263,7 @@ try {
     const bar = page.locator('.phone-tabs');
     await bar.waitFor();
     assert.equal(await bar.locator('a[aria-current="true"]').textContent(), '▤PROJECTS', 'PROJECTS marked as the current section');
+    assert.deepEqual(await bar.locator('a').evaluateAll(links => links.map(link => link.getAttribute('href'))), ['/', '/projects', '/comics', '/archive', '/tracker'], 'five tabs, TRACKER last (batch 9)');
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'no sideways scroll at 390');
     await page.screenshot({ path: path.join(out, 'equipment-390.png'), fullPage: true });
     // The current section tab is scrolled into view in its sideways-scrolling row (8b).
@@ -243,6 +309,18 @@ try {
     await page.goto(base + '/projects');
     await page.locator('.graphics-route').waitFor({ state: 'attached' });
     assert.equal(await bar.evaluate(el => getComputedStyle(el).display), 'none', 'hidden on the desktop');
+    // Five tabs at 320 px: every label fits inside its own tab (measured on the text itself, so overflow on either side counts).
+    await page.setViewportSize({ width: 320, height: 700 });
+    await page.goto(base + '/tracker');
+    assert.equal(await bar.locator('a[aria-current="page"]').textContent(), '▧TRACKER');
+    const spill = await bar.locator('a').evaluateAll(links => links.flatMap(link => {
+      const range = document.createRange(); range.selectNodeContents(link);
+      const text = range.getBoundingClientRect(), tab = link.getBoundingClientRect();
+      return text.left < tab.left - 0.5 || text.right > tab.right + 0.5 ? [`${link.textContent} ${Math.round(text.width)}/${Math.round(tab.width)}`] : [];
+    }));
+    assert.deepEqual(spill, [], 'tab labels fit at 320 px');
+    await page.locator('.startup-sequence').waitFor({ state: 'detached' }); // the server renders the boot screen until hydration
+    await page.screenshot({ path: path.join(out, 'tabs-320.png') });
     for (const [width, shown] of [[768, 'grid'], [1366, 'none']]) {
       await page.setViewportSize({ width, height: 800 });
       await page.goto(base + '/about');

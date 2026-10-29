@@ -11,6 +11,7 @@ import { mkdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { inflateSync } from 'node:zlib';
 
 const base = process.env.BASE_URL || process.argv[2];
 if (!base || !/^http:\/\/(127\.0\.0\.1|localhost):\d+$/.test(base)) { console.error('Set BASE_URL to the local fixture server, e.g. http://127.0.0.1:3100'); process.exit(1); }
@@ -41,6 +42,21 @@ const open = async ({ width = 1366, height = 768, reducedMotion = 'no-preference
 };
 const home = async page => { await page.goto(base + '/'); await page.locator('.startup-sequence').waitFor({ state: 'hidden' }); await page.locator('.home-screen').waitFor(); };
 const text = (page, selector) => page.locator(selector).evaluate(el => el.textContent ?? '');
+// One screen pixel, read from a 1x1 PNG screenshot (decoded here: a data: image in the page would trip the CSP check).
+const pixel = async (page, x, y) => {
+  const png = await page.screenshot({ clip: { x, y, width: 1, height: 1 } });
+  const chunks = [];
+  let colourType = 0;
+  for (let at = 8; at < png.length;) {
+    const length = png.readUInt32BE(at), type = png.toString('ascii', at + 4, at + 8);
+    if (type === 'IHDR') colourType = png[at + 17];
+    if (type === 'IDAT') chunks.push(png.subarray(at + 8, at + 8 + length));
+    at += 12 + length;
+  }
+  assert.ok(colourType === 2 || colourType === 6, 'RGB(A) screenshot');
+  const row = inflateSync(Buffer.concat(chunks)); // one scanline: a filter byte, then the pixel (no neighbours to undo)
+  return [row[1], row[2], row[3]];
+};
 
 try {
   // 1. Desktop first screen: one-line title, directory and Watcher visible without scrolling, no sentinel text.
@@ -218,12 +234,17 @@ try {
   {
     const { context, page } = await open({ boot: true });
     await context.addInitScript(() => {
-      window.__counts = []; window.__powered = false;
+      window.__counts = []; window.__powered = false; window.__coveredDuringPower = false;
       new MutationObserver(() => {
         const count = document.querySelector('.boot-count');
         if (count) window.__counts.push(Number(count.textContent));
-        if (document.querySelector('main.shell.power-on')) window.__powered = true;
-      }).observe(document, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['class'] });
+        if (document.querySelector('main.shell.power-on')) {
+          window.__powered = true;
+          // Batch 9 (Harold, 2026-10-29): the power-on plays in full view; the startup window waits, hidden.
+          const shown = document.querySelector('.startup-window');
+          if (shown && getComputedStyle(shown).visibility !== 'hidden' && document.querySelector('.startup-sequence')?.dataset.phase !== 'boot') window.__coveredDuringPower = true;
+        }
+      }).observe(document, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['class', 'style', 'data-phase'] });
     });
     await page.goto(base + '/');
     await page.waitForFunction(() => document.documentElement.dataset.power === 'on', null, { timeout: 30000 });
@@ -232,7 +253,58 @@ try {
     for (let index = 1; index < counts.length; index++) assert.ok(counts[index] >= counts[index - 1], `counter never drops (${counts.slice(Math.max(0, index - 3), index + 2)})`);
     assert.equal(counts.at(-1), 100, 'counter ends at 100');
     assert.ok(powered, 'main powered on after the boot');
-    pass('boot counter rises to 100; page powers on');
+    assert.equal(await page.evaluate(() => window.__coveredDuringPower), false, 'no startup window over the power-on');
+    await page.locator('.startup-sequence[data-phase="power"]').waitFor({ timeout: 800 }); // the announcement waits for the power-on
+    await page.getByRole('button', { name: 'ENTER', exact: true }).waitFor();
+    await page.waitForFunction(() => document.activeElement?.textContent === 'ENTER', null, { timeout: 3000 });
+    pass('boot counter rises to 100; page powers on in full view, then the announcement opens with focus on ENTER');
+    await context.close();
+  }
+  // A visitor who moves into the page during the power-on keeps their focus when the announcement opens; reduced motion
+  // has no power-on, so the announcement opens at once.
+  {
+    const { context, page } = await open({ boot: true });
+    await page.goto(base + '/');
+    await page.locator('.boot-line').first().waitFor();
+    await page.keyboard.press('x');
+    await page.locator('.startup-sequence[data-phase="power"]').waitFor();
+    await page.locator('#home-terminal-input').focus();
+    await page.getByRole('button', { name: 'ENTER', exact: true }).waitFor();
+    await page.waitForTimeout(200);
+    assert.equal(await page.evaluate(() => document.activeElement?.id), 'home-terminal-input', 'focus stays where the visitor put it');
+    await context.close();
+    const reduced = await open({ boot: true, reducedMotion: 'reduce' });
+    await reduced.page.addInitScript(() => { window.__phases = []; new MutationObserver(() => { const phase = document.querySelector('.startup-sequence')?.dataset.phase; if (phase && window.__phases.at(-1) !== phase) window.__phases.push(phase); }).observe(document, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-phase'] }); });
+    await reduced.page.goto(base + '/');
+    await reduced.page.getByRole('button', { name: 'ENTER', exact: true }).waitFor({ timeout: 30000 });
+    assert.ok(!(await reduced.page.evaluate(() => window.__phases)).includes('power'), 'reduced motion: no power-on wait');
+    await reduced.context.close();
+    pass('focus moved during the power-on stays put; reduced motion opens the announcement at once');
+  }
+
+  // 6. The screen vignette is drawn behind long pages (batch 9: body no longer covers the fixed background layer). The same
+  // background pixel, outside every panel, is darker with the vignette than with it switched off.
+  {
+    const { context, page } = await open();
+    await home(page);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    assert.ok(await page.evaluate(() => document.documentElement.scrollHeight > innerHeight), 'the homepage is longer than the screen');
+    // A point where nothing above the background layer paints a background of its own.
+    const spot = await page.evaluate(() => {
+      const clear = element => { const style = getComputedStyle(element); return style.backgroundColor === 'rgba(0, 0, 0, 0)' && style.backgroundImage === 'none'; };
+      for (let x = 40; x < 300; x += 4) {
+        const stack = document.elementsFromPoint(x, 600).filter(element => element !== document.documentElement);
+        if (stack.length && stack.every(clear)) return { x, tag: stack.map(element => element.tagName).join('>') };
+      }
+      return null;
+    });
+    assert.ok(spot, 'a background pixel near the left edge at y=600');
+    const lit = (rgb) => rgb[0] + rgb[1] + rgb[2];
+    const withVignette = await pixel(page, spot.x, 600);
+    await page.evaluate(() => document.documentElement.style.setProperty('--crt-overlay-vignette', 'none'));
+    const without = await pixel(page, spot.x, 600);
+    assert.ok(lit(withVignette) < lit(without), `vignette darkens the background behind the page (${withVignette} vs ${without} at ${spot.x},600 on ${spot.tag})`);
+    pass('screen vignette drawn behind a long page');
     await context.close();
   }
 

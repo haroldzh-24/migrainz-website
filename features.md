@@ -1,5 +1,12 @@
 # Features
 
+## Implemented - 2026-10-29 / Harold's design calls (batch 9)
+
+- A fifth phone tab, TRACKER.
+- The comic reader's page bar shares the size toolbar's row in windows at least 760 px wide, so the page is taller.
+- The boot's power-on plays in full view; the announcement opens after it.
+- The screen vignette is drawn behind every page (it was hidden by the page background).
+
 ## Implemented - 2026-10-29 / Equipment directory, comic reader fit, phone tab bar (batch 8, boards 22, 4 and 5)
 
 - The equipment directory is a terminal page outside the project window: section tabs and cards whose schematics all turn in step on one 12 s clock, each loop starting on the item's right side.

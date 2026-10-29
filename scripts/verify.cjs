@@ -116,8 +116,9 @@ const { chromium } = require(
       const started = Date.now();
       if (skip === 'click') await page.locator('.startup-window').click();
       else await page.keyboard.press(skip);
-      await page.locator('.startup-sequence[data-phase="announcement"]').waitFor({ timeout: 1000 });
-      assert.ok(Date.now() - started < 1000, `${skip} skips the checklist`);
+      // The collapse (320 ms) and the page's power-on (900 ms, batch 9) come before the announcement.
+      await page.locator('.startup-sequence[data-phase="announcement"]').waitFor({ timeout: 2500 });
+      assert.ok(Date.now() - started < 2500, `${skip} skips the checklist`);
       await page.waitForTimeout(200);
       assert.equal(await page.locator('.startup-sequence').getAttribute('data-phase'), 'announcement', `${skip} does not dismiss the ad`);
       assert.equal(await page.evaluate(() => document.activeElement?.textContent), 'ENTER');

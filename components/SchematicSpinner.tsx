@@ -46,12 +46,16 @@ export function SpinAngle() {
 }
 
 /** `decorative`: inside a link or card that already names the item, the media is hidden from screen readers. */
-/** `fallback`: shown instead of "NO SCHEMATIC" when there is no poster (for example the item's concept art). */
+/**
+ * `fallback`: shown instead of "NO SCHEMATIC" when there is no poster (for example the item's concept art), also while the
+ * video is on its way and under it until its first frame plays, so the card never goes blank (8c).
+ */
 export default function SchematicSpinner({ src, poster, label, decorative = false, fallback }: { src?: string; poster?: string; label: string; decorative?: boolean; fallback?: ReactNode }) {
   const video = useRef<HTMLVideoElement>(null);
   const [still, setStill] = useState(true);
   const [failed, setFailed] = useState(false);
   const [near, setNear] = useState(false);
+  const [playing, setPlaying] = useState(false);
   const holder = useRef<HTMLElement | null>(null);
   const hold = useCallback((element: HTMLElement | null) => { holder.current = element; }, []);
 
@@ -106,13 +110,15 @@ export default function SchematicSpinner({ src, poster, label, decorative = fals
 
   if (still || failed || !src || !near) {
     const waiting = !still && !failed && Boolean(src);
-    if (!poster && fallback && !waiting) return fallback;
+    // While waiting, the holder still needs an element for its IntersectionObserver.
+    if (!poster && fallback) return waiting ? <span ref={hold} className="schematic-spinner-layered">{fallback}</span> : fallback;
     return poster
       ? <img ref={hold} className="schematic-spinner" src={poster} alt={decorative ? "" : label} loading="lazy" />
       : <span ref={hold} className="schematic-spinner schematic-spinner-empty" role={decorative ? undefined : "img"} aria-label={decorative ? undefined : label} aria-hidden={decorative || undefined}>{waiting ? "" : "NO SCHEMATIC"}</span>;
   }
-  return (
-    <video ref={video} className="schematic-spinner" src={src} poster={poster} muted loop playsInline preload="metadata"
-      aria-label={decorative ? undefined : label} aria-hidden={decorative || undefined} onError={() => setFailed(true)} disablePictureInPicture />
-  );
+  const clip = <video ref={video} className="schematic-spinner" src={src} poster={poster} muted loop playsInline preload="metadata"
+    data-playing={playing || undefined} onPlaying={() => setPlaying(true)}
+    aria-label={decorative ? undefined : label} aria-hidden={decorative || undefined} onError={() => setFailed(true)} disablePictureInPicture />;
+  // No poster: the fallback stays under the video until its first frame plays.
+  return !poster && fallback ? <span className="schematic-spinner-layered">{fallback}{clip}</span> : clip;
 }

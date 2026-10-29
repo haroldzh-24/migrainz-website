@@ -4,15 +4,16 @@ import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 
-// Phone and tablet tab bar (design canvas board 5): four sections at the bottom of terminal pages wherever the header's
+// Phone and tablet tab bar (design canvas board 5): five sections at the bottom of terminal pages wherever the header's
 // section links are hidden (860 px and narrower). The grey-window desktop has its own taskbar (CSS hides this bar there),
-// and so does an open window or the SYSTEM monitor. TRACKER has no tab (board 5's pick); it stays in the homepage
-// directory.
+// and so does an open window or the SYSTEM monitor. Board 5 had four tabs; TRACKER was added on Harold's word
+// (2026-10-29).
 const TABS = [
   { href: "/", label: "HOME", icon: "▣", section: /^\/$/ },
   { href: "/projects", label: "PROJECTS", icon: "▤", section: /^\/projects(\/|$)/ },
   { href: "/comics", label: "COMICS", icon: "▥", section: /^\/comics(\/|$)/ },
   { href: "/archive", label: "ARCHIVE", icon: "▦", section: /^\/archive(\/|$)/ },
+  { href: "/tracker", label: "TRACKER", icon: "▧", section: /^\/tracker(\/|$)/ },
 ];
 
 export default function PhoneTabBar() {
@@ -32,9 +33,10 @@ export default function PhoneTabBar() {
         if (element.closest(".public-window-layer, .pixel-monitor, .promo-window, .startup-sequence")) return;
         const top = own.getBoundingClientRect().top;
         const rect = element.getBoundingClientRect();
-        // Not for containers focused by script (the page's main section after a window closes, with preventScroll) or
-        // anything taller than the space above the bar: moving those would only scroll the header away.
-        if (rect.bottom <= top - 4 || element.tabIndex < 0 || rect.height > top - 16) return;
+        // Not for containers focused by script (tabindex="-1": the page's main section after a window closes, with
+        // preventScroll), nor for a control taller than the space above the bar whose top already shows: moving those
+        // would only scroll the header away. A tall control whose top is under the bar still moves (8c).
+        if (rect.bottom <= top - 4 || element.getAttribute("tabindex") === "-1" || (rect.height > top - 16 && rect.top < top - 4)) return;
         window.scrollBy({ top: Math.max(0, Math.min(rect.bottom - top + 16, rect.top - 8)), behavior: "instant" as ScrollBehavior });
       });
     };
