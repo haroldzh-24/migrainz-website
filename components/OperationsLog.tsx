@@ -73,7 +73,7 @@ export default function OperationsLog({ entries, allIDs }: { entries: Operations
               <span className="operations-log-new">{isNew ? "NEW" : ""}</span>{" "}
               <span className="operations-log-text">
                 {entry.title}{" "}
-                <Link href={entry.href}>{`OPEN ${entry.code}`}<span aria-hidden="true">{" ▸"}</span></Link>
+                <Link href={entry.href}>{`OPEN\u00a0${entry.code}`}<span aria-hidden="true">{"\u00a0▸"}</span></Link>
               </span>
               {entry.thumb ? <img className="operations-log-thumb" src={entry.thumb.src} alt="" loading="lazy" /> : <span className="operations-log-thumb" aria-hidden="true" />}
             </li>

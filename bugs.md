@@ -14,6 +14,17 @@
 - No dedicated test yet (6c/7c, listed by the 8b review): the idle caption following a CRT-mode or reduced-motion change, the lens dropping a sample that went stale while loading, the motion helper reading the latest visibility entry.
 - Status: Open; questions for Harold.
 
+### 2026-11-04 - Flaky: Art Viewer reopen by Enter after Escape (batch 16 check)
+
+- `check-20261104-231943`: `verify-art-viewer-keys.mjs` step 6 timed out waiting for the viewer to reopen after Enter on its opener (the step just before passed). The script passed twice when run alone against a fixture; the regression step was run again for the batch. Batch 16 changes nothing in the Art Viewer. Likely the Enter landing while the viewer's close was still settling on a loaded dev server; watch for a repeat.
+- Status: Open (watching).
+
+### 2026-11-04 - Batch 16: terminal typing limits
+
+- Firefox has no Highlight API before version 140: lines simply appear complete there. Not checked on Safari or real devices.
+- Without the Navigation API, Back after a reload at the same depth wipes from the top (the trail starts again at the reloaded page); `history.go(-2)` is not read as Back (14b).
+- Status: Open (recorded).
+
 ### 2026-11-04 - Batch 15: page flip limits
 
 - Checked only in headless Chrome; drawing cost on phones (up to 640 strips per frame at 24 frames a second) not measured on a real device.

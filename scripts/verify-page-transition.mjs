@@ -123,13 +123,20 @@ try {
     await page.waitForURL(/status=signed-out/);
     await page.waitForTimeout(600);
     assert.deepEqual(await enters(page), [], 'no wipe for a query-only change');
+    // 14b: Back to "/" (a history move, quick) while the tracker's wipe is held: the wipe must be gone well before its
+    // 1200 ms safety timer could have ended it (a held animation never finishes by itself).
+    await push(page, '/');
+    await page.waitForTimeout(300);
     await page.evaluate(() => { window.__pauseAt = 100; });
     await push(page, '/tracker');
     await last(page);
     assert.equal(await page.locator('main#top').getAttribute('data-page-enter'), 'down', 'the held wipe is running');
     await page.evaluate(() => { window.__pauseAt = undefined; });
-    await push(page, '/');
+    await page.goBack();
+    await page.waitForURL(url => new URL(url).pathname === '/');
     await page.waitForFunction(() => !document.querySelector('main#top').hasAttribute('data-page-enter') && !document.querySelector('.page-band'));
+    const gone = await page.evaluate(() => performance.now() - window.__enters.at(-1).at);
+    assert.ok(gone < 1100, `the held wipe was cancelled by the move, not by its safety timer (${Math.round(gone)} ms)`);
     assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('main#top')).clipPath), 'none', 'no clip left on the home screen');
     pass('query-only change: no wipe; a move to the home screen cancels a running wipe');
 
@@ -234,6 +241,9 @@ try {
     assert.ok(measure.mainHeight > measure.view, `the tracker is taller than the screen (${JSON.stringify(measure)})`);
     assert.ok(measure.edge > 100 && measure.edge < measure.tabsTop, `the clip edge is on screen mid-wipe (${JSON.stringify(measure)})`);
     assert.ok(Math.abs(measure.band - measure.edge) <= 2, `the band leads the clip edge (${JSON.stringify(measure)})`);
+    // 13b/14b: only the moving edge clips; the other sides sit outside main (negative insets).
+    const sides = measure.clip.replace(/calc\([^)]*\)/, 'X').replace(/^inset\(|\)$/g, '').split(/\s+/).filter(part => part !== 'X').map(parseFloat);
+    assert.ok(sides.length >= 2 && sides.every(value => value < 0), `the other three sides are outside main (${measure.clip})`);
     assert.ok(!measure.sideways, `no sideways scroll at ${width}`);
     if (width === 390) await page.screenshot({ path: path.join(out, 'page-wipe-390.png') });
     await page.evaluate(() => { finishWipes(); window.__pauseAt = undefined; });
@@ -248,6 +258,7 @@ try {
     const { context, page } = await open({ noNavigationApi: true });
     await page.goto(base + '/tracker');
     await ready(page);
+    assert.equal(await page.evaluate(() => window.navigation), undefined, 'the Navigation API is really hidden (the fallback runs)');
     await page.waitForTimeout(800);
     assert.deepEqual(await enters(page), [], 'nothing on a first load of /tracker');
     await push(page, '/about');

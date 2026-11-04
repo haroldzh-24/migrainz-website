@@ -120,7 +120,7 @@ try {
     await page.goto(base + '/tracker');
     await ready(page);
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `no sideways scroll at ${width}`);
-    assert.ok(await page.locator('.operations-log-text a').evaluateAll(links => links.every(link => link.getClientRects().length === 1)), `no link split across lines at ${width}`);
+    assert.ok(await page.locator('.operations-log-text a').evaluateAll(links => links.every(link => (() => { const range = document.createRange(); range.selectNodeContents(link); return new Set([...range.getClientRects()].map(rect => Math.round(rect.top))).size === 1; })())), `no link split across lines at ${width}`);
     if (width === 390) await page.locator('.operations-log').screenshot({ path: path.join(out, 'operations-390.png') });
     await context.close();
   }

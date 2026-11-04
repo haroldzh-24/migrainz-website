@@ -31,10 +31,12 @@ export default function PageTransition() {
   const token = useRef(0);
   const timer = useRef<number | undefined>(undefined);
   const [band, setBand] = useState<Band | null>(null);
-  // Back or Forward (13b): the Navigation API says which way a history move went (by entry index); without it, a short
-  // trail of visited paths stands in (a return to the entry before this one counts as Back).
+  // Back or Forward (13b): the Navigation API says which way a history move went (by entry index); without it, a trail
+  // of visited paths with a cursor stands in (14b): a history move to the entry before the cursor counts as Back, to the
+  // one after it as Forward, and a link drops everything after the cursor, like the browser's own history. After a
+  // reload the trail starts again from that page (recorded in bugs.md).
   const traverse = useRef<Traverse | null>(null);
-  const trail = useRef<string[]>([]);
+  const trail = useRef<{ paths: string[]; at: number }>({ paths: [], at: -1 });
 
   useEffect(() => {
     const api = navigationApi();
@@ -49,8 +51,8 @@ export default function PageTransition() {
     }
     const popped = () => {
       const path = location.pathname;
-      const list = trail.current;
-      traverse.current = { path, back: list.length > 1 && list[list.length - 2] === path };
+      const { paths, at } = trail.current;
+      traverse.current = { path, back: at > 0 && paths[at - 1] === path && paths[at + 1] !== path };
     };
     window.addEventListener("popstate", popped);
     return () => window.removeEventListener("popstate", popped);
@@ -62,8 +64,15 @@ export default function PageTransition() {
     previous.current = pathname;
     const moved = traverse.current?.path === pathname ? traverse.current : null;
     traverse.current = null;
-    if (moved?.back) trail.current.pop();
-    else trail.current = [...trail.current, pathname].slice(-TRAIL_LIMIT);
+    if (from !== pathname) {
+      const record = trail.current;
+      if (moved?.back) record.at = Math.max(0, record.at - 1);
+      else if (moved && record.paths[record.at + 1] === pathname) record.at += 1;
+      else {
+        record.paths = [...record.paths.slice(0, record.at + 1), pathname].slice(-TRAIL_LIMIT);
+        record.at = record.paths.length - 1;
+      }
+    }
     if (from === null || from === pathname) return;
     // Any move cancels a wipe still running, even to a page that gets none (13b).
     const mine = ++token.current;

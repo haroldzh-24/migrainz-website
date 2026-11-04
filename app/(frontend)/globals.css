@@ -2794,3 +2794,13 @@ main.shell[data-page-enter="up"] { animation: page-enter-up var(--motion-reveal)
 .comic-reader-content { position: relative; }
 .page-flip { position: absolute; z-index: 3; overflow: hidden; pointer-events: none; }
 .page-flip canvas { display: block; width: 100%; height: 100%; }
+
+/* Batch 16: typing (lib/typing.ts). Untyped characters are in the "untyped" highlight: no colour, no glow. The cursor
+   "_" rides the typing point, solid while printing (pages: blinks for a few seconds after). */
+::highlight(untyped) { color: transparent; text-shadow: none; -webkit-text-fill-color: transparent; text-decoration-color: transparent; }
+.home-term-log p[data-typing] { text-shadow: none; }
+.home-terminal-panel, .home-term-log { position: relative; }
+.type-cursor { position: absolute; z-index: 2; color: var(--crt-bright); text-shadow: var(--crt-glow-ui); pointer-events: none; font-family: inherit; white-space: pre; }
+.type-cursor-blink { animation: type-blink 1.06s steps(1, end) infinite; }
+@keyframes type-blink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .type-cursor { display: none; } }

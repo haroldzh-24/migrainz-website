@@ -1,5 +1,9 @@
 # Features
 
+## Implemented - 2026-11-04 / Typing terminal (batch 16)
+
+- The homepage terminal types out what it prints, one character at a time behind a `_` cursor; complete at once with reduced motion or CRT off.
+
 ## Implemented - 2026-11-04 / Comic reader page flip (batch 15)
 
 - NEXT and PREV (and arrow keys, GO TO) turn the page over with a curling, stepped-shaded flip in 550 ms; an instant turn with reduced motion or CRT off.

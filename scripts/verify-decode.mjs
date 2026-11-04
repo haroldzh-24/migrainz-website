@@ -109,9 +109,12 @@ try {
     await push(page, '/projects');
     await page.waitForTimeout(2000);
     assert.equal(await page.locator('.decode-text').count(), 0, 'nothing decodes on the grey-window desktop');
-    await push(page, '/tracker');
+    // 14b: a page not decoded yet in this visit, so only the grey-desktop rule can keep it plain.
+    await push(page, '/projects/blushland/equipment');
     await page.waitForTimeout(1500);
     assert.deepEqual(await decodes(page), [], 'arriving from the grey-window desktop: no decode (the switch plays)');
+    await push(page, '/tracker');
+    await page.waitForTimeout(800);
     await reset(page);
     await page.evaluate(() => window.next.router.push('/projects/no-such-project'));
     await page.waitForURL(/no-such-project/);
@@ -125,6 +128,20 @@ try {
     await page.waitForURL(/no-such-page/);
     await ended(page, 'RECORD NOT FOUND');
     pass('grey-window desktop and grey-path 404: no decode; a missing terminal path: decodes');
+
+    // 4b (14b). Back onto a page not yet decoded in this visit decodes it.
+    await push(page, '/about');
+    await page.waitForTimeout(300);
+    await page.evaluate(() => { sessionStorage.removeItem('migrainz-decoded-v1'); });
+    await page.reload();
+    await ready(page);
+    await push(page, '/tracker');
+    await ended(page, 'PROJECT TRACKER');
+    await reset(page);
+    await page.goBack();
+    await page.waitForURL(/\/about$/);
+    await ended(page, 'INFORMATION');
+    pass('Back onto a page not decoded yet: decodes');
 
     // 5. CRT off: no decode.
     await page.evaluate(() => { document.documentElement.dataset.crt = 'off'; });
