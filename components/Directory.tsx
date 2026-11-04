@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import ClassifiedPlaceholder from '@/components/ClassifiedPlaceholder';
+import DecodeText from "@/components/DecodeText";
 import type { Classified } from '@/lib/content/types';
 
 export function Directory({
@@ -23,7 +24,7 @@ export function Directory({
         <Link href="/comics">COMICS</Link>
       </nav>
       <p className="eyebrow directory-path">{path}</p>
-      <h1>{title}</h1>
+      <h1><DecodeText text={title} /></h1>
       {children}
     </section>
   );

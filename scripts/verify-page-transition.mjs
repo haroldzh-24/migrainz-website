@@ -6,6 +6,8 @@
 // the attribute, clip and band are gone when the animation ends; nothing for the first load, the boot's power-on
 // (simulated by its class), arrival at "/", or the grey-window desktop; reduced motion and CRT off: a cut; CRT "reduced":
 // no band; two quick moves restart; Enter on a link works the same; amber band colours; no sideways scroll at 320 px.
+// 13b: Back always wipes up (also at the same depth, also without the Navigation API), Forward down; query-only changes
+// and grey → terminal moves never wipe; a move to "/" cancels a running wipe.
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -24,8 +26,10 @@ const browser = await playwright.chromium.launch({ executablePath: process.env.B
 const policies = require('./policy-watch.cjs').watchBrowser(browser);
 const errors = [];
 const pass = message => console.log('PASS ' + message);
-const open = async ({ width = 1366, height = 768, reducedMotion = 'no-preference' } = {}) => {
+const open = async ({ width = 1366, height = 768, reducedMotion = 'no-preference', noNavigationApi = false } = {}) => {
   const context = await browser.newContext({ viewport: { width, height }, reducedMotion });
+  // Browsers without the Navigation API: Back is told from a trail of visited paths instead (13b).
+  if (noNavigationApi) await context.addInitScript(() => { Object.defineProperty(window, 'navigation', { value: undefined, configurable: true }); });
   await context.addInitScript(() => {
     try { sessionStorage.setItem('migrainz-announcement:studio-transmission-001', 'studio-transmission-001'); } catch {}
     // Each page-enter event, with what the page showed one frame later. window.__pauseAt (ms) freezes the wipe and band
@@ -89,6 +93,46 @@ try {
     await settled(page);
     pass('same depth and deeper wipe down; Back up a level wipes up');
 
+    // 2b (13b, Harold 2026-11-04: Back always from the bottom). Back to a page at the same depth wipes up; Forward again
+    // wipes down; a link up to a shallower page wipes up.
+    await reset(page);
+    await page.goBack();
+    await page.waitForURL(/\/tracker$/);
+    enter = await last(page);
+    assert.deepEqual([enter.direction, enter.attr], ['up', 'up'], 'Back at the same depth wipes up');
+    await settled(page);
+    await page.goForward();
+    await page.waitForURL(/\/about$/);
+    enter = await last(page);
+    assert.equal(enter.direction, 'down', 'Forward at the same depth wipes down');
+    await settled(page);
+    await push(page, '/projects/blushland/equipment');
+    await settled(page);
+    await page.locator('.breadcrumbs a[href="/tracker"]').click();
+    await page.waitForURL(/\/tracker$/);
+    enter = await last(page);
+    assert.equal(enter.direction, 'up', 'a link up to a shallower page wipes up');
+    await settled(page);
+    pass('Back always wipes up (also at the same depth); Forward wipes down; a link up a level wipes up');
+
+    // 2c (13b). A query-only change is not a move; a wipe still running is cancelled by a move to "/" (no wipe there).
+    await push(page, '/patreon');
+    await settled(page);
+    await reset(page);
+    await page.evaluate(() => window.next.router.push('/patreon?status=signed-out'));
+    await page.waitForURL(/status=signed-out/);
+    await page.waitForTimeout(600);
+    assert.deepEqual(await enters(page), [], 'no wipe for a query-only change');
+    await page.evaluate(() => { window.__pauseAt = 100; });
+    await push(page, '/tracker');
+    await last(page);
+    assert.equal(await page.locator('main#top').getAttribute('data-page-enter'), 'down', 'the held wipe is running');
+    await page.evaluate(() => { window.__pauseAt = undefined; });
+    await push(page, '/');
+    await page.waitForFunction(() => !document.querySelector('main#top').hasAttribute('data-page-enter') && !document.querySelector('.page-band'));
+    assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('main#top')).clipPath), 'none', 'no clip left on the home screen');
+    pass('query-only change: no wipe; a move to the home screen cancels a running wipe');
+
     // 3. Nothing on arrival at "/" or for the grey-window desktop (the switch plays there).
     await reset(page);
     await push(page, '/');
@@ -110,15 +154,28 @@ try {
     await page.evaluate(() => document.querySelector('main#top').classList.remove('power-on'));
     pass('nothing during the boot power-on (simulated by its class)');
 
-    // 5. Two quick moves: the second restarts the wipe and the first one's end does not cut it short.
+    // 5. Two quick moves: the first wipe is held mid-way (so the second move surely lands during it); the second
+    // restarts the wipe, and the first one's end does not cut it short (13b: no fixed sleep).
     await reset(page);
+    await page.evaluate(() => { window.__pauseAt = 150; });
     await push(page, '/about');
+    await last(page);
+    assert.equal(await page.locator('main#top').getAttribute('data-page-enter'), 'down', 'the first wipe is running');
+    await page.evaluate(() => { window.__pauseAt = undefined; });
     await push(page, '/patreon');
-    await page.waitForFunction(() => window.__enters.length === 2);
-    await page.waitForTimeout(250);
-    assert.equal(await page.locator('main#top').getAttribute('data-page-enter'), 'down', 'the second wipe still runs');
+    await page.waitForFunction(() => window.__enters.length === 2 && 'attr' in window.__enters[1]);
+    assert.equal((await enters(page))[1].attr, 'down', 'the second wipe starts');
     await settled(page);
     pass('two quick moves: the second wipe restarts and runs to its end');
+
+    // 5b (13b). From the grey-window desktop back to a terminal page: the switch plays, never a wipe.
+    await push(page, '/projects');
+    await page.waitForTimeout(1500);
+    await reset(page);
+    await push(page, '/tracker');
+    await page.waitForTimeout(1500);
+    assert.deepEqual(await enters(page), [], 'no wipe from the grey-window desktop');
+    pass('grey-window desktop → terminal page: no wipe');
 
     // 6. Enter on a focused link works the same.
     await page.goto(base + '/');
@@ -166,10 +223,11 @@ try {
     const measure = await page.evaluate(() => {
       const main = document.querySelector('main#top'), box = main.getBoundingClientRect();
       // The bottom inset mid-wipe: "inset(0px 0px calc(100% - 691px))" (edge 691 px below main's top) or plain px.
+      // 13b: the other three sides sit far outside main, e.g. "inset(-844px -844px calc(100% - 691px) -844px)".
       const clip = getComputedStyle(main).clipPath;
-      const fromTop = clip.match(/calc\(100% - ([\d.]+)px\)\)$/);
+      const fromTop = clip.match(/calc\(100% - ([\d.]+)px\)/);
       const parts = clip.replace(/^inset\(|\)$/g, '').split(/\s+/).map(parseFloat);
-      const edge = fromTop ? box.top + parseFloat(fromTop[1]) : box.bottom - (parts.length <= 2 ? parts[0] : parts[2]);
+      const edge = fromTop ? box.top + parseFloat(fromTop[1]) : box.bottom - parts[2];
       const tabs = document.querySelector('.phone-tabs').getBoundingClientRect();
       return { clip, edge, band: document.querySelector('.page-band i').getBoundingClientRect().bottom, mainHeight: box.height, view: innerHeight, tabsTop: tabs.top, sideways: document.documentElement.scrollWidth > innerWidth };
     });
@@ -183,6 +241,26 @@ try {
     await context.close();
   }
   pass('tall page on phones: the visible part is wiped, the band leads the edge, no sideways scroll at 390 and 320');
+
+  // 8b (13b). A first load straight onto a terminal page: no wipe. Without the Navigation API, Back at the same depth
+  // still wipes up (the trail of visited paths).
+  {
+    const { context, page } = await open({ noNavigationApi: true });
+    await page.goto(base + '/tracker');
+    await ready(page);
+    await page.waitForTimeout(800);
+    assert.deepEqual(await enters(page), [], 'nothing on a first load of /tracker');
+    await push(page, '/about');
+    await settled(page);
+    await reset(page);
+    await page.goBack();
+    await page.waitForURL(/\/tracker$/);
+    const enter = await last(page);
+    assert.equal(enter.direction, 'up', 'without the Navigation API, Back still wipes up');
+    await settled(page);
+    pass('first load of a terminal page: no wipe; without the Navigation API, Back still wipes up');
+    await context.close();
+  }
 
   // 9. Reduced motion: a cut (the event says so; no attribute, no band).
   {

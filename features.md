@@ -1,5 +1,10 @@
 # Features
 
+## Implemented - 2026-11-04 / Terminal headings decode on arrival (batch 14, board 18)
+
+- Arriving on a terminal page by a link or Back, its heading decodes in from noise, once per page per visit; never on a first load, the homepage, grey windows, reduced motion or CRT off. Screen readers always get the real heading.
+- Back always wipes the page in from the bottom (13b).
+
 ## Implemented - 2026-10-29 / Page transitions and motion tokens (batch 13, boards 19 and 18)
 
 - Moving between terminal pages wipes the new page in from the top (deeper or same depth) or the bottom (back up), with a scan band in CRT "on"; a cut with reduced motion or CRT off.
