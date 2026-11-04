@@ -1,5 +1,9 @@
 # Features
 
+## Implemented - 2026-11-04 / Comic reader page flip (batch 15)
+
+- NEXT and PREV (and arrow keys, GO TO) turn the page over with a curling, stepped-shaded flip in 550 ms; an instant turn with reduced motion or CRT off.
+
 ## Implemented - 2026-11-04 / Terminal headings decode on arrival (batch 14, board 18)
 
 - Arriving on a terminal page by a link or Back, its heading decodes in from noise, once per page per visit; never on a first load, the homepage, grey windows, reduced motion or CRT off. Screen readers always get the real heading.

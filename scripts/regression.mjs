@@ -104,6 +104,7 @@ try {
   await completed(launch(['scripts/verify-operations-log.mjs']));
   await completed(launch(['scripts/verify-page-transition.mjs']));
   await completed(launch(['scripts/verify-decode.mjs']));
+  await completed(launch(['scripts/verify-page-flip.mjs']));
   await completed(launch(['scripts/verify-home.mjs']));
   await completed(launch(['--import', 'tsx', 'scripts/verify-mode-switch.mjs']));
   await completed(launch(['scripts/verify-equipment-directory.mjs']));

@@ -2,6 +2,7 @@
 
 import { useLayoutEffect, useRef, useState } from "react";
 import { arrival, visitRecord } from "@/lib/arrival";
+import { cssTime } from "@/lib/css-time";
 import { isGraphicsPath } from "@/lib/graphics-mode";
 
 // Board 18, 01 DECODE (batch 14): a terminal page's heading decodes in when you arrive on it by a link or Back, once
@@ -23,10 +24,7 @@ const scramble = (text: string) => {
   for (const c of text) out += c === " " ? c : NOISE[Math.floor(Math.random() * NOISE.length)];
   return out;
 };
-const duration = () => {
-  const value = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--motion-decode"));
-  return Number.isFinite(value) && value > 0 ? value : 1100;
-};
+const duration = () => cssTime("--motion-decode", 1100);
 
 function shouldDecode(element: HTMLElement | null, text: string) {
   if (!element || !decoded || !arrival.hydrated) return false;

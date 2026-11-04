@@ -5,6 +5,7 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { ArtworkCanvas, fitHeightView, fitWidthView, keepFocusAfterChange, type View } from "@/components/ArtViewer";
 import { RetroWindow, useWindowManager } from "@/components/WindowManager";
 import ClassifiedPlaceholder from "@/components/ClassifiedPlaceholder";
+import PageFlip, { type PageFlipHandle } from "@/components/PageFlip";
 import { projectHref, type Project, type Chapter } from "@/lib/content/types";
 
 const windowID = "comic-reader";
@@ -38,9 +39,33 @@ export default function ComicReader({
     <Link className="comic-reader-return" href={projectHref(project)}>PROJECT</Link>
   </>;
 
+  // Batch 15: the page turns over (PageFlip). The page on screen is captured here, before the page changes: the keyed
+  // ArtworkCanvas below replaces its image in the same commit. No flip from or to a classified or missing page.
+  const flip = useRef<PageFlipHandle>(null);
+  function startFlip(to: number) {
+    const target = chapter.pages[to];
+    const area = content.current?.querySelector<HTMLElement>(".comic-page-stage .art-viewer-canvas");
+    const image = area?.querySelector<HTMLImageElement>("img.art-viewer-image");
+    if (!flip.current || !content.current || !area || !image || !current?.src || current.classification || !target?.src || target.classification) {
+      flip.current?.finish();
+      return;
+    }
+    flip.current.start({
+      image, imageRect: image.getBoundingClientRect(), area: area.getBoundingClientRect(), container: content.current.getBoundingClientRect(),
+      direction: to > page ? "next" : "prev", background: getComputedStyle(area).backgroundColor,
+    });
+  }
+  // The last few page images stay referenced, so the browser keeps them decoded for a quick PREV (no new request).
+  const shownImages = useRef<HTMLImageElement[]>([]);
+  useEffect(() => {
+    const image = content.current?.querySelector<HTMLImageElement>(".comic-page-stage img.art-viewer-image");
+    if (image) shownImages.current = [image, ...shownImages.current.filter(item => item !== image)].slice(0, 3);
+  }, [page]);
+
   function goToPage(nextPage: number) {
     const bounded = Math.max(0, Math.min(chapter.pages.length - 1, nextPage));
     if (bounded === page) return;
+    startFlip(bounded);
     // PREV or NEXT turns disabled at the first or last page; focus on it would drop to the page body (11b).
     const navigation = content.current?.querySelector(".comic-reader-navigation") ?? null;
     if (navigation?.contains(document.activeElement)) {
@@ -101,6 +126,7 @@ export default function ComicReader({
           </label>
           <button type="button" disabled={page >= chapter.pages.length - 1 || !current} onClick={() => goToPage(page + 1)}>NEXT</button>
         </footer>
+        <PageFlip ref={flip} />
       </section>
     </RetroWindow>
   );

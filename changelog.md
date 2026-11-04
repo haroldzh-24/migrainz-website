@@ -1,5 +1,18 @@
 # Changelog
 
+## Changed - 2026-11-04 / Batch 15 (with 14b): comic reader page flip (feat/batch-15-page-flip)
+
+Rework plan batch 15 (Project doc `claude/rework-plan-2026-11-04.md`, reviewed; Harold, 2026-11-04: "a page flip effect to when you click next page, make the animation slightly pixelated"; his picks in the preview: 550 ms, curl 100, pixel size 1; 24 frames a second, the preview default).
+
+- NEXT turns the page that was on screen over its left edge, curling (curl 100), with a little perspective, shading in six steps and a stepped shadow on the new page, which is already in place underneath; PREV brings the earlier page back over the current one. 550 ms (`--motion-page-flip`) at 24 frames a second. Arrow keys and GO TO flip too (GO TO: one flip in the direction of travel).
+- Drawn on a canvas laid over the page area only (never the title bar, toolbars or page bar), in thin strips at the screen's own pixel density (pixel size 1), from the image already on screen: no new request. A zoomed page turns the part that was visible.
+- A second turn during a flip finishes the first; a resize finishes it. No flip from or to a classified or missing page, or when the page on screen is still loading; PREV waits up to 300 ms for the earlier page to be ready, otherwise turns instantly. Reduced motion or CRT off: an instant turn. Focus, the page counter and its announcement are unchanged. The last three page images stay referenced so PREV is quick.
+- New `lib/busy.ts`: `html[data-busy]` names what the page is busy with (a page turn here; typing later), for the ghost to wait for a quiet moment.
+- Tests: new `scripts/verify-page-flip.mjs` in the regression run (overlay over the page area only in the wide and stacked layouts, new page underneath at once, ~550 ms, two quick NEXTs, PREV, arrows, GO TO, last page, focus, busy flag, 320 px, reduced motion, CRT off).
+
+**14b (found while building this batch):** browsers may give a custom property's time back in their own form (Chrome returns `1100ms` as `1.1s`), so the heading decode read 1.1 ms and ended within a frame or two. New `lib/css-time.ts` reads both units; the decode now lasts its 1.1 s, and `verify-decode.mjs` checks the length.
+- Check: `check-20261104-224715`: all 16 steps passed (simulated). The reader opened at 1366 and 390 mid-flip (test screenshots).
+
 ## Changed - 2026-11-04 / Batch 14 (with 13b): terminal headings decode on arrival; page wipe fixes (feat/batch-14-decode)
 
 Design canvas board 18 (01 DECODE), from the reviewed plan `claude/batch-14-plan.md` (Project doc; COUNT dropped there after its review). 13b holds the fixes from the independent review of batch 13 (run 2026-11-04, nothing blocking; batch 13 went live at 21:41 UTC that day) and Harold's call on Back (2026-11-04: "from the bottom so it looks best").
