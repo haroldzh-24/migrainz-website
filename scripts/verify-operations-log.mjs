@@ -61,8 +61,8 @@ try {
     assert.equal(list.filter(row => row.date === '2026-08-20').length, 2, 'two updates on one day');
     assert.ok(list.some(row => row.thumb && /cover rough/.test(row.text)), 'the update with an image shows its thumbnail');
     assert.ok(list.every(row => !row.isNew), 'first visit: nothing new');
-    assert.match(list[0].link, /^OPEN [A-Z0-9-]+ ▸$/);
-    assert.equal(await page.locator('.operations-log li a').first().evaluate(link => link.querySelector('[aria-hidden="true"]')?.textContent), ' ▸');
+    assert.match(list[0].link, /^OPEN\u00a0[A-Z0-9-]+\u00a0▸$/, 'OPEN, the code and ▸ held together by non-breaking spaces (13b)');
+    assert.equal(await page.locator('.operations-log li a').first().evaluate(link => link.querySelector('[aria-hidden="true"]')?.textContent), '\u00a0▸');
     assert.match(await page.locator('.operations-log-status').textContent(), /^LATEST \d{4}-\d{2}-\d{2}$/);
     assert.equal(await page.locator('.operations-log ol').getAttribute('role'), 'list');
     const seen = await page.evaluate(key => JSON.parse(localStorage.getItem(key)), SEEN);

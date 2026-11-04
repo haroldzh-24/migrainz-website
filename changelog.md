@@ -1,5 +1,24 @@
 # Changelog
 
+## Changed - 2026-11-04 / Batch 14 (with 13b): terminal headings decode on arrival; page wipe fixes (feat/batch-14-decode)
+
+Design canvas board 18 (01 DECODE), from the reviewed plan `claude/batch-14-plan.md` (Project doc; COUNT dropped there after its review). 13b holds the fixes from the independent review of batch 13 (run 2026-11-04, nothing blocking; batch 13 went live at 21:41 UTC that day) and Harold's call on Back (2026-11-04: "from the bottom so it looks best").
+
+- A terminal page's heading (the `Directory` pages: tracker, about, Patreon preview, equipment directory and records, factions; and the terminal 404's `RECORD NOT FOUND`) decodes in when you arrive by a link or Back: noise first, characters settling left to right over `--motion-decode` (1100 ms), once per page per visit (a visit is a tab session; sessionStorage `migrainz-decoded-v1` on top of an in-page record, so a reload in the same tab does not decode again).
+- Not on: the first load, `/` (the homepage title keeps its own decode), headings in grey windows or on the grey-window desktop, arriving from the grey-window desktop (the reverse switch plays), a missing page under a grey-window path, the boot's power-on, reduced motion, CRT off.
+- Screen readers get the real heading at all times: its text stays in one span that never changes (visually hidden while decoding); the noise is an `aria-hidden` sibling. The noise uses no character a line can break at, so the heading keeps its width and line breaks.
+- New `lib/arrival.ts`: whether the app has hydrated and the path an arrival came from (kept by PageTransition), and a small once-per-visit record.
+
+**13b (fixes from the independent review of batch 13):**
+- Back always wipes the new page in from the bottom, also between pages at the same depth (Harold); Forward wipes from the top; a link up to a shallower page still wipes from the bottom. Back is told by the Navigation API's entry index, or a trail of visited paths where that API is missing.
+- Any move cancels a wipe still running, also a move to a page that gets none (a quick move to the home screen kept the rest of the tracker's wipe). No wipe before the boot has powered the screen on (`html[data-power]`).
+- The wipe clips only its moving edge, so glow, reticle brackets and shadows past `<main>`'s sides are no longer cut mid-wipe.
+- Docs: clicks during a wipe go through on the part already shown (the hidden part is not clickable for those 460 ms).
+- Operations log: the visit copy is written in its own try (a failed write kept nothing); a stored value of the wrong shape or dated in the future starts a new visit; `OPEN <code> ▸` is one inline block (with non-breaking spaces) instead of `nowrap`: it moves to the next line whole, never split at the code's hyphen, and only a code longer than its cell wraps inside it.
+- Fixture comment corrected (the STALKER update is newer than the legacy BLUSHLAND one, on purpose).
+- Tests: `scripts/verify-page-transition.mjs` adds Back at the same depth (up), Forward (down), a link up a level (up), Back without the Navigation API, a first load of `/tracker` (nothing), grey desktop → terminal page (nothing), a query-only change (nothing), a move to `/` cancelling a held wipe, and two quick moves with the first held mid-way (no fixed sleep). New `scripts/verify-decode.mjs` in the regression run.
+- Check: `check-20261104-221435`: all 16 steps passed (simulated: headless Chrome on throwaway SQLite fixtures). Pages opened at 1366 and 390 (tracker after a client arrival).
+
 ## Changed - 2026-10-29 / Batch 13: page transitions between terminal pages, motion tokens (feat/batch-13-motion)
 
 Design canvas boards 19 and 18 (part), from Harold's "everything else on the road map" (2026-10-29). Plan reviewed by a fresh agent first; its points are built in (wipe only the part on screen; restart and clean up per move; skip during the boot's power-on; CRT "off" as a cut like the mode switch; follow the board's directions; no row rise after a wipe). Code-only; no schema, migration, Blob or env change.

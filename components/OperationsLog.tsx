@@ -28,21 +28,26 @@ export default function OperationsLog({ entries, allIDs }: { entries: Operations
   // null until mounted (the server knows nothing about this browser), then the IDs that are new on this visit.
   const [fresh, setFresh] = useState<Set<number> | null>(null);
   useEffect(() => {
-    let fresh = new Set<number>();
+    let marks = new Set<number>();
     try {
       // The visit's copy: {"seen": [...], "at": ms} for a returning device, {"seen": null, ...} for its first visit.
-      let stored: { seen: number[] | null; at: number } | null = null;
+      let stored: unknown = null;
       try { stored = JSON.parse(sessionStorage.getItem(BASELINE_KEY) ?? "null"); } catch { stored = null; }
-      if (!stored || !("seen" in stored) || typeof stored.at !== "number" || Date.now() - stored.at > VISIT_MS) {
-        stored = { seen: readIDs(localStorage.getItem(SEEN_KEY)), at: Date.now() };
-        sessionStorage.setItem(BASELINE_KEY, JSON.stringify(stored));
+      let visit = typeof stored === "object" && stored && "seen" in stored && "at" in stored && typeof stored.at === "number"
+        ? stored as { seen: unknown; at: number } : null;
+      // A visit older than VISIT_MS, or one dated in the future (the clock moved back), starts a new visit (13b).
+      const age = visit ? Date.now() - visit.at : NaN;
+      if (!visit || !(age >= 0 && age <= VISIT_MS)) {
+        visit = { seen: readIDs(localStorage.getItem(SEEN_KEY)), at: Date.now() };
+        // Its own try (13b): a failed write still keeps the marks just worked out for this page.
+        try { sessionStorage.setItem(BASELINE_KEY, JSON.stringify(visit)); } catch { /* this tab only */ }
       }
-      const baseline = Array.isArray(stored.seen) ? stored.seen.filter((id): id is number => Number.isInteger(id)) : null;
+      const baseline = Array.isArray(visit.seen) ? visit.seen.filter((id): id is number => Number.isInteger(id)) : null;
       const known = new Set(baseline ?? []);
       // A device that has never seen the log: nothing is "new".
-      fresh = new Set(baseline ? allIDs.filter(id => !known.has(id)) : []);
+      marks = new Set(baseline ? allIDs.filter(id => !known.has(id)) : []);
     } catch { /* Storage blocked: the log works, without NEW. */ }
-    setFresh(fresh);
+    setFresh(marks);
     // Recorded on its own, so a full storage keeps the marks just read; nothing to record without public updates (an
     // empty list would make the next visit count every update as new).
     if (!allIDs.length) return;
@@ -68,7 +73,7 @@ export default function OperationsLog({ entries, allIDs }: { entries: Operations
               <span className="operations-log-new">{isNew ? "NEW" : ""}</span>{" "}
               <span className="operations-log-text">
                 {entry.title}{" "}
-                <Link href={entry.href}>OPEN {entry.code}<span aria-hidden="true"> ▸</span></Link>
+                <Link href={entry.href}>{`OPEN ${entry.code}`}<span aria-hidden="true">{" ▸"}</span></Link>
               </span>
               {entry.thumb ? <img className="operations-log-thumb" src={entry.thumb.src} alt="" loading="lazy" /> : <span className="operations-log-thumb" aria-hidden="true" />}
             </li>

@@ -62,8 +62,9 @@ try {
   await cms.create({ collection: 'characters', data: { name: 'Fixture Operative', slug: 'fixture-operative', project: project.id,
     equipmentAssignments: [{ equipment: scanner.id, designation: 'Unit 7', quantity: 1, notes: 'Synthetic assignment', order: 1 }, { equipment: satchel.id, order: 2 }], ...pub } });
   // Project updates for the operations log (batch 12): two BLUSHLAND updates on one day (one with an image), one STALKER
-  // update, and a REDACTED and a PATRON update whose SENTINEL-UPDATE-* text must never reach a page. Fixed dates, older
-  // than the legacy updates, so the homepage's latest transmissions stay the same.
+  // update, and a REDACTED and a PATRON update whose SENTINEL-UPDATE-* text must never reach a page. Fixed dates. The
+  // STALKER update (08-28) is newer than the legacy 08-27 BLUSHLAND update, which makes the old position-based React key
+  // clash show up in the operations log test (12b); it also appears in the homepage's latest transmissions (13b).
   for (const data of [
     { title: 'Fixture update: storyboards pinned', project: project.id, date: '2026-08-20T12:00:00.000Z', ...pub },
     { title: 'Fixture update: cover rough filed', project: project.id, date: '2026-08-20T12:00:00.000Z', images: [{ media: poster.id, caption: 'Synthetic cover rough' }], ...pub },

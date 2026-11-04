@@ -14,9 +14,16 @@
 - No dedicated test yet (6c/7c, listed by the 8b review): the idle caption following a CRT-mode or reduced-motion change, the lens dropping a sample that went stale while loading, the motion helper reading the latest visibility entry.
 - Status: Open; questions for Harold.
 
+### 2026-11-04 - Batch 14: heading decode limits and a question
+
+- The homepage title decodes again on every client return to `/` (board 18 says once a visit). A question for Harold, not changed here: the homepage is the main open screen.
+- A missing project's 404 under `/projects/...` looks like a terminal page but counts as grey (no wipe, no decode), the same as the mode switch, which decides from the path before the page exists.
+- Checked only in headless Chromium; Safari and Firefox and real devices not checked.
+- Status: Open (recorded).
+
 ### 2026-10-29 - Batch 13: page transition limits
 
-- The old page does not stay under the new one during a wipe (the board shows both): the site has one `main`, so the part not yet revealed is the empty screen for up to 460 ms.
+- The old page does not stay under the new one during a wipe (the board shows both): the site has one `main`, so the part not yet revealed is the empty screen for up to 460 ms. Harold to look at it on a phone (2026-11-04).
 - Back with a restored scroll position: the visible area is measured when the new page is put in, before the browser may restore the scroll; the wipe may then cover a different strip than the one shown (not seen in tests; not checked on real devices).
 - Paint cost of animating clip-path on a long, glowing page on phones not measured; Safari and Firefox not checked.
 - Status: Open (recorded).

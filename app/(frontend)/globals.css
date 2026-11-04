@@ -2731,8 +2731,9 @@ html[data-crt="on"] .nav-status p:first-child { text-shadow: var(--crt-glow-ui);
 .operations-log li[data-new] { border-left-color: var(--crt-accent); }
 .operations-log time, .operations-log-code { font-size: 12px; color: var(--crt-dim); }
 .operations-log-text { min-width: 0; overflow-wrap: anywhere; }
-/* Underlined in every phosphor (colour alone is not enough on green), and never split across lines (12b). */
-.operations-log-text a { color: var(--crt-accent); text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; }
+/* Underlined in every phosphor (colour alone is not enough on green, 12b). One inline block, so "OPEN <code> ▸" moves to
+   the next line whole (never split at the code's hyphen); only a code longer than its cell wraps inside it (13b). */
+.operations-log-text a { display: inline-block; max-width: 100%; color: var(--crt-accent); text-decoration: underline; text-underline-offset: 3px; }
 /* Its own grid cell, empty on the server, so marking a row NEW after load never rewraps the text. */
 .operations-log-new { font-size: 12px; line-height: 1.5; text-align: center; }
 .operations-log li[data-new] .operations-log-new { background: var(--crt-accent); color: var(--crt-bg); }
@@ -2756,13 +2757,15 @@ span.operations-log-thumb { height: 0; border-color: transparent; background: no
    is gone when the animation ends. Reduced motion and CRT off never get the attribute. */
 main.shell[data-page-enter="down"] { animation: page-enter-down var(--motion-reveal) var(--motion-ease) backwards; }
 main.shell[data-page-enter="up"] { animation: page-enter-up var(--motion-reveal) var(--motion-ease) backwards; }
+/* Only the moving edge clips: the other three sides sit far outside <main>, so text glow, reticle brackets and panel
+   shadows that draw past main's sides are never cut mid-wipe (13b). */
 @keyframes page-enter-down {
-  from { clip-path: inset(0 0 calc(100% - var(--enter-top, 0px)) 0); }
-  to { clip-path: inset(0 0 calc(100% - var(--enter-bottom, 100%)) 0); }
+  from { clip-path: inset(-100vmax -100vmax calc(100% - var(--enter-top, 0px)) -100vmax); }
+  to { clip-path: inset(-100vmax -100vmax calc(100% - var(--enter-bottom, 100%)) -100vmax); }
 }
 @keyframes page-enter-up {
-  from { clip-path: inset(var(--enter-bottom, 100%) 0 0 0); }
-  to { clip-path: inset(var(--enter-top, 0px) 0 0 0); }
+  from { clip-path: inset(var(--enter-bottom, 100%) -100vmax -100vmax -100vmax); }
+  to { clip-path: inset(var(--enter-top, 0px) -100vmax -100vmax -100vmax); }
 }
 /* The band leads the clip edge across the same span; under the header, tab bar, status panel and windows. CRT "on" only. */
 .page-band { position: fixed; left: 0; right: 0; z-index: 1; overflow: hidden; pointer-events: none; }
@@ -2780,3 +2783,7 @@ main.shell[data-page-enter="up"] { animation: page-enter-up var(--motion-reveal)
 @keyframes page-band-down { to { transform: translateY(var(--band-span)); } }
 @keyframes page-band-up { to { transform: translateY(calc(-1 * var(--band-span))); } }
 @media (prefers-reduced-motion: reduce) { .page-band { display: none; } }
+
+/* Batch 14: terminal page headings decode on arrival (components/DecodeText.tsx, board 18 01 DECODE). The noise is the
+   homepage title's mid colour; the settled part keeps the heading's own colour and glow. */
+.decode-noise { color: var(--crt-mid); }
