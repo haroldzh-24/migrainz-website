@@ -95,6 +95,7 @@
   --motion-power-off: 320ms;
   --motion-power-on: 560ms;
   --motion-decode: 1100ms;     /* hero decode, once a visit */
+  --motion-page-flip: 550ms;   /* comic reader page turn (Harold, 2026-11-04) */
   --motion-stagger: 55ms;      /* between list rows; 8 rows at most */
   --motion-rise: 14px;
   --motion-drop: 10px;
@@ -2787,3 +2788,9 @@ main.shell[data-page-enter="up"] { animation: page-enter-up var(--motion-reveal)
 /* Batch 14: terminal page headings decode on arrival (components/DecodeText.tsx, board 18 01 DECODE). The noise is the
    homepage title's mid colour; the settled part keeps the heading's own colour and glow. */
 .decode-noise { color: var(--crt-mid); }
+
+/* Batch 15: the comic reader's page turn (components/PageFlip.tsx). The overlay is placed over the page area from its
+   measured box, inside the reader's content box (positioned here), in both the one-row (wide) and stacked layouts. */
+.comic-reader-content { position: relative; }
+.page-flip { position: absolute; z-index: 3; overflow: hidden; pointer-events: none; }
+.page-flip canvas { display: block; width: 100%; height: 100%; }

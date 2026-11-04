@@ -98,7 +98,7 @@ Plan: Project doc `claude/rework-plan-2026-11-04.md` (reviewed by a fresh agent;
 
 | # | Item | Done when |
 |---|---|---|
-| 7.1 | Batch 15: comic reader page flip. | NEXT, PREV, arrows and GO TO flip at 1366 and 390; reduced motion and CRT off turn instantly. |
+| 7.1 | Batch 15: comic reader page flip. | **Done** batch 15 (local `main`, not pushed). |
 | 7.2 | Batch 16: typing in the homepage terminal. | Output lines type; accessible text complete when added; Enter and `clear` finish typing. |
 | 7.3 | Batch 17: typing on the dark terminal pages. | First screen types once per page per visit, after the boot, wipe and decode; skip by tap, key, wheel. |
 | 7.4 | Batch 18: ghost core and hidden shell. | Hidden commands answer; rarity rules hold in tests; nothing on a first visit or after `exorcise`. |

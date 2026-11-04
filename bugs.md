@@ -14,6 +14,12 @@
 - No dedicated test yet (6c/7c, listed by the 8b review): the idle caption following a CRT-mode or reduced-motion change, the lens dropping a sample that went stale while loading, the motion helper reading the latest visibility entry.
 - Status: Open; questions for Harold.
 
+### 2026-11-04 - Batch 15: page flip limits
+
+- Checked only in headless Chrome; drawing cost on phones (up to 640 strips per frame at 24 frames a second) not measured on a real device.
+- No preloading of the next page (one more media request per page for readers who stop early); a NEXT onto a page still loading shows its DECODING state under the turning page.
+- Status: Open (recorded).
+
 ### 2026-11-04 - Batch 14: heading decode limits and a question
 
 - The homepage title decodes again on every client return to `/` (board 18 says once a visit). A question for Harold, not changed here: the homepage is the main open screen.

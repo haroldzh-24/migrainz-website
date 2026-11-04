@@ -37,7 +37,7 @@ const open = async ({ width = 1366, height = 768, reducedMotion = 'no-preference
       const h1 = document.querySelector('main#top h1');
       const box = h1?.getBoundingClientRect();
       const noise = h1?.querySelector('.decode-text');
-      window.__decodes.push({ ...event.detail, path: location.pathname, width: box?.width, height: box?.height, visible: noise?.textContent ?? null,
+      window.__decodes.push({ ...event.detail, at: performance.now(), path: location.pathname, width: box?.width, height: box?.height, visible: noise?.textContent ?? null,
         noiseHidden: noise?.getAttribute('aria-hidden') ?? null, real: h1?.querySelector(':scope > span:not(.decode-text)')?.textContent ?? null });
     });
   }, blockStorage);
@@ -71,6 +71,9 @@ try {
     await page.waitForURL(/\/about$/);
     await ended(page, 'INFORMATION');
     const [start] = (await decodes(page)).filter(d => d.state === 'start');
+    // 14b: it lasts its token (1100 ms); a misread token once made it end within a frame or two.
+    const lasted = await page.evaluate(() => { const list = window.__decodes; return list.find(d => d.state === 'end').at - list.find(d => d.state === 'start').at; });
+    assert.ok(lasted > 900 && lasted < 2500, `the decode lasts about 1.1 s (${Math.round(lasted)} ms)`);
     // At the first frame: noise of the same length is what shows; it is aria-hidden; the real title is still the
     // heading's own text (so its accessible name).
     assert.ok(start.visible !== null && start.visible !== 'INFORMATION', `noise shows first (${JSON.stringify(start)})`);
