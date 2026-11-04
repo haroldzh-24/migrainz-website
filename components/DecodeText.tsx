@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useLayoutEffect, useRef, useState } from "react";
 import { arrival, visitRecord } from "@/lib/arrival";
 import { cssTime } from "@/lib/css-time";
@@ -14,14 +15,15 @@ import { isGraphicsPath } from "@/lib/graphics-mode";
 // keep the width and line breaks unchanged.
 
 // GLYPHS from lib/home/text-graphics.ts without the characters a line may break at ("-", "/", "\\", "|", "_", "%", "+",
-// "<", ">"), so the noise wraps exactly like the real heading.
+// "<", ">"). Only letters and digits are scrambled; spaces and punctuation stay in place (14b), so the noise keeps the
+// real heading's break points.
 const NOISE = "#&*=01ABCDEFHKMNRSXZ";
 const PRINTABLE = /^[\x20-\x7e]+$/;
 const decoded = typeof window === "undefined" ? null : visitRecord("migrainz-decoded-v1");
 
 const scramble = (text: string) => {
   let out = "";
-  for (const c of text) out += c === " " ? c : NOISE[Math.floor(Math.random() * NOISE.length)];
+  for (const c of text) out += /[A-Za-z0-9]/.test(c) ? NOISE[Math.floor(Math.random() * NOISE.length)] : c;
   return out;
 };
 const duration = () => cssTime("--motion-decode", 1100);
@@ -38,13 +40,18 @@ function shouldDecode(element: HTMLElement | null, text: string) {
 }
 
 export default function DecodeText({ text }: { text: string }) {
+  // Next keeps the same heading when only a dynamic segment changes (/projects/a/equipment → /projects/b/equipment), so
+  // the path is part of the decision (14b).
+  const pathname = usePathname();
   const real = useRef<HTMLSpanElement>(null);
+  const decidedFor = useRef<string | null>(null);
   // Decided once per mount (StrictMode's second effect run keeps the decision).
   const decision = useRef<boolean | null>(null);
   const [shown, setShown] = useState<{ done: string; noise: string } | null>(null);
 
   // A layout effect, so the full heading never shows for a frame first.
   useLayoutEffect(() => {
+    if (decidedFor.current !== pathname) { decision.current = null; decidedFor.current = pathname; }
     if (decision.current === null) decision.current = shouldDecode(real.current, text);
     if (!decision.current) return;
     const path = location.pathname;
@@ -79,7 +86,7 @@ export default function DecodeText({ text }: { text: string }) {
       cancelAnimationFrame(frame);
       setShown(null);
     };
-  }, [text]);
+  }, [text, pathname]);
 
   return <>
     <span ref={real} className={shown ? "visually-hidden" : undefined}>{text}</span>

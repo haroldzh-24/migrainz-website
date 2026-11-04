@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useSound } from "@/components/SoundProvider";
 import { openRoute } from "@/lib/graphics-mode";
+import { useTerminalTyping } from "@/components/home/useTerminalTyping";
 
 type Line = { text: string; kind: "in" | "out" | "ok" | "err" | "dim"; id?: number };
 export type TerminalProject = { slug: string; code: string; title: string; status: string };
@@ -49,8 +50,13 @@ export default function HomeTerminal({ projects, clearance }: { projects: Termin
   const history = useRef<string[]>([]);
   const cursor = useRef(0);
   const log = useRef<HTMLDivElement>(null);
+  // Batch 16: printed output types out (the visitor's own command line appears at once).
+  const typeCursor = useRef<HTMLSpanElement>(null);
+  const typing = useTerminalTyping(log, typeCursor);
+  useLayoutEffect(() => typing.attach(), [lines]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { if (log.current) log.current.scrollTop = log.current.scrollHeight; }, [lines]);
+  // New lines scroll the log to its end, unless output is typing: then the log follows the typing point (batch 16).
+  useEffect(() => { if (log.current && !log.current.querySelector("p[data-typing]")) log.current.scrollTop = log.current.scrollHeight; }, [lines]);
   // Escape during the switch cancels a move this terminal started: say so and stay home.
   useEffect(() => {
     const cancelled = (event: Event) => {
@@ -62,6 +68,7 @@ export default function HomeTerminal({ projects, clearance }: { projects: Termin
 
   const print = (next: Line[], reset = false) => {
     const numbered = next.map(line => ({ ...line, id: nextId.current++ }));
+    typing.enqueue(numbered.filter(line => line.kind !== "in").map(line => line.id));
     setLines(current => (reset ? numbered : [...current, ...numbered]).slice(-OUTPUT_LIMIT));
   };
   const find = (name: string) => {
@@ -81,6 +88,7 @@ export default function HomeTerminal({ projects, clearance }: { projects: Termin
   };
 
   const run = (raw: string) => {
+    typing.finish(); // a new command (or clear) finishes any output still typing
     const line = raw.trim();
     const prompt = `public@migrainz:${cwd}$`;
     if (!line) { print([{ text: prompt, kind: "in" }]); return; }
@@ -205,8 +213,10 @@ export default function HomeTerminal({ projects, clearance }: { projects: Termin
     <section className="pnl home-terminal-panel" aria-labelledby="home-terminal">
       <div className="pnl-h"><h2 className="pnl-title" id="home-terminal"><b>TERMINAL</b><i aria-hidden="true"> .SH</i></h2><span className="pnl-end" aria-hidden="true">TYPE help</span></div>
       <div className="home-term-log" ref={log} role="log" aria-live="polite" tabIndex={0} aria-label="Terminal output">
-        {lines.map(line => <p key={line.id} data-kind={line.kind}>{line.text}</p>)}
+        {lines.map(line => <p key={line.id} data-kind={line.kind} data-line={line.id}>{line.text}</p>)}
       </div>
+      {/* Outside the log, so the log's text stays only its lines; placed over the typing point (panel coordinates). */}
+      <span ref={typeCursor} className="type-cursor" aria-hidden="true" hidden>_</span>
       <div className="home-term-input">
         <label htmlFor="home-terminal-input" className="visually-hidden">Terminal command</label>
         <span aria-hidden="true">public@migrainz:{cwd}$</span>

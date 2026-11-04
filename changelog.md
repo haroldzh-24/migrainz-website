@@ -1,5 +1,23 @@
 # Changelog
 
+## Changed - 2026-11-04 / Batch 16 (with 14b): the homepage terminal types its output (feat/batch-16-terminal-typing)
+
+Rework plan batch 16 (Harold, 2026-11-04: "when it displays text it displays one letter/space at a time like a system is typing it out with that strobing dash thing").
+
+- Every line a command prints in the homepage terminal types out one character at a time behind a solid `_` cursor; the visitor's own command line appears at once. About 55 characters a second, faster when one command prints a lot (all of its output within 2 s); a short pause between lines. The log follows the typing point line by line instead of jumping to its end.
+- How: each line is one text node with its full text from the start, so the log region announces it once (as before), `textContent` never changes and the log never grows while typing; the part not typed yet sits in the CSS Custom Highlight API's "untyped" highlight (no colour, no glow). New `lib/typing.ts` (shared with the page typing in batch 17) and `components/home/useTerminalTyping.ts`.
+- A new command or `clear` finishes the typing at once. Reduced motion, CRT off, forced colours or a browser without the Highlight API: lines appear complete. `html[data-busy]` says `typing` while it runs.
+- The welcome lines on arrival do not type (they are there before the boot screen goes).
+- Tests: new `scripts/verify-terminal-typing.mjs` in the regression run.
+
+**14b (fixes from the independent review of batch 14, which found nothing blocking):**
+- Heading decode: decides again when only a dynamic part of the path changes (Next keeps the same heading); scrambles only letters and digits, so punctuation and its line-break points stay in place.
+- Back without the Navigation API: a trail with a cursor (Back, Forward and links like the browser's own history), not a list that is popped.
+- The non-breaking spaces in the log link are written as escapes in the source.
+- Tests that could not fail now can: the cancel test uses Back to `/` (quick) with a held wipe and checks it ends before the safety timer could; the link-split test counts the lines of the link's text, not its box; the grey-desktop decode test uses a page not decoded yet; Back onto a page not decoded yet decodes; the fallback test proves the Navigation API is hidden; the mid-wipe clip must have its other sides outside `<main>`.
+- Docs: which pages decode (records and factions are grey windows and never do); Forward follows depth like a link.
+- Check: `check-20261104-231943`: 15 of 16 steps passed; the regression step failed once in `verify-art-viewer-keys.mjs` (a reopen timing flake, passes alone; bugs.md), and its rerun `check-20261104-233234` passed. Terminal opened at 1366 and 390 mid-typing.
+
 ## Changed - 2026-11-04 / Batch 15 (with 14b): comic reader page flip (feat/batch-15-page-flip)
 
 Rework plan batch 15 (Project doc `claude/rework-plan-2026-11-04.md`, reviewed; Harold, 2026-11-04: "a page flip effect to when you click next page, make the animation slightly pixelated"; his picks in the preview: 550 ms, curl 100, pixel size 1; 24 frames a second, the preview default).
@@ -17,13 +35,13 @@ Rework plan batch 15 (Project doc `claude/rework-plan-2026-11-04.md`, reviewed; 
 
 Design canvas board 18 (01 DECODE), from the reviewed plan `claude/batch-14-plan.md` (Project doc; COUNT dropped there after its review). 13b holds the fixes from the independent review of batch 13 (run 2026-11-04, nothing blocking; batch 13 went live at 21:41 UTC that day) and Harold's call on Back (2026-11-04: "from the bottom so it looks best").
 
-- A terminal page's heading (the `Directory` pages: tracker, about, Patreon preview, equipment directory and records, factions; and the terminal 404's `RECORD NOT FOUND`) decodes in when you arrive by a link or Back: noise first, characters settling left to right over `--motion-decode` (1100 ms), once per page per visit (a visit is a tab session; sessionStorage `migrainz-decoded-v1` on top of an in-page record, so a reload in the same tab does not decode again).
+- A terminal page's heading (the dark `Directory` pages: tracker, about, Patreon preview, a project's equipment directory; and the terminal 404's `RECORD NOT FOUND`; records and factions open in grey windows and never decode) decodes in when you arrive by a link or Back: noise first, characters settling left to right over `--motion-decode` (1100 ms), once per page per visit (a visit is a tab session; sessionStorage `migrainz-decoded-v1` on top of an in-page record, so a reload in the same tab does not decode again).
 - Not on: the first load, `/` (the homepage title keeps its own decode), headings in grey windows or on the grey-window desktop, arriving from the grey-window desktop (the reverse switch plays), a missing page under a grey-window path, the boot's power-on, reduced motion, CRT off.
 - Screen readers get the real heading at all times: its text stays in one span that never changes (visually hidden while decoding); the noise is an `aria-hidden` sibling. The noise uses no character a line can break at, so the heading keeps its width and line breaks.
 - New `lib/arrival.ts`: whether the app has hydrated and the path an arrival came from (kept by PageTransition), and a small once-per-visit record.
 
 **13b (fixes from the independent review of batch 13):**
-- Back always wipes the new page in from the bottom, also between pages at the same depth (Harold); Forward wipes from the top; a link up to a shallower page still wipes from the bottom. Back is told by the Navigation API's entry index, or a trail of visited paths where that API is missing.
+- Back always wipes the new page in from the bottom, also between pages at the same depth (Harold); Forward follows depth like a link; a link up to a shallower page still wipes from the bottom. Back is told by the Navigation API's entry index, or a trail of visited paths where that API is missing.
 - Any move cancels a wipe still running, also a move to a page that gets none (a quick move to the home screen kept the rest of the tracker's wipe). No wipe before the boot has powered the screen on (`html[data-power]`).
 - The wipe clips only its moving edge, so glow, reticle brackets and shadows past `<main>`'s sides are no longer cut mid-wipe.
 - Docs: clicks during a wipe go through on the part already shown (the hidden part is not clickable for those 460 ms).
