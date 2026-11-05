@@ -46,6 +46,9 @@ function watchBrowser(browser) {
   const newContext = browser.newContext.bind(browser);
   browser.newContext = async (...args) => {
     const context = await newContext(...args);
+    // The ghost (batches 18 to 20) stays quiet in every browser script; scripts/verify-ghost-*.mjs turn it back on in
+    // their own init script, which runs after this one.
+    await context.addInitScript(() => { try { localStorage.setItem('migrainz-ghost-test', 'block'); } catch {} });
     await watchPolicies(context, (message, page) => problems.push(`${page?.url() ?? '(no page)'}: ${message}`));
     watched++;
     open.add(context);

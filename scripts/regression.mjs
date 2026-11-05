@@ -107,6 +107,7 @@ try {
   await completed(launch(['scripts/verify-page-flip.mjs']));
   await completed(launch(['scripts/verify-terminal-typing.mjs']));
   await completed(launch(['scripts/verify-type-out.mjs']));
+  await completed(launch(['scripts/verify-ghost-core.mjs']));
   await completed(launch(['scripts/verify-home.mjs']));
   await completed(launch(['--import', 'tsx', 'scripts/verify-mode-switch.mjs']));
   await completed(launch(['scripts/verify-equipment-directory.mjs']));
