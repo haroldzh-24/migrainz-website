@@ -1,5 +1,9 @@
 # Features
 
+## Implemented - 2026-11-05 / The ghost across the site (batch 20)
+
+- Rarely: the Watcher looks at the shop, the screen turns amber for a moment ("this is my good side."), the studio ad says it was not approved by the studio, a tty0.exe box blinks "sorry. misclick." on the grey desktop. From the fifth visit the archive lists `unlisted.txt`. Finishing a chapter by reading: "i've read what happens next." with a link to the next chapter.
+
 ## Implemented - 2026-11-05 / The ghost in the terminal (batch 19)
 
 - Rarely: a second user types and erases a message, a second cursor blinks, the terminal types `open requisitions.exe` by itself after a minute idle, the about page's typing slips; on visits 3, 7 and 13 the ghost says welcome back.

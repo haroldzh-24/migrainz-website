@@ -31,7 +31,7 @@ export default function PromoWindow({
     return () => window.removeEventListener("migrainz:ghost-ad", marked);
   }, [shop]);
   useEffect(() => {
-    if (open && shop) ghost.adOpened();
+    if (open) ghost.adOpened(shop);
     if (!open) setByGhost(false);
   }, [open, shop]);
   // The shop ad pops on hover at most once per visit and never over the transmission splash; clicking always opens it.
@@ -93,7 +93,10 @@ export default function PromoWindow({
       if (event.key === "Escape" && !event.defaultPrevented) {
         event.preventDefault(); // handled: the Art Viewer must not also close on this key
         setOpen(false);
-        trigger.current?.focus();
+        // Focus goes back to the trigger only when it was in this window (or nowhere): an ad the ghost opened while the
+        // visitor was typing elsewhere never pulls focus away (19b).
+        const active = document.activeElement;
+        if (!active || active === document.body || wrapper.current?.contains(active)) trigger.current?.focus();
       }
     };
     document.addEventListener("pointerdown", outside);

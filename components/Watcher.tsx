@@ -15,7 +15,7 @@ const JITTER_MAX_MS = 9000;
 const JITTER_MS = 90;
 
 // Dispatched by HighlightEffects when keyboard focus lands on a control: the Watcher glances at that point.
-export type WatcherGlanceDetail = { x: number; y: number };
+export type WatcherGlanceDetail = { x: number; y: number; hold?: number };
 export const WATCHER_GLANCE_EVENT = "migrainz:watcher-glance";
 
 /** `children` are extra layers drawn inside the Watcher box (the homepage adds its text-mode layers there). */
@@ -136,7 +136,7 @@ export default function Watcher({ children }: { children?: ReactNode }) {
       if (!detail || preference.matches || document.hidden) return;
       clearTimeout(hold);
       position = { x: detail.x, y: detail.y }; dirty = true; wake();
-      hold = window.setTimeout(reset, TOUCH_HOLD_MS);
+      hold = window.setTimeout(reset, detail.hold ?? TOUCH_HOLD_MS);
     };
     // Scrolling moves the watcher under a still pointer.
     const rescroll = () => { if (position) { dirty = true; wake(); } };

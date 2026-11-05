@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState, type ReactNode, type PointerEvent } from "react";
 import { announcement } from "@/data/announcement";
+import { ghost } from "@/lib/ghost";
 import { useSound } from "@/components/SoundProvider";
 import type { BootLine } from "@/lib/content/boot";
 
@@ -25,6 +26,9 @@ const DATA_WAIT_MS = 2000;
 const passiveKeys = new Set(["Tab", "Shift", "Control", "Alt", "Meta", "CapsLock", "s", "S"]);
 
 export default function StartupSequence({ children }: { children: ReactNode }) {
+  // Batch 20: on the visit the ghost draws this stunt, the announcement's eyebrow is not the studio's (kept across
+  // reloads of that visit, as the announcement itself is). Claimed only when the announcement actually opens.
+  const [hijacked, setHijacked] = useState(false);
   // "power": the boot screen is gone and the page powers on with nothing over it (board 17; Harold, 2026-10-29: the
   // power-on should be seen), then the announcement opens.
   const [state, setState] = useState<"boot" | "power" | "announcement" | "closed">("boot");
@@ -56,6 +60,13 @@ export default function StartupSequence({ children }: { children: ReactNode }) {
     window.addEventListener('migrainz:window-activated', lower);
     return () => window.removeEventListener('migrainz:window-activated', lower);
   }, [state]);
+  useEffect(() => {
+    if (state !== "announcement" || hijacked) return;
+    if (ghost.used() === "boot-ad" || ghost.claim("boot-ad", { ignoreBusy: true })) {
+      setHijacked(true);
+      window.dispatchEvent(new CustomEvent("migrainz:ghost", { detail: { name: "boot-ad" } }));
+    }
+  }, [state, hijacked]);
   const drag = useRef<{ id: number; x: number; y: number } | null>(null);
   const clamp = (x: number, y: number) => {
     const bounds = windowRef.current?.getBoundingClientRect();
@@ -263,7 +274,7 @@ export default function StartupSequence({ children }: { children: ReactNode }) {
             </ol>
             <p className="boot-hint">ANY KEY / CLICK OR TAP TO SKIP &middot; S = SOUND</p>
           </div> : <div className="startup-announcement">
-            <p className="eyebrow"><span className="startup-blink">[ NEW ]</span> / INCOMING STUDIO AD</p>
+            <p className="eyebrow">{hijacked ? "THIS AD WAS NOT APPROVED BY STUDIO MIGRAINZ" : <><span className="startup-blink">[ NEW ]</span> / INCOMING STUDIO AD</>}</p>
             {announcement.image ? <img className="startup-announcement-image" src={announcement.image} alt="" /> : <div className="startup-ad-placeholder" aria-hidden="true">MIGRAINZ<br />PUBLIC ACCESS<br />[ TRANSMISSION 001 ]</div>}
             <h2>{announcement.title}</h2>
             <p>{announcement.copy}</p>

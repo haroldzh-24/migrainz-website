@@ -190,7 +190,7 @@ export default function TypeOut() {
       const elapsed = Math.min(100, now - last);
       last = now;
       if (now >= pauseUntil) carry += (elapsed * rate) / 1000;
-      while (index < steps.length && (carry >= 1 || steps[index].kind === "wait")) {
+      while (index < steps.length && (steps[index].kind === "wait" || (now >= pauseUntil && carry >= 1))) {
         const step = steps[index];
         if (step.kind === "wait") { reveal(step); index++; continue; }
         if (!step.node.isConnected) { reveal(step); index++; continue; }

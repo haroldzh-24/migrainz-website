@@ -10,7 +10,7 @@ import { afterIdle, onActivity } from "@/lib/idle";
 // - A second user: a ????@migrainz line under the log types a message, waits, erases itself (SESSIONS: 2 meanwhile).
 // - A second cursor: a faint "_" one line under the prompt for about a second.
 // - Idle takeover: after a minute with no input the prompt types by itself (`open requisitions.exe`, which opens the
-//   shop ad if none opened this visit and the screen is 480 px or wider; else `cd /archive/.unlisted`), then "go on.
+//   shop ad if none opened this visit and the screen is wider than 480 px with no promo window open; else `cd /archive/.unlisted`), then "go on.
 //   i'll wait."; any move, key or touch stops it ("^C", "(input returned to public)").
 // - Welcome back: "welcome back. visit N from this browser." ... printed in the terminal as ghost lines.
 // All of it is decoration (aria-hidden, outside the log), never takes focus or blocks typing; keyboard clatter only
@@ -23,6 +23,9 @@ const MESSAGES = ["don't open 04", "you're not the only one reading this", "i ca
 
 type Show = { prompt: string; text: string; cursor: boolean; faint?: boolean; after?: string[] } | null;
 
+// The page is still booting, showing the announcement or powering on.
+const unsettled = () => document.documentElement.dataset.power !== "on" || Boolean(document.querySelector(".startup-sequence, main#top.power-on"));
+
 export const say = (lines: string[]) => window.dispatchEvent(new CustomEvent("migrainz:ghost-say", { detail: { lines } }));
 
 export default function GhostTerminal({ onSessions }: { onSessions: (count: number | null) => void }) {
@@ -33,7 +36,10 @@ export default function GhostTerminal({ onSessions }: { onSessions: (count: numb
   const timers = useRef<number[]>([]);
 
   useEffect(() => {
-    const later = (ms: number, run: () => void) => { timers.current.push(window.setTimeout(run, ms)); };
+    const later = (ms: number, run: () => void) => {
+      const id = window.setTimeout(() => { timers.current = timers.current.filter(other => other !== id); run(); }, ms);
+      timers.current.push(id);
+    };
     const clearAll = () => { timers.current.forEach(window.clearTimeout); timers.current = []; };
     const click = () => { if (sound.current) playSound("tick"); };
     let stopActivity = () => {};
@@ -61,8 +67,10 @@ export default function GhostTerminal({ onSessions }: { onSessions: (count: numb
     };
     const end = () => { clearAll(); stopActivity(); setShow(null); onSessions(null); };
 
-    // Welcome back (milestones, not an ambient event).
-    later(1500, () => {
+    // Welcome back (milestones, not an ambient event). These are terminal output like the hidden commands' answers, so
+    // they print in the log (read out as the log is); they wait until the boot and the announcement are gone (19b).
+    later(1500, function welcome() {
+      if (unsettled()) { later(1000, welcome); return; }
       const visit = ghost.milestone();
       if (visit === null) return;
       const chapter = ghost.lastChapter();
@@ -94,10 +102,11 @@ export default function GhostTerminal({ onSessions }: { onSessions: (count: numb
     });
 
     // Idle takeover.
-    const stopIdle = afterIdle(ghost.delay("idle", IDLE_MS), () => {
+    const stopIdle = !ghost.drawn("idle") ? () => {} : afterIdle(ghost.delay("idle", IDLE_MS), () => {
       if (document.querySelector(".startup-sequence") || !ghost.claim("idle")) return;
       stopIdle();
-      const shop = window.innerWidth >= 480 && !ghost.adThisVisit() && Boolean(document.querySelector("#shop .nav-trigger"));
+      // 19b: wider than the compact ad layout (480 px), no ad this visit and none open now.
+      const shop = window.innerWidth > 480 && !ghost.adThisVisit() && !document.querySelector(".promo-window") && Boolean(document.querySelector("#shop .nav-trigger"));
       const command = shop ? "open requisitions.exe" : "cd /archive/.unlisted";
       window.dispatchEvent(new CustomEvent("migrainz:ghost", { detail: { name: "idle", command } }));
       const prompt = "public@migrainz:~$ ";
@@ -108,6 +117,8 @@ export default function GhostTerminal({ onSessions }: { onSessions: (count: numb
       };
       stopActivity = onActivity(interrupted);
       typeInto(prompt, command, () => {
+        stopActivity();
+        stopActivity = onActivity(() => { clearAll(); setShow(null); });
         if (shop) {
           window.dispatchEvent(new CustomEvent("migrainz:ghost-ad"));
           document.querySelector<HTMLButtonElement>("#shop .nav-trigger")?.click();

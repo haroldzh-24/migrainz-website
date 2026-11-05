@@ -4,6 +4,7 @@ import SchematicSpinner from "@/components/SchematicSpinner";
 import { WindowLauncher } from "@/components/WindowManager";
 import HomeSignal, { type HomeChannel } from "@/components/home/HomeSignal";
 import HomeTerminal from "@/components/home/HomeTerminal";
+import GhostHome from "@/components/ghost/GhostHome";
 import { SessionClock, SignalGlobe } from "@/components/home/HomeStatus";
 import { getHomepageData, getNewestSchematic } from "@/lib/content/queries";
 import { chapterHref, projectHref } from "@/lib/content/types";
@@ -102,6 +103,7 @@ export default async function Home() {
             <PanelHead id="home-directory" title="DIRECTORY" ext=".DIR" end="END. PROGRAM" />
             <TerminalNav />
           </section>
+          <GhostHome />
           <HomeTerminal clearance={clearance} projects={open.map(project => ({ slug: project.slug, code: project.id, title: project.title, status: project.status.toUpperCase() }))} />
         </div>
 

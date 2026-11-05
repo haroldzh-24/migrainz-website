@@ -175,6 +175,15 @@ export const ghost = {
     save();
     return true;
   },
+  /**
+   * Whether this visit drew `name` and has not used its event yet (or a test forces it): cheap to ask before arming
+   * listeners, so the other visits arm nothing (19b). `claim` still decides at the moment.
+   */
+  drawn(name: Ambient): boolean {
+    const test = override();
+    if (test.force.has(name)) return true;
+    return load() && !local!.exorcised && !test.block && session!.roll && session!.pick === name && !session!.event;
+  },
   /** The ambient event this visit has used, if any (e.g. the boot ad hijack, decided once and kept across reloads). */
   used(): string | null { return load() ? session!.event : null; },
 
@@ -198,7 +207,8 @@ export const ghost = {
   /** Note tries of `cat .ghost/note.txt` this visit (the third one gives in). */
   noteTry(): number { if (!load()) return 1; session!.noteTries += 1; save(); return session!.noteTries; },
 
-  adOpened() { if (load()) { session!.ad = true; local!.adEver = true; save(); } },
+  /** A promo window opened (any counts as this visit's ad; only the shop counts as requisitions.exe opened ever). */
+  adOpened(shop = true) { if (load()) { session!.ad = true; if (shop) local!.adEver = true; save(); } },
   adThisVisit(): boolean { return load() ? session!.ad : false; },
   adEver(): boolean { return load() ? local!.adEver : false; },
   chapterFinished(id: string) { if (load() && !local!.chapters.includes(id)) { local!.chapters = [...local!.chapters, id].slice(-50); save(); } },

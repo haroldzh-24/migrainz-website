@@ -4,7 +4,8 @@
 // Each stunt is forced with localStorage migrainz-ghost-test = "force:<name>" (outside production builds only; forced
 // waits are short). Checks: the second user types, shows SESSIONS: 2, erases itself, and the visitor's typing wins at
 // once; the second cursor; the idle takeover opens the shop ad tagged "[opened by tty0]" once per visit and is cut short
-// by a pointer move ("^C"); the narrow-screen takeover never opens an ad; welcome-back lines; the typing slip on /about
+// by a pointer move ("^C"), and Escape on the ad leaves focus in the terminal; the narrow-screen takeover never opens an ad; the
+// input never moves while the ghost line shows; CRT off: no stunts; welcome-back lines; the typing slip on /about
 // leaves the real text untouched; reduced motion: no stunts; nothing is announced (aria-hidden); no page errors.
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
@@ -22,11 +23,11 @@ const policies = require('./policy-watch.cjs').watchBrowser(browser);
 const errors = [];
 const pass = message => console.log('PASS ' + message);
 
-const open = async (force, { width = 1366, height = 768, reducedMotion = 'no-preference', href = '/' } = {}) => {
+const open = async (force, { width = 1366, height = 768, reducedMotion = 'no-preference', href = '/', crt = null } = {}) => {
   const context = await browser.newContext({ viewport: { width, height }, reducedMotion, timezoneId: 'America/Chicago' });
   await context.addInitScript(value => {
-    try { sessionStorage.setItem('migrainz-announcement:studio-transmission-001', 'studio-transmission-001'); localStorage.setItem('migrainz-ghost-test', value); } catch {}
-  }, `force:${force}`);
+    try { sessionStorage.setItem('migrainz-announcement:studio-transmission-001', 'studio-transmission-001'); localStorage.setItem('migrainz-ghost-test', value[0]); if (value[1]) localStorage.setItem('crt-effects', value[1]); } catch {}
+  }, [`force:${force}`, crt]);
   const page = await context.newPage();
   page.setDefaultTimeout(90000);
   page.on('pageerror', error => errors.push(error.message));
@@ -41,13 +42,15 @@ try {
   // 1. Second user: types, SESSIONS: 2, erases itself, decoration only.
   {
     const { context, page } = await open('second-user');
+    const inputBefore = await page.locator('#home-terminal-input').boundingBox();
     await page.waitForFunction(() => /\?\?\?\?@migrainz/.test(document.querySelector('.ghost-terminal')?.textContent ?? '') && document.querySelector('.ghost-terminal').textContent.length > 22);
     assert.equal(await header(page), 'SESSIONS: 2');
+    assert.deepEqual(await page.locator('#home-terminal-input').boundingBox(), inputBefore, 'the input never moves (19b)');
     assert.equal(await ghostBox(page).getAttribute('aria-hidden'), 'true', 'decoration, hidden from screen readers');
     assert.equal(await page.locator('.home-term-log .ghost-terminal').count(), 0, 'not inside the log region');
     await ghostBox(page).waitFor({ state: 'detached', timeout: 20000 });
     assert.equal(await header(page), 'TYPE help');
-    pass('second user: types a message, SESSIONS: 2, erases itself; aria-hidden, outside the log');
+    pass('second user: types a message, SESSIONS: 2, erases itself; aria-hidden, outside the log; the input stays put');
     await context.close();
   }
   // 1b. The visitor's typing wins at once.
@@ -77,23 +80,41 @@ try {
     assert.match(await page.locator('#shop-promo .promo-title').textContent(), /BEST_DEALS\.exe \[opened by tty0\]/);
     await page.waitForFunction(() => document.querySelector('.ghost-terminal')?.textContent.includes("go on. i'll wait."));
     assert.ok(!(await page.locator('#home-terminal-input').evaluate(input => input.value)), 'the visitor\'s input is untouched');
+    // 19b: a move now just clears the line (no late ^C); Escape closes the ad and leaves focus in the terminal.
+    await page.mouse.move(40, 40);
+    await page.mouse.move(60, 60);
+    await ghostBox(page).waitFor({ state: 'detached', timeout: 2000 });
+    await page.locator('#home-terminal-input').focus();
+    await page.keyboard.press('Escape');
+    await page.locator('#shop-promo').waitFor({ state: 'detached' });
+    assert.equal(await page.evaluate(() => document.activeElement?.id), 'home-terminal-input', 'Escape leaves focus in the terminal');
     // Same visit: no second takeover, no second ad.
     await page.reload();
     await page.locator('.startup-sequence').waitFor({ state: 'detached' });
     await page.waitForTimeout(2500);
     assert.equal(await page.locator('#shop-promo').count(), 0, 'no second ad in the visit');
-    pass('idle takeover: types open requisitions.exe, opens the ad tagged [opened by tty0], once per visit');
+    pass('idle takeover: types open requisitions.exe, opens the ad tagged [opened by tty0], once per visit; Escape keeps focus in the terminal');
     await context.close();
   }
-  // 3b. Interrupted by a pointer move; narrow screens never open the ad.
+  // 3b. Interrupted by a pointer move while typing.
   {
-    const { context, page } = await open('idle', { width: 390, height: 844 });
-    await page.waitForFunction(() => /c|cd/.test(document.querySelector('.ghost-terminal')?.textContent ?? ''), null, { timeout: 30000 });
+    const { context, page } = await open('idle');
+    await page.waitForFunction(() => /\$ o/.test(document.querySelector('.ghost-terminal')?.textContent ?? ''), null, { timeout: 30000 });
     await page.mouse.move(50, 50);
     await page.mouse.move(60, 70);
     await page.waitForFunction(() => document.querySelector('.ghost-terminal')?.textContent.includes('(input returned to public)'));
+    await page.waitForTimeout(1500);
+    assert.equal(await page.locator('#shop-promo').count(), 0, 'no ad after an interrupted takeover');
+    pass('idle takeover: a pointer move stops it with ^C, no ad');
+    await context.close();
+  }
+  // 3c. Narrow screens: cd /archive/.unlisted, never the ad.
+  {
+    const { context, page } = await open('idle', { width: 390, height: 844 });
+    await page.waitForFunction(() => document.querySelector('.ghost-terminal')?.textContent.includes('(not yet.)'), null, { timeout: 30000 });
+    assert.match(await ghostBox(page).textContent(), /\$ cd \/archive\/\.unlisted/);
     assert.equal(await page.locator('#shop-promo').count(), 0, 'no ad on a narrow screen');
-    pass('idle takeover: a pointer move stops it with ^C; narrow screens use cd /archive/.unlisted, never the ad');
+    pass('idle takeover, 390 px: cd /archive/.unlisted, permission denied, never the ad');
     await context.close();
   }
   // 4. Welcome back lines in the log.
@@ -126,6 +147,16 @@ try {
     await page.waitForTimeout(3000);
     assert.equal(await ghostBox(page).count(), 0, 'reduced motion: no stunts');
     pass('reduced motion: no stunts');
+    await context.close();
+  }
+
+  // 7. CRT off: no stunts either (19b).
+  {
+    const { context, page } = await open('second-user,second-cursor,idle', { crt: 'off' });
+    await page.waitForTimeout(3000);
+    assert.equal(await page.evaluate(() => document.documentElement.dataset.crt), 'off');
+    assert.equal(await ghostBox(page).count(), 0, 'CRT off: no stunts');
+    pass('CRT off: no stunts');
     await context.close();
   }
 

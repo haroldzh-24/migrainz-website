@@ -264,8 +264,9 @@ export default function HomeTerminal({ projects, clearance }: { projects: Termin
       </div>
       {/* Outside the log, so the log's text stays only its lines; placed over the typing point (panel coordinates). */}
       <span ref={typeCursor} className="type-cursor" aria-hidden="true" hidden>_</span>
-      <GhostTerminal onSessions={setSessions} />
       <div className="home-term-input">
+        {/* Over the bottom of the log, out of the flow: the input never moves when the ghost shows (19b). */}
+        <GhostTerminal onSessions={setSessions} />
         <label htmlFor="home-terminal-input" className="visually-hidden">Terminal command</label>
         <span aria-hidden="true">public@migrainz:{cwd}$</span>
         <input id="home-terminal-input" value={value} onChange={event => setValue(event.target.value)} onKeyDown={onKeyDown}
