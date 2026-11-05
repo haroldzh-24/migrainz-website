@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { site } from "@/data/site";
+import { ghost } from "@/lib/ghost";
 import MenuLabel from "@/components/MenuLabel";
 
 const shopSeenKey = "migrainz-shop-promo-seen";
@@ -20,6 +21,19 @@ export default function PromoWindow({
   const trigger = useRef<HTMLButtonElement>(null);
   const popup = useRef<HTMLDivElement>(null);
   const shop = kind === "shop";
+  // Batch 19: the ghost may open the shop ad itself (idle takeover); its title then says so. Every open, by any path,
+  // counts as this visit's ad, so the ghost never opens a second one.
+  const [byGhost, setByGhost] = useState(false);
+  useEffect(() => {
+    if (!shop) return;
+    const marked = () => setByGhost(true);
+    window.addEventListener("migrainz:ghost-ad", marked);
+    return () => window.removeEventListener("migrainz:ghost-ad", marked);
+  }, [shop]);
+  useEffect(() => {
+    if (open && shop) ghost.adOpened();
+    if (!open) setByGhost(false);
+  }, [open, shop]);
   // The shop ad pops on hover at most once per visit and never over the transmission splash; clicking always opens it.
   const hoverOpen = () => {
     if (!shop) return true;
@@ -135,7 +149,7 @@ export default function PromoWindow({
           aria-label={`${shop ? "SHOP" : "PATREON"} promotional window`}
         >
           <div className="promo-title">
-            <span>{shop ? "BEST_DEALS.exe" : "SUPPORT_THE_ARTS.exe"}</span>
+            <span>{shop ? "BEST_DEALS.exe" : "SUPPORT_THE_ARTS.exe"}{byGhost && <span className="promo-by-ghost"> [opened by tty0]</span>}</span>
             <span className="window-controls">
               <span aria-hidden="true">_ □</span>
               <button

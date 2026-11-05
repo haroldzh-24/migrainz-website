@@ -14,6 +14,14 @@
 - No dedicated test yet (6c/7c, listed by the 8b review): the idle caption following a CRT-mode or reduced-motion change, the lens dropping a sample that went stale while loading, the motion helper reading the latest visibility entry.
 - Status: Open; questions for Harold.
 
+### 2026-11-05 - Ghost limits (batches 18 and 19)
+
+- A visit is a tab session, so a visitor opening links in new tabs reaches "visit 3" quickly; counting a new visit only after a gap (e.g. 30 minutes) would be Harold's call.
+- Without the Navigation API, after "Back wins" on an ambiguous history move the fallback trail can be off by one for later moves (16b note).
+- Background timers (the tab title) depend on the browser: Chrome throttles them, iOS may suspend the tab.
+- Checked only in headless Chrome on the dev fixture.
+- Status: Open (recorded).
+
 ### 2026-11-04 - Batch 17: page typing limits
 
 - Typing runs alongside the heading decode rather than after it (waiting 1.1 s more felt slow); the plan had them in sequence.

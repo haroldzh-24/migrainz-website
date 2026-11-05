@@ -6,6 +6,7 @@ import { useSound } from "@/components/SoundProvider";
 import { openRoute } from "@/lib/graphics-mode";
 import { useTerminalTyping } from "@/components/home/useTerminalTyping";
 import { ghost } from "@/lib/ghost";
+import GhostTerminal from "@/components/ghost/GhostTerminal";
 
 type Line = { text: string; kind: "in" | "out" | "ok" | "err" | "dim" | "ghost"; id?: number };
 export type TerminalProject = { slug: string; code: string; title: string; status: string };
@@ -48,6 +49,8 @@ export default function HomeTerminal({ projects, clearance }: { projects: Termin
   const nextId = useRef(2);
   const [value, setValue] = useState("");
   const [cwd, setCwd] = useState("~");
+  // While the ghost's second user is "logged in" (batch 19), the panel says so.
+  const [sessions, setSessions] = useState<number | null>(null);
   const history = useRef<string[]>([]);
   const cursor = useRef(0);
   const log = useRef<HTMLDivElement>(null);
@@ -85,7 +88,8 @@ export default function HomeTerminal({ projects, clearance }: { projects: Termin
   };
   printRef.current = next => print(next);
   // A ghost tail after some commands: from the second visit, about 1 command in 3 (batch 18).
-  const tail = (out: Line[], text: string) => { if (ghost.allows("tails") && ghost.chance("tails", 1 / 3)) out.push({ text, kind: "ghost" }); };
+  // At most two tails a visit (18b: "the key is not to have these happen all the time").
+  const tail = (out: Line[], text: string) => { if (ghost.allows("tails") && ghost.chance("tails", 1 / 3) && (ghost.forced("tails") || ghost.once("tail-1") || ghost.once("tail-2"))) out.push({ text, kind: "ghost" }); };
   const find = (name: string) => {
     const wanted = name.toLowerCase().replace(/^\/+|\/+$/g, "");
     if (/^\d{1,2}$/.test(wanted)) return SECTIONS[Number(wanted) - 1];
@@ -128,7 +132,7 @@ export default function HomeTerminal({ projects, clearance }: { projects: Termin
         { text: "Up/Down recall commands; Tab completes a name.", kind: "dim" },
       );
       tail(out, "help yourself      run requisitions.exe");
-    } else if ((command === "ls" || command === "dir") && /^-a\b/.test(argument) && !ghost.exorcised()) {
+    } else if ((command === "ls" || command === "dir") && /^-\w*a/.test(argument) && !ghost.exorcised()) {
       out.push({ text: ".   ..   .ghost/", kind: "ghost" });
       SECTIONS.forEach((section, index) => out.push({ text: `${String(index + 1).padStart(2, "0")}  ${section.file}`, kind: "out" }));
     } else if (command === "ls" || command === "dir") {
@@ -188,7 +192,7 @@ export default function HomeTerminal({ projects, clearance }: { projects: Termin
       out.push(ghost.exorcised() ? { text: "this is a public terminal. there is nothing to log out of.", kind: "dim" } : { text: "there's no exit. there's a gift shop.", kind: "ghost" });
     } else if (command === "exorcise") {
       if (ghost.exorcised()) out.push({ text: "nothing to exorcise.", kind: "dim" });
-      else { ghost.exorcise(); out.push({ text: "> exorcising tty0 ............ OK", kind: "ok" }, { text: "fine. i'll be quiet. type summon if you miss me.", kind: "ghost" }); }
+      else { ghost.exorcise(); out.push({ text: "> exorcising tty0 ............ OK", kind: "ok" }, { text: ghost.remembers() ? "fine. i'll be quiet. type summon if you miss me." : "fine. i'll be quiet. (this browser won't let me remember that.)", kind: "ghost" }); }
     } else if (command === "summon") {
       if (!ghost.exorcised()) out.push({ text: "it never left.", kind: "ghost" });
       else { ghost.summon(); out.push({ text: "> summoning tty0 ............ OK", kind: "ok" }, { text: "missed me?", kind: "ghost" }); }
@@ -254,12 +258,13 @@ export default function HomeTerminal({ projects, clearance }: { projects: Termin
 
   return (
     <section className="pnl home-terminal-panel" aria-labelledby="home-terminal">
-      <div className="pnl-h"><h2 className="pnl-title" id="home-terminal"><b>TERMINAL</b><i aria-hidden="true"> .SH</i></h2><span className="pnl-end" aria-hidden="true">TYPE help</span></div>
+      <div className="pnl-h"><h2 className="pnl-title" id="home-terminal"><b>TERMINAL</b><i aria-hidden="true"> .SH</i></h2><span className="pnl-end" aria-hidden="true">{sessions ? `SESSIONS: ${sessions}` : "TYPE help"}</span></div>
       <div className="home-term-log" ref={log} role="log" aria-live="polite" tabIndex={0} aria-label="Terminal output">
         {lines.map(line => <p key={line.id} data-kind={line.kind} data-line={line.id}>{line.text}</p>)}
       </div>
       {/* Outside the log, so the log's text stays only its lines; placed over the typing point (panel coordinates). */}
       <span ref={typeCursor} className="type-cursor" aria-hidden="true" hidden>_</span>
+      <GhostTerminal onSessions={setSessions} />
       <div className="home-term-input">
         <label htmlFor="home-terminal-input" className="visually-hidden">Terminal command</label>
         <span aria-hidden="true">public@migrainz:{cwd}$</span>

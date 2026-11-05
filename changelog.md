@@ -1,5 +1,28 @@
 # Changelog
 
+## Changed - 2026-11-05 / Batch 19 (with 17b, 18b): the ghost in the terminal (feat/batch-19-ghost-terminal)
+
+Rework plan batch 19. Each stunt is one of the visit's rare ambient events (at most one per visit; see batch 18), never with reduced motion or CRT off, always decoration (`aria-hidden`, outside the log region), never taking focus or blocking typing.
+
+- **A second user** (homepage, 8 s in): under the log a `????@migrainz:~$` line types "don't open 04", "you're not the only one reading this" or "i can see your cursor", waits, erases itself; the panel's corner says SESSIONS: 2 meanwhile. Any key, pointer move or touch makes it vanish at once.
+- **A second cursor** (homepage): a faint `_` under the prompt for about a second.
+- **Idle takeover** (homepage, after a minute with no input): the prompt types `open requisitions.exe` by itself and opens the shop ad, titled `BEST_DEALS.exe [opened by tty0]`, then "go on. i'll wait."; only if no ad opened this visit and the screen is 480 px or wider (else it types `cd /archive/.unlisted`: "permission denied", "(not yet.)"). Any move or key stops it: `^C`, "(input returned to public)". Every way the shop ad opens now counts as this visit's ad.
+- **The typing slip** (`/about`, while the page types): at "things still taking shape" or "follow the studio's production notes" the ghost types "things that can't get out" or "subscribe to the Patreon so i can eat" in its own glow, pauses, erases it, and the real text carries on. The real text never changes (an `aria-hidden` overlay).
+- **Welcome back** (visits 3, 7 and 13, once each; not an ambient event): ghost lines in the terminal: "welcome back. visit N from this browser." (or "you're up late too." between midnight and 4 a.m.), "you still haven't opened requisitions.exe." if no ad was ever opened, "you read all of <chapter> though. i saw." once a chapter is finished (batch 20), "(i keep count. nobody asked me to.)".
+- **Keyboard clatter** while the ghost types, only when the site's sound is on (silent until the visitor's first click or key, as browsers require).
+- New `lib/idle.ts` (idle time without counting the page's own scrolling), `components/ghost/GhostTerminal.tsx`.
+- Tests: new `scripts/verify-ghost-terminal.mjs` in the regression run.
+
+**17b (fixes from the independent review of batch 17, which found nothing blocking):** on a first load the page types once the boot has powered the screen on (the site's wrapper is still `aria-hidden` for a moment, which made the page look empty and could skip the typing in a production build); text that is visually hidden is not "typed"; leftover time is no longer thrown away after each piece; the page flip's first frame is guarded too.
+
+**18b (fixes from the independent review of batch 18, which found nothing blocking):**
+- Two tabs: a save merges with what another tab stored (the visit count never goes down; an `exorcise` in one tab is never undone by another), and a tab hears the other's saves.
+- Corrupt or odd stored values are replaced field by field instead of silencing the ghost for good; the ghost's site-wide part can never break the page; with storage blocked, `exorcise` still holds for the page and says it cannot be remembered.
+- Fewer pitches: at most two command tails a visit; the tab title's 1-in-3 chance is drawn once per visit (a reload no longer draws again).
+- `ls -la` / `ls -al` show `.ghost/` too. A stray backup file committed in batch 18 (`components/home/HomeTerminal.tsx.orig`) removed; `*.orig` ignored.
+- Tests: the cooldown edges (two visits after an event quiet, three may roll), a first visit and an exorcised browser never roll, corrupt values recover, two tabs, the 404 link follows the store address setting.
+- Check: `check-20261105-021508`: all 16 steps passed (simulated: headless Chrome on throwaway SQLite fixtures). The terminal and `/about` opened at 1366 and 390 (test screenshots, `test-results/batch-19-screens`).
+
 ## Changed - 2026-11-04 / Batch 18: the ghost in the machine, core and hidden shell (feat/batch-18-ghost-core)
 
 Rework plan batch 18 (Harold, 2026-11-04: "a small gimmick ... like a ghost in the machine", some of it shilling his stuff "so it's creepy and kinda funny"; "the key is not to have these happen all the time").

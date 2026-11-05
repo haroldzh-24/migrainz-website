@@ -33,17 +33,50 @@ let broken = false;
 
 const fresh = (): Stored => ({ visits: 0, lastEvent: -10, exorcised: false, milestones: [], adEver: false, chapters: [] });
 
-function read<T>(storage: Storage, key: string): unknown {
-  const raw = storage.getItem(key);
-  return raw ? JSON.parse(raw) as T : null;
+// Reading: storage that throws means the ghost stays quiet (broken); a value that is not valid JSON or has the wrong
+// shape is simply replaced by a fresh one (18b), field by field.
+function read(storage: Storage, key: string): unknown {
+  const raw = storage.getItem(key); // may throw: blocked storage
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch { return null; }
 }
+const int = (value: unknown, fallback: number) => (Number.isInteger(value) ? value as number : fallback);
+const strings = (value: unknown) => (Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : []);
+const numbers = (value: unknown) => (Array.isArray(value) ? value.filter((item): item is number => Number.isInteger(item)) : []);
+function normaliseLocal(value: unknown): Stored {
+  const record = typeof value === "object" && value ? value as Record<string, unknown> : {};
+  const base = fresh();
+  return {
+    visits: Math.max(0, int(record.visits, base.visits)), lastEvent: int(record.lastEvent, base.lastEvent),
+    exorcised: record.exorcised === true, milestones: numbers(record.milestones), adEver: record.adEver === true, chapters: strings(record.chapters),
+  };
+}
+function normaliseSession(value: unknown): Session | null {
+  if (typeof value !== "object" || !value || !Number.isInteger((value as Session).visit)) return null;
+  const record = value as Record<string, unknown>;
+  return {
+    visit: record.visit as number, roll: record.roll === true, pick: AMBIENT.includes(record.pick as Ambient) ? record.pick as Ambient : null,
+    event: typeof record.event === "string" ? record.event : null, ad: record.ad === true, shown: strings(record.shown), noteTries: Math.max(0, int(record.noteTries, 0)),
+  };
+}
+// Another tab may have saved since this one loaded (18b): merge rather than overwrite, so an `exorcise` in one tab is
+// never undone by an older tab, and the visit count never goes down. This tab's own change to `exorcised` wins.
+let exorcisedHere: boolean | null = null;
 function save() {
   if (broken || !local || !session) return;
   try {
+    const other = normaliseLocal(read(localStorage, LOCAL_KEY));
+    local = {
+      visits: Math.max(local.visits, other.visits), lastEvent: Math.max(local.lastEvent, other.lastEvent),
+      exorcised: exorcisedHere ?? other.exorcised, milestones: [...new Set([...other.milestones, ...local.milestones])],
+      adEver: local.adEver || other.adEver, chapters: [...new Set([...other.chapters, ...local.chapters])].slice(-50),
+    };
     localStorage.setItem(LOCAL_KEY, JSON.stringify(local));
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
   } catch { broken = true; }
 }
+// A save in another tab: read again on next use.
+if (typeof window !== "undefined") window.addEventListener("storage", event => { if (event.key === LOCAL_KEY) local = null; });
 
 /** Test override (never in production builds): "block", or "force:<name>,<name>". */
 function override(): { block: boolean; force: Set<string> } {
@@ -63,22 +96,19 @@ function load(): boolean {
   if (typeof window === "undefined" || broken) return false;
   if (local && session) return true;
   try {
-    const stored = read<Stored>(localStorage, LOCAL_KEY);
-    const base = fresh();
-    local = typeof stored === "object" && stored ? { ...base, ...(stored as Partial<Stored>) } : base;
-    if (!Number.isInteger(local.visits) || local.visits < 0) local.visits = 0;
-    if (!Array.isArray(local.milestones)) local.milestones = [];
-    if (!Array.isArray(local.chapters)) local.chapters = [];
-    const current = read<Session>(sessionStorage, SESSION_KEY);
-    if (typeof current === "object" && current && Number.isInteger((current as Session).visit)) {
-      session = { ...{ pick: null, event: null, ad: false, shown: [], noteTries: 0 }, ...(current as Session) };
+    local = normaliseLocal(read(localStorage, LOCAL_KEY));
+    if (exorcisedHere !== null) local.exorcised = exorcisedHere;
+    const current = session ?? normaliseSession(read(sessionStorage, SESSION_KEY));
+    if (current) {
+      session = current;
     } else {
       local.visits += 1;
       const visit = local.visits;
       const chance = lateNight() ? 1 / 4 : 1 / 8;
       const roll = visit > 1 && !local.exorcised && visit - local.lastEvent > 2 && Math.random() < chance;
       const pick = roll ? AMBIENT[Math.floor(Math.random() * AMBIENT.length)] : null;
-      session = { visit, roll, pick, event: null, ad: false, shown: [], noteTries: 0 };
+      // The tab title's chance (about 1 visit in 3) is rolled once per visit too (18b).
+      session = { visit, roll, pick, event: null, ad: false, shown: Math.random() < 1 / 3 ? [] : ["tab-roll-lost"], noteTries: 0 };
     }
     localStorage.setItem(LOCAL_KEY, JSON.stringify(local));
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
@@ -100,9 +130,14 @@ export const ghost = {
   visit(): number { return load() && session ? session.visit : 0; },
   /** Not exorcised, storage usable, not blocked by a test. */
   awake(): boolean { return load() && !local!.exorcised && !override().block; },
-  exorcised(): boolean { return load() ? local!.exorcised : false; },
-  exorcise() { if (load()) { local!.exorcised = true; save(); } },
-  summon() { if (load()) { local!.exorcised = false; save(); } },
+  /** The tab title won its once-per-visit chance (18b). */
+  tabRolled(): boolean { return load() && !session!.shown.includes("tab-roll-lost"); },
+  // Without usable storage the off switch still holds for this page (18b), it just cannot be remembered.
+  exorcised(): boolean { return load() ? local!.exorcised : exorcisedHere === true; },
+  exorcise() { exorcisedHere = true; if (load()) { local!.exorcised = true; save(); } },
+  summon() { exorcisedHere = false; if (load()) { local!.exorcised = false; save(); } },
+  /** Whether this browser can remember the ghost at all. */
+  remembers(): boolean { return load(); },
 
   /** A quiet line or effect that is not an ambient event (tails, console, tab title, 404 line...): awake, from visit 2. */
   allows(name: Line): boolean {

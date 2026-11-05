@@ -4,6 +4,7 @@ import { useLayoutEffect, useRef } from "react";
 import { arrival, visitRecord } from "@/lib/arrival";
 import { setBusy } from "@/lib/busy";
 import { cssTime } from "@/lib/css-time";
+import { ghost } from "@/lib/ghost";
 import { isGraphicsPath } from "@/lib/graphics-mode";
 import { TYPE_CPS, caretBox, typingAllowed, untypedHighlight } from "@/lib/typing";
 
@@ -26,10 +27,19 @@ const CAP_MS = 3000;
 const BLINK_MS = 5000;
 const WAIT_SELECTOR = "img, video, canvas, svg, button, input, select, .terminal-button, .status-chip";
 const typed = typeof window === "undefined" ? null : visitRecord("migrainz-typed-v1");
+// Batch 19, the ghost's typing slip (one of the visit's rare ambient events, /about only): mid-sentence it types the
+// wrong words in its own glow, pauses, erases them, and the real text carries on. The real text is never changed; the
+// wrong words are an aria-hidden overlay over the not-yet-typed part.
+const SLIPS: [string, string][] = [["things still taking shape", "things that can't get out"], ["follow the studio's production notes", "subscribe to the Patreon so i can eat"]];
 
 type Step = { kind: "text"; node: Text; range: Range } | { kind: "wait"; element: Element };
 
-const hiddenByAria = (node: Node) => Boolean((node.nodeType === 1 ? node as Element : node.parentElement)?.closest("[aria-hidden='true'], [data-type-skip], script, style, noscript, h1, .type-cursor"));
+// Only what is hidden inside the page counts (17b): on a first load the whole site is still aria-hidden behind the boot
+// screen's wrapper for a moment, which must not make the page look empty.
+const hiddenByAria = (node: Node, section: Element) => {
+  const hit = (node.nodeType === 1 ? node as Element : node.parentElement)?.closest("[aria-hidden='true'], [data-type-skip], script, style, noscript, h1, .type-cursor, .visually-hidden");
+  return Boolean(hit && section.contains(hit));
+};
 
 function collect(section: HTMLElement, heading: Element | null): Step[] {
   const bottom = window.innerHeight;
@@ -37,7 +47,7 @@ function collect(section: HTMLElement, heading: Element | null): Step[] {
   const walker = document.createTreeWalker(section, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {
     if (heading && !(heading.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING)) continue;
-    if (hiddenByAria(node)) continue;
+    if (hiddenByAria(node, section)) continue;
     if (node.nodeType === Node.ELEMENT_NODE) {
       const element = node as Element;
       if (!element.matches(WAIT_SELECTOR) || element.parentElement?.closest(WAIT_SELECTOR)) continue;
@@ -59,6 +69,7 @@ function collect(section: HTMLElement, heading: Element | null): Step[] {
 
 export default function TypeOut() {
   const cursor = useRef<HTMLSpanElement>(null);
+  const slipLine = useRef<HTMLSpanElement>(null);
   const decided = useRef(false);
 
   useLayoutEffect(() => {
@@ -82,6 +93,30 @@ export default function TypeOut() {
     // Short pauses after each piece of text and after "." and ","; scaled down so they never take more than 600 ms in all.
     let linePause = 60, stopPause = 90;
     let blinkTimer = 0, startTimer = 0, removeEntered = () => {};
+    let slip: { step: Step & { kind: "text" }; offset: number; wrong: string; state: "pending" | "running" | "done"; timers: number[] } | null = null;
+    const stopSlip = () => { if (!slip) return; slip.timers.forEach(window.clearTimeout); slip.state = "done"; if (slipLine.current) slipLine.current.hidden = true; };
+    const runSlip = () => {
+      const active = slip, line = slipLine.current;
+      if (!active || !line) return;
+      // Typing may have run a few characters past the phrase's start within one frame: step back to it exactly.
+      active.step.range.setStart(active.step.node, active.offset);
+      const box = caretBox(active.step.node, active.offset);
+      if (!box) { active.state = "done"; return; }
+      const area = section.getBoundingClientRect();
+      line.style.left = `${box.left - area.left}px`;
+      line.style.top = `${box.top - area.top}px`;
+      line.style.maxWidth = `${Math.max(80, area.right - box.left)}px`;
+      line.style.fontSize = getComputedStyle(active.step.node.parentElement ?? section).fontSize;
+      line.hidden = false;
+      element.hidden = true;
+      window.dispatchEvent(new CustomEvent("migrainz:ghost", { detail: { name: "slip", wrong: active.wrong } }));
+      let at = 0, wait = 0;
+      const later = (ms: number, run: () => void) => { wait += ms; active.timers.push(window.setTimeout(run, wait)); };
+      for (let i = 1; i <= active.wrong.length; i++) later(80 + Math.random() * 150 + (active.wrong[i - 1] === " " ? 110 : 0), () => { at = i; line.textContent = active.wrong.slice(0, at) + "_"; });
+      later(1300, () => {});
+      for (let i = active.wrong.length - 1; i >= 0; i--) later(32, () => { line.textContent = active.wrong.slice(0, i) + "_"; });
+      later(200, () => { line.hidden = true; line.textContent = ""; active.state = "done"; last = performance.now(); });
+    };
     const highlight = untypedHighlight();
     const placeCursor = () => {
       const step = steps[index];
@@ -123,6 +158,7 @@ export default function TypeOut() {
     const finish = (skipped = false) => {
       if (done) return;
       done = true;
+      stopSlip();
       cancelAnimationFrame(frame);
       window.clearTimeout(startTimer);
       for (const step of steps.slice(index)) reveal(step);
@@ -149,6 +185,8 @@ export default function TypeOut() {
 
     const tick = (now: number) => {
       if (done) return;
+      if (slip && slip.state === "pending" && steps[index] === slip.step && slip.step.range.startOffset >= slip.offset) { slip.state = "running"; runSlip(); }
+      if (slip && slip.state === "running") { last = now; frame = requestAnimationFrame(tick); return; }
       const elapsed = Math.min(100, now - last);
       last = now;
       if (now >= pauseUntil) carry += (elapsed * rate) / 1000;
@@ -163,11 +201,10 @@ export default function TypeOut() {
           reveal(step);
           index++;
           pauseUntil = now + linePause;
-          carry = 0;
           break;
         }
         step.range.setStart(step.node, next);
-        if (typedChar === "." || typedChar === ",") { pauseUntil = now + stopPause; carry = 0; break; }
+        if (typedChar === "." || typedChar === ",") { pauseUntil = now + stopPause; break; }
       }
       if (index >= steps.length) {
         // Park the cursor after the last typed character.
@@ -199,6 +236,10 @@ export default function TypeOut() {
       linePause = 60 * scale;
       stopPause = 90 * scale;
       rate = Math.max(TYPE_CPS, (characters * 1000) / (CAP_MS - Math.min(pauses, 600)));
+      if (path === "/about") {
+        const options = SLIPS.flatMap(([real, wrong]) => steps.flatMap(step => step.kind === "text" && step.node.data.includes(real) ? [{ step, offset: step.node.data.indexOf(real), wrong }] : []));
+        if (options.length && ghost.claim("slip")) slip = { ...options[Math.floor(Math.random() * options.length)], state: "pending", timers: [] };
+      }
       for (const step of steps) {
         if (step.kind === "text") { highlight.add(step.range); dim(step.node.parentElement); }
         else step.element.setAttribute("data-type-wait", "");
@@ -218,7 +259,17 @@ export default function TypeOut() {
 
     const revealMs = cssTime("--motion-reveal", 460);
     const recent = arrival.enter && arrival.enter.to === path && performance.now() - arrival.enter.at < 1000 ? arrival.enter : null;
-    if (firstLoad) startTimer = window.setTimeout(start, 0);
+    // A first load starts once the boot has powered the screen on (it is already on when nothing is in the way) and the
+    // page has painted once, never later than a second (17b).
+    if (firstLoad) {
+      const asked = performance.now();
+      const ready = () => {
+        if (done) return;
+        if (root.dataset.power === "on" || performance.now() - asked > 1000) { startTimer = window.setTimeout(start, 0); return; }
+        startTimer = window.setTimeout(ready, 16);
+      };
+      startTimer = window.setTimeout(() => requestAnimationFrame(ready), 0);
+    }
     else if (recent) {
       // React's dev double run: PageTransition already said whether a wipe plays (arrival.enter).
       startTimer = window.setTimeout(start, recent.animated ? Math.max(0, recent.at + revealMs - performance.now()) : 0);
@@ -252,5 +303,8 @@ export default function TypeOut() {
     };
   }, []);
 
-  return <span ref={cursor} className="type-cursor" aria-hidden="true" hidden>_</span>;
+  return <>
+    <span ref={cursor} className="type-cursor" aria-hidden="true" hidden>_</span>
+    <span ref={slipLine} className="ghost-slip" aria-hidden="true" hidden />
+  </>;
 }

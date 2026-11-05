@@ -2819,3 +2819,12 @@ html[data-typeout="pending"] .directory-page > h1 ~ *, .directory-page[data-type
 .home-term-log p[data-kind="ghost"], .ghost-line { color: var(--crt-bright); text-shadow: var(--crt-glow-head); }
 .ghost-line { margin: 16px 0 0; }
 .ghost-line a { color: var(--crt-accent); text-decoration: underline; }
+
+/* Batch 19: the ghost's own lines in the homepage terminal (components/ghost/GhostTerminal.tsx), under the log. */
+.ghost-terminal { padding: 0 12px 6px; font-size: 14px; line-height: 1.5; color: var(--crt-bright); text-shadow: var(--crt-glow-head); }
+.ghost-terminal p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ghost-terminal-prompt { opacity: .75; }
+.ghost-terminal-cursor { animation: type-blink 1.06s steps(1, end) infinite; }
+.ghost-terminal[data-faint] { opacity: .35; }
+.promo-by-ghost { font-weight: normal; color: #bfe8c8; }
+.ghost-slip { position: absolute; z-index: 2; color: var(--crt-bright); text-shadow: var(--crt-glow-head); pointer-events: none; }
