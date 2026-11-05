@@ -2,7 +2,7 @@
 
 ## Implemented - 2026-11-05 / The ghost across the site (batch 20)
 
-- Rarely: the Watcher looks at the shop, the screen turns amber for a moment ("this is my good side."), the studio ad says it was not approved by the studio, a tty0.exe box blinks "sorry. misclick." on the grey desktop. From the fifth visit the archive lists `unlisted.txt`. Finishing a chapter by reading: "i've read what happens next." with a link to the next chapter.
+- Rarely: the Watcher looks at the shop, the screen turns amber for a moment ("this is my good side."), the studio ad says it was not approved by the studio, a tty0.exe box blinks "sorry. misclick." on the grey desktop. From the fifth visit the archive lists `unlisted.txt` (off on the live site until Harold approves its text). Finishing a chapter by reading: "i've read what happens next." with a link to the next chapter.
 
 ## Implemented - 2026-11-05 / The ghost in the terminal (batch 19)
 

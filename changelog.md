@@ -1,5 +1,15 @@
 # Changelog
 
+## Changed - 2026-11-05 / Batch 20c: review fixes for batch 20b (fix/batch-20c)
+
+The review of 20b found nothing blocking; its points:
+
+- The end-of-chapter strip holds for hover and focus separately (a mouse passing over no longer ends a keyboard hold), counts only a real mouse as hover (a tap no longer pins it), and its status line mentions the link.
+- The Watcher's activity listeners are added only on the visit that drew it.
+- features.md notes `unlisted.txt` is off on the live site until approved.
+- Tests: the "nothing happens" cases (reduced-motion misclick, exorcised) wait for the page to settle and then as long as the positive tests allow; the exorcised case checks `unlisted.txt` on `/archive`. Strip hold after a mouse pass checked by hand (temporary next chapter, reverted).
+- Check: `check-20261105-044744`: all 16 steps passed (simulated).
+
 ## Changed - 2026-11-05 / Batch 20b: review fixes for batch 20 (fix/batch-20b)
 
 The independent review of batch 20 found nothing blocking in the code; these are its points.
