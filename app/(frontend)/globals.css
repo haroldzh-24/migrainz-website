@@ -2821,10 +2821,25 @@ html[data-typeout="pending"] .directory-page > h1 ~ *, .directory-page[data-type
 .ghost-line a { color: var(--crt-accent); text-decoration: underline; }
 
 /* Batch 19: the ghost's own lines in the homepage terminal (components/ghost/GhostTerminal.tsx), under the log. */
-.ghost-terminal { padding: 0 12px 6px; font-size: 14px; line-height: 1.5; color: var(--crt-bright); text-shadow: var(--crt-glow-head); }
+.home-term-input { position: relative; }
+.ghost-terminal { position: absolute; left: 0; right: 0; bottom: 100%; z-index: 2; padding: 4px 12px; background: var(--crt-deep); pointer-events: none; font-size: 14px; line-height: 1.5; color: var(--crt-bright); text-shadow: var(--crt-glow-head); }
 .ghost-terminal p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .ghost-terminal-prompt { opacity: .75; }
 .ghost-terminal-cursor { animation: type-blink 1.06s steps(1, end) infinite; }
-.ghost-terminal[data-faint] { opacity: .35; }
+.ghost-terminal[data-faint] { opacity: .35; background: none; }
 .promo-by-ghost { font-weight: normal; color: #bfe8c8; }
 .ghost-slip { position: absolute; z-index: 2; color: var(--crt-bright); text-shadow: var(--crt-glow-head); pointer-events: none; }
+
+/* Batch 20: the ghost across the site. */
+.ghost-misclick { position: fixed; z-index: 60; width: min(220px, calc(100vw - 32px)); padding: 2px; background: #c0c0c0; color: #000; border: 2px outset #eee; box-shadow: 5px 5px 0 #000; font: 12px Arial, sans-serif; pointer-events: none; }
+.ghost-misclick-title { display: flex; justify-content: space-between; align-items: center; padding: 1px 3px; background: #000080; color: #fff; font-weight: bold; }
+.ghost-misclick-x { padding: 0 4px; background: #c0c0c0; color: #000; border: 1px outset #fff; }
+.ghost-misclick p { margin: 0; padding: 10px 8px; background: #efefef; }
+.directory-row button.ghost-file { all: unset; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.directory-row button.ghost-file:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.ghost-note { margin: 6px 0 12px; padding: 2px; background: #c0c0c0; color: #000; border: 2px outset #eee; box-shadow: 4px 4px 0 #000; }
+.ghost-note-title { padding: 1px 4px; background: #000080; color: #fff; font: bold 12px Arial, sans-serif; }
+.ghost-note pre { margin: 0; padding: 10px; background: #fff; color: #111; font: 13px/1.5 "Courier New", monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+.comic-reader-content p.ghost-chapter { position: absolute; left: 8px; right: 8px; bottom: 46px; z-index: 4; display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; padding: 8px 10px; background: rgba(4, 8, 5, .92); color: var(--crt-bright, #d4f5da); font: 13px/1.4 var(--crt-font); text-shadow: var(--crt-glow-head); }
+.comic-reader-content p.ghost-chapter a { color: var(--crt-accent, #e8b45a); text-decoration: underline; }
+@container comic-reader (min-width: 760px) { .comic-reader-content p.ghost-chapter { bottom: 8px; } }

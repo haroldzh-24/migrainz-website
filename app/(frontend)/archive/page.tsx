@@ -3,6 +3,7 @@ import ClassifiedPlaceholder from "@/components/ClassifiedPlaceholder";
 import { Directory, DirectoryLink } from "@/components/Directory";
 import { getProjects, getArchiveItems } from "@/lib/content/queries";
 import ContentGallery from "@/components/ContentGallery";
+import GhostArchiveFile from "@/components/ghost/GhostArchiveFile";
 
 export const metadata = { title: "ARCHIVE" };
 
@@ -43,6 +44,7 @@ export default async function Page() {
                 <span>NOT FILED YET</span>
               </div>
             ))}
+            <GhostArchiveFile />
           </div>
         </div>
         <div className="activity-block">

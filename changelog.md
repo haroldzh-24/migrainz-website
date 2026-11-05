@@ -1,5 +1,20 @@
 # Changelog
 
+## Changed - 2026-11-05 / Batch 20 (with 19b): the ghost across the site (feat/batch-20-ghost-site)
+
+Rework plan batch 20, the last of M7. Same rules as batches 18 and 19: each stunt is one of the visit's rare ambient events (at most one per visit), never on a first visit, never with reduced motion or CRT off, never while the page is busy; decoration that takes no focus and no click.
+
+- The Watcher: after 30 s idle on the homepage its eyes slide to REQUISITIONS and hold there about 4 s (any pointer move takes them back). `WatcherGlanceDetail` takes an optional `hold`.
+- Amber: after 12 s on the homepage the screen goes amber while the terminal says "this is my good side.", then green again after 4.5 s. The saved phosphor setting is never written; if the visitor changes the phosphor meanwhile, their choice stays; leaving the page mid-pitch puts the colour back. The amber Watcher files are loaded first, or the pitch is skipped.
+- The boot ad: on the visit that draws it, the studio announcement's eyebrow reads "THIS AD WAS NOT APPROVED BY STUDIO MIGRAINZ" (kept across reloads of that visit; claimed only when the announcement opens).
+- The misclick: on the grey-window desktop, a tiny tty0.exe box ("sorry. misclick.") appears and closes itself 1.2 s later; never over the comic reader or the Art Viewer, `aria-hidden`, takes no focus.
+- The archive: from a browser's fifth visit, one more row, `unlisted.txt` FILED BY tty0, which opens a small notepad in place. Its text is a draft for Harold (`UNLISTED_NOTE` in `components/ghost/GhostArchiveFile.tsx`).
+- The end of a chapter: reaching the last page by reading (NEXT or arrow keys, at least half the pages seen in the visit, not GO TO) records the chapter as finished (the welcome-back lines mention it); if the same comic's next chapter is readable, a strip over the bottom of the page says "i've read what happens next. CHAPTER NN →" for 6 s, once per chapter per visit. The reader page passes the next readable chapter.
+- Listeners for the idle stunts are armed only on the visit that drew them (`ghost.drawn`).
+- 19b (review of batch 19, nothing blocking): Escape on an ad the ghost opened no longer pulls focus out of the terminal (focus returns to the trigger only when it was in the window); the ghost's terminal line is an overlay over the bottom of the log, so the input never moves; welcome-back lines wait until the boot and the announcement are gone (they print in the log like other terminal output, so screen readers hear them, as they hear the hidden commands' answers); a move after the takeover finished clears it quietly instead of a late "^C"; the takeover opens the shop ad only wider than 480 px and with no promo window open, and any promo window counts as the visit's ad; page typing no longer skips its pauses with time left over; fired timers are dropped.
+- Tests: new `scripts/verify-ghost-site.mjs` (Watcher, amber both ways, boot ad across a reload, misclick, archive file from visit 5, chapter recorded only by reading, reduced motion); `verify-ghost-terminal.mjs` adds the input staying put, Escape focus, the narrow-screen run to the end, the interrupted run, CRT off. The fixture has no readable next chapter, so the strip itself was checked by hand (a temporary local change, reverted) at 1366 and 390: its text was dark grey on the reader's grey window rule, fixed with a more specific selector.
+- Check: `check-20261105-030843` failed before any browser test (the run lacked `BROWSER_PATH` on this Linux machine; not a code fault); `check-20261105-031106`: all 16 steps passed (simulated). Pages opened at 1366 and 390: homepage (amber, second user), the boot ad, `/projects` (misclick), `/archive` (unlisted.txt), the reader (strip); screenshots in `test-results/batch-20-screens`.
+
 ## Changed - 2026-11-05 / Batch 19 (with 17b, 18b): the ghost in the terminal (feat/batch-19-ghost-terminal)
 
 Rework plan batch 19. Each stunt is one of the visit's rare ambient events (at most one per visit; see batch 18), never with reduced motion or CRT off, always decoration (`aria-hidden`, outside the log region), never taking focus or blocking typing.

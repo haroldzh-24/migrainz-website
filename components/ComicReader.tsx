@@ -6,6 +6,7 @@ import { ArtworkCanvas, fitHeightView, fitWidthView, keepFocusAfterChange, type 
 import { RetroWindow, useWindowManager } from "@/components/WindowManager";
 import ClassifiedPlaceholder from "@/components/ClassifiedPlaceholder";
 import PageFlip, { type PageFlipHandle } from "@/components/PageFlip";
+import { ghost } from "@/lib/ghost";
 import { projectHref, type Project, type Chapter } from "@/lib/content/types";
 
 const windowID = "comic-reader";
@@ -13,9 +14,11 @@ const windowID = "comic-reader";
 export default function ComicReader({
   project,
   chapter,
+  next = null,
 }: {
   project: Pick<Project, "slug" | "title">;
   chapter: Chapter;
+  next?: { href: string; number: number } | null;
 }) {
   const [page, setPage] = useState(0);
   // Board 4: a page fits the frame's height on a landscape screen and its width on a portrait one (phones). A reader who
@@ -62,9 +65,26 @@ export default function ComicReader({
     if (image) shownImages.current = [image, ...shownImages.current.filter(item => item !== image)].slice(0, 3);
   }, [page]);
 
-  function goToPage(nextPage: number) {
+  // Batch 20: reaching the last page by reading (NEXT or arrow keys, after at least half the pages were on screen in
+  // this visit) counts as finishing the chapter; the ghost then says it has read what happens next, once per chapter,
+  // when the next chapter of the same comic is readable. A strip over the bottom of the page for 6 s; no page height.
+  const seen = useRef(new Set<number>([0]));
+  const [ghostLine, setGhostLine] = useState(false);
+  useEffect(() => {
+    if (!ghostLine) return;
+    const timer = window.setTimeout(() => setGhostLine(false), 6000);
+    return () => window.clearTimeout(timer);
+  }, [ghostLine]);
+  function goToPage(nextPage: number, by: "read" | "jump" = "read") {
     const bounded = Math.max(0, Math.min(chapter.pages.length - 1, nextPage));
     if (bounded === page) return;
+    seen.current.add(bounded);
+    const last = chapter.pages.length - 1;
+    if (by === "read" && bounded === last && last > 0 && seen.current.size * 2 >= chapter.pages.length) {
+      const label = `${project.title} ${chapter.chapterNumber !== undefined ? `chapter ${String(chapter.chapterNumber).padStart(2, "0")}` : chapter.title}`;
+      ghost.chapterFinished(label);
+      if (next && ghost.allows("chapter") && ghost.once(`chapter:${project.slug}/${chapter.slug}`)) setGhostLine(true);
+    }
     startFlip(bounded);
     // PREV or NEXT turns disabled at the first or last page; focus on it would drop to the page body (11b).
     const navigation = content.current?.querySelector(".comic-reader-navigation") ?? null;
@@ -120,13 +140,16 @@ export default function ComicReader({
           <output aria-live="polite">PAGE {chapter.pages.length ? page + 1 : 0} / {chapter.pages.length}</output>
           <label htmlFor={pageSelectID}>GO TO
             <select id={pageSelectID} aria-label="Go to page" value={page}
-              onChange={(event) => goToPage(Number(event.target.value))} disabled={!chapter.pages.length}>
+              onChange={(event) => goToPage(Number(event.target.value), "jump")} disabled={!chapter.pages.length}>
               {chapter.pages.map((_, index) => <option key={index} value={index}>{index + 1}</option>)}
             </select>
           </label>
           <button type="button" disabled={page >= chapter.pages.length - 1 || !current} onClick={() => goToPage(page + 1)}>NEXT</button>
         </footer>
         <PageFlip ref={flip} />
+        {ghostLine && next && <p className="ghost-chapter" role="status">
+          <span>i&apos;ve read what happens next.</span> <Link href={next.href}>{`CHAPTER ${String(next.number).padStart(2, "0")} →`}</Link>
+        </p>}
       </section>
     </RetroWindow>
   );

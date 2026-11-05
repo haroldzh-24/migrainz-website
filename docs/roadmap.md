@@ -103,7 +103,7 @@ Plan: Project doc `claude/rework-plan-2026-11-04.md` (reviewed by a fresh agent;
 | 7.3 | Batch 17: typing on the dark terminal pages. | **Done** batch 17 (local `main`, not pushed). |
 | 7.4 | Batch 18: ghost core and hidden shell. | **Done** batch 18 (local `main`, not pushed). |
 | 7.5 | Batch 19: ghost in the terminal. | **Done** batch 19 (local `main`, not pushed). |
-| 7.6 | Batch 20: ghost across the site. | Each event shows when forced; never on a first visit, after `exorcise`, or when blocked. |
+| 7.6 | Batch 20: ghost across the site. | **Done** batch 20 (local `main`, not pushed). |
 
 ## M6 — Phase 3 system files, then backlog
 
