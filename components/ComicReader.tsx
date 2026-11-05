@@ -70,11 +70,17 @@ export default function ComicReader({
   // when the next chapter of the same comic is readable. A strip over the bottom of the page for 6 s; no page height.
   const seen = useRef(new Set<number>([0]));
   const [ghostLine, setGhostLine] = useState(false);
+  // 20b: the strip stays while the pointer is on it or focus is in it, and gives focus back to the reader if it goes.
+  const [ghostHeld, setGhostHeld] = useState(false);
+  const strip = useRef<HTMLParagraphElement>(null);
   useEffect(() => {
-    if (!ghostLine) return;
-    const timer = window.setTimeout(() => setGhostLine(false), 6000);
+    if (!ghostLine || ghostHeld) return;
+    const timer = window.setTimeout(() => {
+      if (strip.current?.contains(document.activeElement)) content.current?.focus({ preventScroll: true });
+      setGhostLine(false);
+    }, 6000);
     return () => window.clearTimeout(timer);
-  }, [ghostLine]);
+  }, [ghostLine, ghostHeld]);
   function goToPage(nextPage: number, by: "read" | "jump" = "read") {
     const bounded = Math.max(0, Math.min(chapter.pages.length - 1, nextPage));
     if (bounded === page) return;
@@ -147,8 +153,12 @@ export default function ComicReader({
           <button type="button" disabled={page >= chapter.pages.length - 1 || !current} onClick={() => goToPage(page + 1)}>NEXT</button>
         </footer>
         <PageFlip ref={flip} />
-        {ghostLine && next && <p className="ghost-chapter" role="status">
-          <span>i&apos;ve read what happens next.</span> <Link href={next.href}>{`CHAPTER ${String(next.number).padStart(2, "0")} →`}</Link>
+        {/* Mounted before the strip appears, so screen readers announce its words (20b). */}
+        <span className="visually-hidden" role="status">{ghostLine && next ? "i've read what happens next." : ""}</span>
+        {ghostLine && next && <p ref={strip} className="ghost-chapter"
+          onMouseEnter={() => setGhostHeld(true)} onMouseLeave={() => setGhostHeld(false)}
+          onFocus={() => setGhostHeld(true)} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setGhostHeld(false); }}>
+          <span aria-hidden="true">i&apos;ve read what happens next.</span> <Link href={next.href}>{`CHAPTER ${String(next.number).padStart(2, "0")} →`}</Link>
         </p>}
       </section>
     </RetroWindow>

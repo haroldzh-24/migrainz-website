@@ -8,7 +8,7 @@ import { afterIdle, onActivity } from "@/lib/idle";
 // Batch 19: the ghost's stunts in the homepage terminal. Each is one of the visit's ambient events (lib/ghost.ts decides
 // if one happens at all; at most one per visit, rarely), except the welcome-back lines on visits 3, 7 and 13.
 // - A second user: a ????@migrainz line under the log types a message, waits, erases itself (SESSIONS: 2 meanwhile).
-// - A second cursor: a faint "_" one line under the prompt for about a second.
+// - A second cursor: a faint "_" on the line just above the prompt for about a second.
 // - Idle takeover: after a minute with no input the prompt types by itself (`open requisitions.exe`, which opens the
 //   shop ad if none opened this visit and the screen is wider than 480 px with no promo window open; else `cd /archive/.unlisted`), then "go on.
 //   i'll wait."; any move, key or touch stops it ("^C", "(input returned to public)").
@@ -69,8 +69,9 @@ export default function GhostTerminal({ onSessions }: { onSessions: (count: numb
 
     // Welcome back (milestones, not an ambient event). These are terminal output like the hidden commands' answers, so
     // they print in the log (read out as the log is); they wait until the boot and the announcement are gone (19b).
-    later(1500, function welcome() {
-      if (unsettled()) { later(1000, welcome); return; }
+    // Its own timer, so another stunt's clearAll() never cancels a milestone (20b).
+    let welcomeTimer = window.setTimeout(function welcome() {
+      if (unsettled()) { welcomeTimer = window.setTimeout(welcome, 1000); return; }
       const visit = ghost.milestone();
       if (visit === null) return;
       const chapter = ghost.lastChapter();
@@ -80,7 +81,7 @@ export default function GhostTerminal({ onSessions }: { onSessions: (count: numb
         ...(chapter ? [`you read all of ${chapter} though. i saw.`] : []),
         "(i keep count. nobody asked me to.)",
       ]);
-    });
+    }, 1500);
 
     // A second user types.
     later(ghost.delay("second-user", SECOND_USER_AFTER_MS), () => {
@@ -128,7 +129,7 @@ export default function GhostTerminal({ onSessions }: { onSessions: (count: numb
       });
     });
 
-    return () => { clearAll(); stopIdle(); stopActivity(); onSessions(null); };
+    return () => { clearAll(); window.clearTimeout(welcomeTimer); stopIdle(); stopActivity(); onSessions(null); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!show) return null;

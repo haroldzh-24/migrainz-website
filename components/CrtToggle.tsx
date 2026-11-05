@@ -32,7 +32,9 @@ function ModeToggle<Mode extends string>({ attribute, storageKey, modes, label, 
     return () => window.removeEventListener("migrainz:display-mode", changed);
   }, [attribute, modes]);
   const next = () => {
-    const value = modes[(modes.indexOf(mode) + 1) % modes.length];
+    // Step from what the screen shows now (20b: the ghost's amber pitch changes it for a moment without saving).
+    const live = document.documentElement.dataset[attribute] as Mode | undefined;
+    const value = modes[(modes.indexOf(live && modes.includes(live) ? live : mode) + 1) % modes.length];
     setMode(value);
     document.documentElement.dataset[attribute] = value;
     try { localStorage.setItem(storageKey, value); } catch { /* storage may be blocked */ }
