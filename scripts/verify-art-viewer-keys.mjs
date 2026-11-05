@@ -105,6 +105,10 @@ try {
   await viewer.waitFor({ state: 'hidden', timeout: 3000 });
   await page.waitForFunction(() => /OPEN IN ART VIEWER/i.test(document.activeElement?.textContent ?? ''), null, { timeout: 3000 })
     .catch(async () => assert.fail(`after Escape, focus is on "${await focusedText()}" instead of the opener`));
+  // Wait until the closed viewer has left the page before opening it again (on a loaded dev server the Enter could land
+  // while its close was still settling; seen twice in full runs, bugs.md 2026-11-04).
+  await viewer.waitFor({ state: 'detached', timeout: 5000 }).catch(() => {});
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   await page.keyboard.press('Enter');
   await viewer.waitFor();
   await viewer.locator('.art-viewer-tab-close').last().click();

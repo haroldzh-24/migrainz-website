@@ -11,8 +11,9 @@ import { cssTime } from "@/lib/css-time";
 // The turning sheet is drawn in thin vertical strips bent around the hinge with a little perspective, shaded in six
 // steps (the pixel-art touch that stays at pixel size 1), and it throws a stepped shadow on the page below. Drawing
 // only, from images already on screen: no new request, no pixel read-back. Reduced motion or CRT off: no flip (an
-// instant turn). Never takes focus or input (pointer-events: none, aria-hidden); a new turn or a resize finishes the
-// one running.
+// instant turn). Never takes focus or input (pointer-events: none, aria-hidden); a new turn, a change in the reader's
+// size, or panning, zooming or another key on the page finishes the one running (15b). The sheet is drawn in at most
+// 640 strips at up to twice the CSS pixel size, so on a wide page or a 3x screen a strip is 2-3 device pixels wide.
 
 export type FlipStart = {
   /** The page image on screen before the turn (loaded and visible). */
@@ -82,6 +83,7 @@ const PageFlip = forwardRef<PageFlipHandle>(function PageFlip(_, handle) {
   const running = useRef<Running | null>(null);
   const frame = useRef(0);
   const waiting = useRef(0);
+  const stopInput = useRef(() => {});
 
   const finish = () => {
     cancelAnimationFrame(frame.current);
@@ -89,6 +91,9 @@ const PageFlip = forwardRef<PageFlipHandle>(function PageFlip(_, handle) {
     const was = running.current;
     running.current = null;
     if (holder.current) holder.current.hidden = true;
+    stopInput.current();
+    // Release the canvas memory between turns (15b): a full-area canvas at 2x is tens of MB.
+    if (canvas.current) canvas.current.width = canvas.current.height = 0;
     if (was) {
       setBusy("page-turn", false);
       window.dispatchEvent(new CustomEvent("migrainz:page-flip", { detail: { state: "end", direction: was.direction } }));
@@ -179,7 +184,7 @@ const PageFlip = forwardRef<PageFlipHandle>(function PageFlip(_, handle) {
     const quantized = Math.floor(elapsed / (1000 / FPS));
     if (quantized !== run.lastFrame) {
       run.lastFrame = quantized;
-      draw(run, Math.min(1, (quantized * 1000) / FPS / run.duration));
+      try { draw(run, Math.min(1, (quantized * 1000) / FPS / run.duration)); } catch { finish(); return; }
     }
     frame.current = requestAnimationFrame(tick);
   };
@@ -209,12 +214,34 @@ const PageFlip = forwardRef<PageFlipHandle>(function PageFlip(_, handle) {
         draw(running.current, 0);
         frame.current = requestAnimationFrame(tick);
       };
+      // Marked running first (15b), so anything that finishes it from here on also clears the busy flag and ends it.
+      running.current = { direction: flip.direction, area: areaLocal, sheet: areaLocal, copy: element, scale, under: flip.direction === "prev" ? outgoing : null, start: 0, duration: flipMs(), lastFrame: -1 };
       box.hidden = false;
       setBusy("page-turn", true);
       window.dispatchEvent(new CustomEvent("migrainz:page-flip", { detail: { state: "start", direction: flip.direction } }));
+      // Panning, zooming or any other key on the page ends the turn at once, so input is never hidden behind it (15b).
+      const content = box.parentElement;
+      if (content) {
+        const stop = () => finish();
+        const key = (event: KeyboardEvent) => { if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") finish(); };
+        const sized = new ResizeObserver(entries => {
+          const size = entries[entries.length - 1].contentRect;
+          if (Math.abs(size.width - flip.container.width) > 1 || Math.abs(size.height - flip.container.height) > 1) finish();
+        });
+        content.addEventListener("pointerdown", stop, true);
+        content.addEventListener("wheel", stop, { capture: true, passive: true });
+        content.addEventListener("keydown", key, true);
+        sized.observe(content);
+        stopInput.current = () => {
+          content.removeEventListener("pointerdown", stop, true);
+          content.removeEventListener("wheel", stop, true);
+          content.removeEventListener("keydown", key, true);
+          sized.disconnect();
+          stopInput.current = () => {};
+        };
+      }
       if (flip.direction === "next") {
         // The page on screen turns away; the new page is already in place underneath.
-        running.current = { direction: "next", area: areaLocal, sheet: areaLocal, copy: element, scale, under: null, start: 0, duration: flipMs(), lastFrame: -1 };
         begin(flip.image, outgoing.box, null);
         return true;
       }
@@ -227,7 +254,6 @@ const PageFlip = forwardRef<PageFlipHandle>(function PageFlip(_, handle) {
         context.fillRect(0, 0, area.w, area.h);
         context.drawImage(flip.image, outgoing.box.x, outgoing.box.y, outgoing.box.w, outgoing.box.h);
       }
-      running.current = { direction: "prev", area: areaLocal, sheet: areaLocal, copy: element, scale, under: outgoing, start: 0, duration: flipMs(), lastFrame: -1 };
       const asked = performance.now();
       const wait = () => {
         if (!running.current) return;
@@ -243,16 +269,10 @@ const PageFlip = forwardRef<PageFlipHandle>(function PageFlip(_, handle) {
       waiting.current = requestAnimationFrame(wait);
       return true;
     },
-  }));
+  }), []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    const resized = () => { if (running.current) finish(); };
-    window.addEventListener("resize", resized);
-    return () => {
-      window.removeEventListener("resize", resized);
-      finish();
-    };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // The reader's own size (a ResizeObserver while turning, 15b) finishes a turn; so does leaving.
+  useEffect(() => () => finish(), []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return <div ref={holder} className="page-flip" aria-hidden="true" hidden><canvas ref={canvas} /></div>;
 });

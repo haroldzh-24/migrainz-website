@@ -1,5 +1,30 @@
 # Changelog
 
+## Changed - 2026-11-04 / Batch 17 (with 15b): dark terminal pages type their first screen (feat/batch-17-page-typing)
+
+Rework plan batch 17 (Harold, 2026-11-04: terminal pages display "one letter/space at a time ... with that strobing dash thing").
+
+- A dark terminal page (the `Directory` pages that are not grey windows: tracker, about, Patreon preview, a project's equipment directory; the terminal 404) types everything after its heading that is on screen on arrival, in page order, behind a solid `_`; the cursor then blinks for 5 s at the end and goes. Pictures, buttons and chips in that screen appear as the typing reaches them; text below the first screen is complete from the start. About 55 characters a second, the first screen within about 3 s (pauses after each piece of text and after `.` and `,`, scaled down on busy pages).
+- When: on a link or Back arrival, once the page wipe has revealed the page (it runs alongside the heading decode); on a first load only when nothing is in the way (no boot, no announcement): the head script then marks `html[data-typeout="pending"]` before the first paint, so the text never shows in full first; if that mark's 2 s safety timeout already cleared it (a slow phone), the page does not type. Once per page per visit (`migrainz-typed-v1`).
+- A tap, click, key, wheel or touch drag finishes it at once (the page's own scrolling does not). Text React changes meanwhile (the operations log's status, NEW marks) shows complete at once.
+- Never on `/`, grey windows, the grey-window desktop or arriving from it, with reduced motion, CRT off, forced colours, or without the Highlight API: the page shows complete. The DOM text never changes; screen readers, search engines and `textContent` always get everything. Untyped links are not blocked; a click on one first finishes the typing.
+- Chromium ignores `text-shadow` inside a highlight, so the element around each untyped piece has its glow off until it is typed (the terminal lines from batch 16 do the same).
+- `lib/arrival.ts` also records the last page-enter (React's dev double run decides after the event).
+- Tests: new `scripts/verify-type-out.mjs` in the regression run.
+
+**15b (fixes from the independent review of batch 15, which found nothing blocking):**
+- The page flip releases its canvas memory after each turn (tens of MB at 2x).
+- Panning, zooming, a press or any key other than the page-turn arrows on the page finishes a turn at once, so input is never hidden behind it; a change in the reader's own size (maximize, layout switch) finishes it too (a ResizeObserver instead of the window's resize).
+- The turn is marked running before its start event and busy flag; a drawing error finishes it.
+- Docs: the strip limit (at most 640 strips at up to 2x, so a strip may be 2-3 device pixels); the reason for `lib/css-time.ts` (the served CSS holds the token in another form, most likely from the CSS build step).
+- Tests: PREV must last its full length (a timed-out wait would not); the canvas must have pixels drawn; the second NEXT must end the first turn; focus checked at the last page; a press on the page ends a turn; canvas memory released; a mid-flip screenshot at 390 too.
+
+**16b (fixes from the independent review of batch 16, which found nothing blocking):**
+- Terminal typing: the 2 s cap now counts the pauses between lines (`help` took about 2.4 s); the `^C cancelled` line finishes any typing first; when typing ends the log shows its newest line again; the log stops following the typing once the visitor scrolls it; the cursor sits inside the panel's border and takes the line's font size. The typed part of a line gets its glow when the line finishes (Chromium ignores `text-shadow` inside a highlight; recorded).
+- Back without the Navigation API: when a history move fits both Back and Forward (A → B → A, then two Backs), Back wins.
+- Tests: every earlier line is complete when a new command runs; `clear` leaves no hidden ranges; the cursor is on the line being typed; the wipe-cancel test measures from arrival; the clip-side check reads the shortened form; the fallback handles two Backs and a Forward. `verify-art-viewer-keys.mjs` waits for the closed viewer to leave the page before reopening it (bugs.md).
+- Check: `check-20261105-000121` and `-002037` failed (the Art Viewer reopen flake; then a real regression: the typing's own opacity transition on pictures and videos overrode the equipment clips' fade, fixed by dropping it); `check-20261105-004604`: all 16 steps passed. `/about` opened at 1366 and 390 mid-typing.
+
 ## Changed - 2026-11-04 / Batch 16 (with 14b): the homepage terminal types its output (feat/batch-16-terminal-typing)
 
 Rework plan batch 16 (Harold, 2026-11-04: "when it displays text it displays one letter/space at a time like a system is typing it out with that strobing dash thing").

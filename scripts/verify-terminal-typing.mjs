@@ -63,6 +63,13 @@ try {
     const commandLine = early.lines.find(line => line.kind === 'in');
     assert.ok(commandLine && !commandLine.typing, 'the visitor\'s command line is never hidden');
     assert.ok(early.cursor, 'the cursor shows while typing');
+    // 16b: the cursor sits on the line being typed.
+    const placed = await page.evaluate(() => {
+      const cursor = document.querySelector('.home-terminal-panel .type-cursor').getBoundingClientRect();
+      const line = document.querySelector('.home-term-log p[data-typing]')?.getBoundingClientRect();
+      return line ? cursor.top >= line.top - 1 && cursor.bottom <= line.bottom + 1 : false;
+    });
+    assert.ok(placed, 'the cursor rides the line being typed');
     assert.equal(early.busy, 'typing');
     await ended(page);
     const done = await state(page);
@@ -86,16 +93,18 @@ try {
     await run(page, 'help');
     await page.waitForFunction(() => window.__typing.some(t => t.state === 'start'));
     await run(page, 'whoami');
-    await page.waitForFunction(() => window.__typing.filter(t => t.state === 'end').length >= 1);
+    // 16b: the help lines above the whoami command are all complete the moment it runs.
     const after = await state(page);
-    assert.ok(after.lines.filter(line => line.text.startsWith('ls ')).every(line => !line.typing), 'the earlier help lines are complete');
-    await ended(page);
+    const whoami = after.lines.findIndex(line => line.kind === 'in' && line.text.endsWith('whoami'));
+    assert.ok(whoami > 0 && after.lines.slice(0, whoami).every(line => !line.typing), 'every earlier help line is complete');
+    await page.waitForFunction(() => window.__typing.filter(t => t.state === 'start').length >= 2 && window.__typing.at(-1).state === 'end');
     await page.evaluate(() => { window.__typing = []; });
     await run(page, 'help');
     await page.waitForFunction(() => window.__typing.some(t => t.state === 'start'));
     await run(page, 'clear');
     await page.waitForFunction(() => window.__typing.some(t => t.state === 'end'));
     const cleared = await state(page);
+    assert.equal(await page.evaluate(() => CSS.highlights.get('untyped')?.size ?? 0), 0, 'clear leaves no hidden ranges behind');
     assert.equal(cleared.untyped, 0, 'clear leaves nothing hidden');
     assert.equal(cleared.busy, null);
     pass('Enter and clear during typing finish it at once');

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import DecodeText from "@/components/DecodeText";
+import TypeOut from "@/components/TypeOut";
 export default function NotFound() {
   return (
     <section className="directory-page" data-not-found>
@@ -9,6 +10,7 @@ export default function NotFound() {
       <Link className="terminal-button" href="/">
         RETURN TO SYSTEM INDEX
       </Link>
+      <TypeOut />
     </section>
   );
 }

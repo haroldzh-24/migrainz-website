@@ -11,6 +11,7 @@ import { viewerAccess } from '@/lib/patreon/viewer';
 import { patreonConfig, patreonJoinURL } from '@/lib/patreon/server';
 import localFont from "next/font/local";
 import InlineScript from "@/components/InlineScript";
+import { announcement } from "@/data/announcement";
 import HighlightEffects from "@/components/HighlightEffects";
 import ModeSwitch from "@/components/ModeSwitch";
 import NavigationStatus from "@/components/NavigationStatus";
@@ -31,7 +32,12 @@ const plexMono = localFont({
 });
 
 // Runs before first paint so a saved CRT mode or phosphor colour never flashes the default.
-const crtModeScript = `try{var d=document.documentElement.dataset,m=localStorage.getItem("crt-effects"),p=localStorage.getItem("crt-phosphor");if(m==="on"||m==="reduced"||m==="off")d.crt=m;if(p==="green"||p==="amber")d.phosphor=p}catch(e){}`;
+// Batch 17: also marks html[data-typeout="pending"] before the first paint when a dark terminal page will type its
+// first screen (components/TypeOut.tsx): motion allowed, CRT not off, the Highlight API there, not "/" or a grey-window
+// path, not typed this visit, and neither the boot nor the announcement will show. The mark hides the text until typing
+// starts, and clears itself after 2 s if the page never gets that far (then it does not type).
+const typeOutCheck = `var w=location.pathname,s=sessionStorage,t=[];try{t=JSON.parse(s.getItem("migrainz-typed-v1")||"[]")}catch(e){}var g=!/^\\/projects\\/[^/]+\\/equipment\\/?$/.test(w)&&/^\\/(projects|comics|archive)(\\/|$)/.test(w),a=${JSON.stringify(announcement.enabled ? announcement.id : "")},c=!a||s.getItem("migrainz-announcement:"+a)===a;if(w!=="/"&&!g&&c&&Array.isArray(t)&&t.indexOf(w)<0&&d.crt!=="off"&&typeof CSS!=="undefined"&&CSS.highlights&&typeof Highlight==="function"&&!matchMedia("(prefers-reduced-motion: reduce)").matches&&!matchMedia("(forced-colors: active)").matches){d.typeout="pending";setTimeout(function(){if(d.typeout==="pending")delete d.typeout},2000)}`;
+const crtModeScript = `try{var d=document.documentElement.dataset,m=localStorage.getItem("crt-effects"),p=localStorage.getItem("crt-phosphor");if(m==="on"||m==="reduced"||m==="off")d.crt=m;if(p==="green"||p==="amber")d.phosphor=p;${typeOutCheck}}catch(e){}`;
 
 export const dynamic = "force-dynamic";
 

@@ -2804,3 +2804,13 @@ main.shell[data-page-enter="up"] { animation: page-enter-up var(--motion-reveal)
 .type-cursor-blink { animation: type-blink 1.06s steps(1, end) infinite; }
 @keyframes type-blink { 50% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .type-cursor { display: none; } }
+
+/* Batch 17: a dark terminal page types its first screen (components/TypeOut.tsx). Until typing starts, everything after
+   the heading is hidden (the head script's mark on a first load, the page's own mark on a link arrival); pictures,
+   buttons and chips in the first screen appear as the typing reaches them (no transition of our own, so their own
+   opacity animations, like the equipment clips' fade, are untouched). */
+html[data-typeout="pending"] .directory-page > h1 ~ *, .directory-page[data-typeout-pending] > h1 ~ * { visibility: hidden; }
+.directory-page { position: relative; }
+[data-type-wait] { opacity: 0; }
+[data-type-glow-off] { text-shadow: none !important; }
+@media (prefers-reduced-motion: reduce) { [data-type-wait] { opacity: 1; } }

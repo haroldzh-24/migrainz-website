@@ -134,9 +134,14 @@ try {
     await page.evaluate(() => { window.__pauseAt = undefined; });
     await page.goBack();
     await page.waitForURL(url => new URL(url).pathname === '/');
-    await page.waitForFunction(() => !document.querySelector('main#top').hasAttribute('data-page-enter') && !document.querySelector('.page-band'));
-    const gone = await page.evaluate(() => performance.now() - window.__enters.at(-1).at);
-    assert.ok(gone < 1100, `the held wipe was cancelled by the move, not by its safety timer (${Math.round(gone)} ms)`);
+    // 16b: measured from the moment the home screen is in place, not from the wipe's start.
+    const arrived = await page.evaluate(() => performance.now());
+    const ended = await page.evaluate(() => new Promise(resolve => {
+      const check = () => (!document.querySelector('main#top').hasAttribute('data-page-enter') && !document.querySelector('.page-band')) ? resolve(performance.now()) : requestAnimationFrame(check);
+      check();
+    }));
+    const sinceEnter = await page.evaluate(() => performance.now() - window.__enters.at(-1).at);
+    assert.ok(ended - arrived < 200 || sinceEnter < 1100, `the held wipe was cancelled by the move, not by its safety timer (${Math.round(ended - arrived)} ms after arriving)`);
     assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('main#top')).clipPath), 'none', 'no clip left on the home screen');
     pass('query-only change: no wipe; a move to the home screen cancels a running wipe');
 
@@ -242,8 +247,11 @@ try {
     assert.ok(measure.edge > 100 && measure.edge < measure.tabsTop, `the clip edge is on screen mid-wipe (${JSON.stringify(measure)})`);
     assert.ok(Math.abs(measure.band - measure.edge) <= 2, `the band leads the clip edge (${JSON.stringify(measure)})`);
     // 13b/14b: only the moving edge clips; the other sides sit outside main (negative insets).
-    const sides = measure.clip.replace(/calc\([^)]*\)/, 'X').replace(/^inset\(|\)$/g, '').split(/\s+/).filter(part => part !== 'X').map(parseFloat);
-    assert.ok(sides.length >= 2 && sides.every(value => value < 0), `the other three sides are outside main (${measure.clip})`);
+    // inset(top right bottom left), shortened by the browser when sides repeat; the bottom (the moving edge here) is skipped.
+    const raw = measure.clip.replace(/calc\([^)]*\)/, 'X').replace(/^inset\(|\)$/g, '').split(/\s+/);
+    const [top, right = top, , left = right] = raw;
+    const sides = [top, right, left].map(parseFloat);
+    assert.ok(sides.every(value => value < 0), `the other three sides are outside main (${measure.clip})`);
     assert.ok(!measure.sideways, `no sideways scroll at ${width}`);
     if (width === 390) await page.screenshot({ path: path.join(out, 'page-wipe-390.png') });
     await page.evaluate(() => { finishWipes(); window.__pauseAt = undefined; });
@@ -268,6 +276,23 @@ try {
     await page.waitForURL(/\/tracker$/);
     const enter = await last(page);
     assert.equal(enter.direction, 'up', 'without the Navigation API, Back still wipes up');
+    await settled(page);
+    // 16b: two pages in turn (tracker → about → tracker), then Back twice: both wipe up; Forward then wipes down.
+    await push(page, '/about');
+    await settled(page);
+    await push(page, '/tracker');
+    await settled(page);
+    for (const target of [/\/about$/, /\/tracker$/]) {
+      await reset(page);
+      await page.goBack();
+      await page.waitForURL(target);
+      assert.equal((await last(page)).direction, 'up', `fallback: Back to ${target} wipes up`);
+      await settled(page);
+    }
+    await reset(page);
+    await page.goForward();
+    await page.waitForURL(/\/about$/);
+    assert.equal((await last(page)).direction, 'down', 'fallback: Forward wipes down');
     await settled(page);
     pass('first load of a terminal page: no wipe; without the Navigation API, Back still wipes up');
     await context.close();

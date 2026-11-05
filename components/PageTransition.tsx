@@ -52,7 +52,8 @@ export default function PageTransition() {
     const popped = () => {
       const path = location.pathname;
       const { paths, at } = trail.current;
-      traverse.current = { path, back: at > 0 && paths[at - 1] === path && paths[at + 1] !== path };
+      // When both readings fit (A → B → A, then two Backs), Back wins: it is by far the more common move (16b).
+      traverse.current = { path, back: at > 0 && paths[at - 1] === path };
     };
     window.addEventListener("popstate", popped);
     return () => window.removeEventListener("popstate", popped);
@@ -109,6 +110,8 @@ export default function PageTransition() {
         setBand(document.documentElement.dataset.crt === "on" ? { direction, token: mine, top, height: bottom - top } : null);
       }
     }
+    // Recorded too (batch 17), for page typing that must wait for the wipe even when it decides after this event.
+    arrival.enter = { to: pathname, at: performance.now(), animated };
     window.dispatchEvent(new CustomEvent("migrainz:page-enter", { detail: { direction, animated, from, to: pathname } }));
   }, [pathname]);
 

@@ -14,9 +14,17 @@
 - No dedicated test yet (6c/7c, listed by the 8b review): the idle caption following a CRT-mode or reduced-motion change, the lens dropping a sample that went stale while loading, the motion helper reading the latest visibility entry.
 - Status: Open; questions for Harold.
 
+### 2026-11-04 - Batch 17: page typing limits
+
+- Typing runs alongside the heading decode rather than after it (waiting 1.1 s more felt slow); the plan had them in sequence.
+- A first load where the boot or announcement shows does not type (the boot is the arrival there).
+- Checked only in headless Chrome.
+- Status: Open (recorded).
+
 ### 2026-11-04 - Flaky: Art Viewer reopen by Enter after Escape (batch 16 check)
 
 - `check-20261104-231943`: `verify-art-viewer-keys.mjs` step 6 timed out waiting for the viewer to reopen after Enter on its opener (the step just before passed). The script passed twice when run alone against a fixture; the regression step was run again for the batch. Batch 16 changes nothing in the Art Viewer. Likely the Enter landing while the viewer's close was still settling on a loaded dev server; watch for a repeat.
+- Seen again in `check-20261105-000121` (batch 17). The test now waits for the closed viewer to leave the page and two frames before the second Enter. If it fails again after that, it is a real dropped activation and gets a fix in the viewer.
 - Status: Open (watching).
 
 ### 2026-11-04 - Batch 16: terminal typing limits

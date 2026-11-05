@@ -1,5 +1,6 @@
-// A CSS time token in milliseconds (14b). Browsers may serialize a custom property's value in their own form (Chrome
-// gives "--motion-page-flip: 550ms" back as ".55s"), so both units are read; anything else falls back.
+// A CSS time token in milliseconds (14b). The served CSS may hold a token in another form than the source (the
+// "--motion-page-flip: 550ms" written in globals.css reads back as ".55s" in the browser, most likely rewritten by the
+// CSS build step), so both units are read; anything else falls back.
 export function cssTime(name: string, fallback: number): number {
   if (typeof document === "undefined") return fallback;
   const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
