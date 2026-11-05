@@ -1,5 +1,16 @@
 # Changelog
 
+## Changed - 2026-11-05 / Batch 20b: review fixes for batch 20 (fix/batch-20b)
+
+The independent review of batch 20 found nothing blocking in the code; these are its points.
+
+- `unlisted.txt` shows only outside production builds until Harold approves its wording (`UNLISTED_APPROVED` in `components/ghost/GhostArchiveFile.tsx`).
+- The end-of-chapter strip stays while the pointer is on it or focus is in it, and gives focus back to the reader if it goes; its words reach screen readers through a status region mounted beforehand.
+- The amber pitch's line is hidden from screen readers (a stunt, not output: `migrainz:ghost-say` takes `quiet`); the PHOSPHOR button shows AMBER during the pitch and, pressed then, steps from what the screen shows (green, saved), so the pitch never leads a visitor to save amber by mistake.
+- The welcome-back lines have their own timer, so another stunt can never cancel a milestone; the Watcher's delayed look is cancelled by any activity and waits the full idle time again.
+- Tests: `verify-ghost-site.mjs` adds the quiet line, the button during the pitch, no misclick with reduced motion, nothing once exorcised; its dead `data-next-chapter` read removed. The strip hold and focus return were checked by hand (temporary next chapter, reverted).
+- Check: `check-20261105-040143`: all 16 steps passed (simulated). Reader strip retaken at 1366 and 390.
+
 ## Changed - 2026-11-05 / Batch 20 (with 19b): the ghost across the site (feat/batch-20-ghost-site)
 
 Rework plan batch 20, the last of M7. Same rules as batches 18 and 19: each stunt is one of the visit's rare ambient events (at most one per visit), never on a first visit, never with reduced motion or CRT off, never while the page is busy; decoration that takes no focus and no click.

@@ -20,7 +20,7 @@
 - Without the Navigation API, after "Back wins" on an ambiguous history move the fallback trail can be off by one for later moves (16b note).
 - Background timers (the tab title) depend on the browser: Chrome throttles them, iOS may suspend the tab.
 - The end-of-chapter strip is not covered by an automated test: the fixture has no readable next chapter (checked by hand with a temporary change). It covers the bottom of the page for 6 s.
-- `unlisted.txt`'s text is a draft waiting for Harold's wording.
+- `unlisted.txt`'s text is a draft waiting for Harold's wording; until then the row is off in production builds (20b).
 - Checked only in headless Chrome on the dev fixture.
 - Status: Open (recorded).
 

@@ -8,7 +8,7 @@ import { useTerminalTyping } from "@/components/home/useTerminalTyping";
 import { ghost } from "@/lib/ghost";
 import GhostTerminal from "@/components/ghost/GhostTerminal";
 
-type Line = { text: string; kind: "in" | "out" | "ok" | "err" | "dim" | "ghost"; id?: number };
+type Line = { text: string; kind: "in" | "out" | "ok" | "err" | "dim" | "ghost"; id?: number; quiet?: boolean };
 export type TerminalProject = { slug: string; code: string; title: string; status: string };
 
 // Directory names the shell knows, in the order `ls` prints them; each goes to an existing route or opens a promo window.
@@ -74,8 +74,10 @@ export default function HomeTerminal({ projects, clearance }: { projects: Termin
   const printRef = useRef<(next: Line[]) => void>(() => {});
   useEffect(() => {
     const said = (event: Event) => {
-      const lines = (event as CustomEvent<{ lines?: string[] }>).detail?.lines ?? [];
-      if (lines.length) printRef.current(lines.map(text => ({ text, kind: "ghost" as const })));
+      const detail = (event as CustomEvent<{ lines?: string[]; quiet?: boolean }>).detail;
+      const lines = detail?.lines ?? [];
+      // quiet: a stunt's line, hidden from screen readers (20b); otherwise terminal output like any other.
+      if (lines.length) printRef.current(lines.map(text => ({ text, kind: "ghost" as const, quiet: detail?.quiet === true })));
     };
     window.addEventListener("migrainz:ghost-say", said);
     return () => window.removeEventListener("migrainz:ghost-say", said);
@@ -260,7 +262,7 @@ export default function HomeTerminal({ projects, clearance }: { projects: Termin
     <section className="pnl home-terminal-panel" aria-labelledby="home-terminal">
       <div className="pnl-h"><h2 className="pnl-title" id="home-terminal"><b>TERMINAL</b><i aria-hidden="true"> .SH</i></h2><span className="pnl-end" aria-hidden="true">{sessions ? `SESSIONS: ${sessions}` : "TYPE help"}</span></div>
       <div className="home-term-log" ref={log} role="log" aria-live="polite" tabIndex={0} aria-label="Terminal output">
-        {lines.map(line => <p key={line.id} data-kind={line.kind} data-line={line.id}>{line.text}</p>)}
+        {lines.map(line => <p key={line.id} data-kind={line.kind} data-line={line.id} aria-hidden={line.quiet || undefined}>{line.text}</p>)}
       </div>
       {/* Outside the log, so the log's text stays only its lines; placed over the typing point (panel coordinates). */}
       <span ref={typeCursor} className="type-cursor" aria-hidden="true" hidden>_</span>

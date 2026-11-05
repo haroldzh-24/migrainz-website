@@ -5,7 +5,8 @@
 // are short). Checks: the Watcher looks at the shop item; the amber pitch switches to amber and back, never touching the
 // saved setting, and a change by the visitor wins; the boot ad hijack (kept across a reload of the visit); the misclick
 // box opens and closes itself without focus; the archive's unlisted.txt from visit 5 (opens in place); the
-// end-of-chapter line only by reading to the last page with a next chapter, never by GO TO; reduced motion: no stunts.
+// end-of-chapter line only by reading to the last page with a next chapter, never by GO TO; reduced motion: no stunts
+// (also no misclick); exorcised: nothing even when forced; the PHOSPHOR button during the amber pitch.
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -22,15 +23,15 @@ const policies = require('./policy-watch.cjs').watchBrowser(browser);
 const errors = [];
 const pass = message => console.log('PASS ' + message);
 
-const open = async (force, { width = 1366, height = 768, reducedMotion = 'no-preference', href = '/', announcement = true } = {}) => {
+const open = async (force, { width = 1366, height = 768, reducedMotion = 'no-preference', href = '/', announcement = true, pre = null } = {}) => {
   const context = await browser.newContext({ viewport: { width, height }, reducedMotion, timezoneId: 'America/Chicago' });
-  await context.addInitScript(([value, skip]) => {
-    try { if (skip) sessionStorage.setItem('migrainz-announcement:studio-transmission-001', 'studio-transmission-001'); localStorage.setItem('migrainz-ghost-test', value); } catch {}
+  await context.addInitScript(([value, skip, stored]) => {
+    try { if (skip) sessionStorage.setItem('migrainz-announcement:studio-transmission-001', 'studio-transmission-001'); localStorage.setItem('migrainz-ghost-test', value); if (stored && !sessionStorage.getItem('pre-set')) { localStorage.setItem('migrainz-ghost-v1', JSON.stringify(stored)); sessionStorage.setItem('pre-set', '1'); } } catch {}
     window.__ghost = [];
     window.addEventListener('migrainz:ghost', event => window.__ghost.push(event.detail.name));
     window.__glances = [];
     window.addEventListener('migrainz:watcher-glance', event => window.__glances.push(event.detail));
-  }, [`force:${force}`, announcement]);
+  }, [`force:${force}`, announcement, pre]);
   const page = await context.newPage();
   page.setDefaultTimeout(90000);
   page.on('pageerror', error => errors.push(error.message));
@@ -56,9 +57,12 @@ try {
     const { context, page } = await open('amber');
     await page.waitForFunction(() => document.documentElement.dataset.phosphor === 'amber', null, { timeout: 20000 });
     await page.waitForFunction(() => [...document.querySelectorAll('.home-term-log p[data-kind="ghost"]')].some(p => p.textContent === 'this is my good side.'));
+    assert.equal(await page.locator('.home-term-log p[data-kind="ghost"]').last().getAttribute('aria-hidden'), 'true', 'the stunt line is hidden from screen readers (20b)');
+    assert.match(await page.locator('.phosphor-toggle').first().textContent(), /AMBER/, 'the PHOSPHOR button follows the screen (20b)');
     assert.equal(await page.evaluate(() => localStorage.getItem('crt-phosphor')), null, 'the saved setting is untouched');
     await page.waitForFunction(() => document.documentElement.dataset.phosphor === 'green', null, { timeout: 10000 });
-    pass('amber pitch: amber with "this is my good side.", then green again; saved setting untouched');
+    assert.match(await page.locator('.phosphor-toggle').first().textContent(), /GREEN/);
+    pass('amber pitch: amber with "this is my good side." (hidden from screen readers), then green again; button follows; saved setting untouched');
     await context.close();
   }
   {
@@ -70,6 +74,17 @@ try {
     await page.waitForTimeout(6000);
     assert.equal(await page.evaluate(() => document.documentElement.dataset.phosphor), 'amber', 'the visitor\'s own choice wins');
     pass('amber pitch: the visitor\'s own phosphor choice is kept');
+    await context.close();
+  }
+  {
+    // 20b: the PHOSPHOR button pressed during the pitch steps from what the screen shows: green, saved, and it stays.
+    const { context, page } = await open('amber');
+    await page.waitForFunction(() => document.documentElement.dataset.phosphor === 'amber', null, { timeout: 20000 });
+    await page.evaluate(() => document.querySelector('.phosphor-toggle').click());
+    assert.equal(await page.evaluate(() => localStorage.getItem('crt-phosphor')), 'green');
+    await page.waitForTimeout(5500);
+    assert.equal(await page.evaluate(() => document.documentElement.dataset.phosphor), 'green');
+    pass('amber pitch: the PHOSPHOR button during the pitch goes to green and keeps it');
     await context.close();
   }
   // 3. Boot ad hijack, kept across a reload of the visit.
@@ -123,7 +138,6 @@ try {
     await next.click();
     await page.waitForTimeout(700);
     await next.click();
-    const hasNext = await page.evaluate(() => document.querySelector('.comic-reader-window')?.dataset.nextChapter ?? null);
     await page.waitForTimeout(800);
     const line = await page.locator('.ghost-chapter').count();
     const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('migrainz-ghost-v1') ?? '{}').chapters ?? []);
@@ -133,7 +147,6 @@ try {
       const box = await page.locator('.ghost-chapter').boundingBox(), area = await page.locator('.comic-page-stage .art-viewer-canvas').boundingBox();
       assert.ok(box.y >= area.y && box.y + box.height <= area.y + area.height + 1, 'over the page, not over the bars');
     }
-    void hasNext;
     pass(`end of chapter: recorded when read to the last page, never by GO TO; ${line ? 'the line shows (a next chapter exists)' : 'no line (no readable next chapter in the fixture)'}`);
     await context.close();
   }
@@ -144,6 +157,23 @@ try {
     assert.equal(await page.evaluate(() => document.documentElement.dataset.phosphor), 'green');
     assert.deepEqual(await page.evaluate(() => window.__ghost), [], 'no stunts with reduced motion');
     pass('reduced motion: no stunts');
+    await context.close();
+  }
+  {
+    const { context, page } = await open('misclick', { reducedMotion: 'reduce', href: '/projects' });
+    await page.waitForTimeout(2500);
+    assert.equal(await page.locator('.ghost-misclick').count(), 0);
+    pass('reduced motion: no misclick on the grey desktop');
+    await context.close();
+  }
+  // 8. Exorcised: nothing, even when forced (20b).
+  {
+    const { context, page } = await open('watcher,amber,misclick,boot-ad', { pre: { visits: 6, lastEvent: -10, exorcised: true } });
+    await page.waitForTimeout(3000);
+    assert.equal(await page.evaluate(() => document.documentElement.dataset.phosphor), 'green');
+    assert.deepEqual(await page.evaluate(() => window.__ghost), [], 'no stunts once exorcised');
+    assert.equal(await page.locator('.ghost-file').count(), 0);
+    pass('exorcised: no stunts even when forced');
     await context.close();
   }
 

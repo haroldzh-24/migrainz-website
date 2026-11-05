@@ -16,7 +16,10 @@ const AMBER_AFTER_MS = 12000;
 const AMBER_MS = 4500;
 const AMBER_FILES = ["/images/watcher/watcher-base.amber.webp", "/images/watcher/watcher-eyes.amber.webp", "/images/watcher/crt-noise.amber.png"];
 
-const say = (lines: string[]) => window.dispatchEvent(new CustomEvent("migrainz:ghost-say", { detail: { lines } }));
+// Quiet: shown in the terminal but hidden from screen readers (a stunt, not output; 20b).
+const say = (lines: string[]) => window.dispatchEvent(new CustomEvent("migrainz:ghost-say", { detail: { lines, quiet: true } }));
+// The PHOSPHOR button follows the screen during the pitch (20b).
+const announce = (value: string) => window.dispatchEvent(new CustomEvent("migrainz:display-mode", { detail: { attribute: "phosphor", value } }));
 // The page is still booting, turning, typing or switching: wait for it (the stunt must never land on top of those).
 const unsettled = () => {
   const root = document.documentElement;
@@ -33,6 +36,10 @@ function preload(sources: string[], timeout: number): Promise<boolean> {
 export default function GhostHome() {
   useEffect(() => {
     let cancelled = false, retry = 0, amberTimer = 0, restoreTimer = 0;
+    // Activity cancels a pending retry of the Watcher's look; afterIdle then waits the full idle time again (20b).
+    const cancelRetry = () => window.clearTimeout(retry);
+    const ACTIVITY = ["keydown", "pointermove", "pointerdown", "wheel", "touchstart"] as const;
+    for (const type of ACTIVITY) window.addEventListener(type, cancelRetry, { passive: true, capture: true });
     let stopWatch = () => {}, restore = () => {};
 
     // The Watcher looks at the shop.
@@ -57,6 +64,7 @@ export default function GhostHome() {
       // The amber Watcher face and grain are only fetched when amber is on: load them first, or skip the pitch.
       if (!(await preload(AMBER_FILES, 2000)) || cancelled || root.dataset.phosphor !== "green") return;
       root.dataset.phosphor = "amber";
+      announce("amber");
       say(["this is my good side."]);
       window.dispatchEvent(new CustomEvent("migrainz:ghost", { detail: { name: "amber" } }));
       // Someone else changing the phosphor (the SYSTEM menu, the terminal) ends the pitch and keeps their choice.
@@ -69,7 +77,7 @@ export default function GhostHome() {
         restore = () => {};
         let saved: string | null = null;
         try { saved = localStorage.getItem("crt-phosphor"); } catch { /* none saved */ }
-        if (mine && root.dataset.phosphor === "amber" && saved !== "amber") root.dataset.phosphor = "green";
+        if (mine && root.dataset.phosphor === "amber" && saved !== "amber") { root.dataset.phosphor = "green"; announce("green"); }
       };
       restoreTimer = window.setTimeout(() => restore(), AMBER_MS);
     };
@@ -78,6 +86,7 @@ export default function GhostHome() {
     return () => {
       cancelled = true;
       stopIdle();
+      for (const type of ACTIVITY) window.removeEventListener(type, cancelRetry, { capture: true });
       window.clearTimeout(retry);
       window.clearTimeout(amberTimer);
       window.clearTimeout(restoreTimer);
