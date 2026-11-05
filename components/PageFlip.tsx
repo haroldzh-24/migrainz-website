@@ -207,12 +207,14 @@ const PageFlip = forwardRef<PageFlipHandle>(function PageFlip(_, handle) {
       const areaLocal = { x: 0, y: 0, w: area.w, h: area.h };
       const outgoing = { image: flip.image, box: local(imageBox), background: flip.background };
       const begin = (sheetImage: HTMLImageElement, sheetImageBox: Box, under: Running["under"]) => {
-        const visibleSheet = intersect(sheetImageBox, areaLocal);
-        const copy = visibleSheet && sheetCopy(sheetImage, sheetImageBox, visibleSheet, scale);
-        if (!visibleSheet || !copy) { finish(); return; }
-        running.current = { direction: flip.direction, area: areaLocal, sheet: visibleSheet, copy, scale, under, start: 0, duration: flipMs(), lastFrame: -1 };
-        draw(running.current, 0);
-        frame.current = requestAnimationFrame(tick);
+        try {
+          const visibleSheet = intersect(sheetImageBox, areaLocal);
+          const copy = visibleSheet && sheetCopy(sheetImage, sheetImageBox, visibleSheet, scale);
+          if (!visibleSheet || !copy) { finish(); return; }
+          running.current = { direction: flip.direction, area: areaLocal, sheet: visibleSheet, copy, scale, under, start: 0, duration: flipMs(), lastFrame: -1 };
+          draw(running.current, 0);
+          frame.current = requestAnimationFrame(tick);
+        } catch { finish(); } // never left marked running (17b)
       };
       // Marked running first (15b), so anything that finishes it from here on also clears the busy flag and ends it.
       running.current = { direction: flip.direction, area: areaLocal, sheet: areaLocal, copy: element, scale, under: flip.direction === "prev" ? outgoing : null, start: 0, duration: flipMs(), lastFrame: -1 };
@@ -248,12 +250,14 @@ const PageFlip = forwardRef<PageFlipHandle>(function PageFlip(_, handle) {
       // PREV: hold the current page on screen (drawn under) until the earlier page's image is ready, then bring it back
       // over at the size the reader gives it. Not ready in time: the turn is simply instant.
       const context = element.getContext("2d");
-      if (context) {
-        context.setTransform(scale, 0, 0, scale, 0, 0);
-        context.fillStyle = flip.background;
-        context.fillRect(0, 0, area.w, area.h);
-        context.drawImage(flip.image, outgoing.box.x, outgoing.box.y, outgoing.box.w, outgoing.box.h);
-      }
+      try {
+        if (context) {
+          context.setTransform(scale, 0, 0, scale, 0, 0);
+          context.fillStyle = flip.background;
+          context.fillRect(0, 0, area.w, area.h);
+          context.drawImage(flip.image, outgoing.box.x, outgoing.box.y, outgoing.box.w, outgoing.box.h);
+        }
+      } catch { finish(); return false; }
       const asked = performance.now();
       const wait = () => {
         if (!running.current) return;

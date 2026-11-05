@@ -22,6 +22,14 @@ const EYE = [
 
 export default function GhostSystem() {
   useEffect(() => {
+    // Never let the ghost break the page (18b): it lives in the root layout.
+    try { return haunt(); } catch { return undefined; }
+  }, []);
+  return null;
+}
+
+function haunt() {
+  {
     ghost.visit();
     if (ghost.allows("console") && ghost.once("console")) {
       const bright = "color:#d4f5da;font:600 14px monospace";
@@ -36,7 +44,7 @@ export default function GhostSystem() {
 
     // The tab title: rolled once per visit (1 in 3), shown once.
     let awayTimer = 0, backTimer = 0, original = "", ghostTitle = "";
-    const tabRolled = ghost.allows("tab") && ghost.chance("tab", 1 / 3);
+    const tabRolled = ghost.allows("tab") && (ghost.forced("tab") || ghost.tabRolled());
     const visibility = () => {
       if (document.hidden) {
         if (!tabRolled || ghostTitle) return;
@@ -66,6 +74,5 @@ export default function GhostSystem() {
       window.clearTimeout(backTimer);
       if (ghostTitle && document.title === ghostTitle) document.title = original;
     };
-  }, []);
-  return null;
+  }
 }

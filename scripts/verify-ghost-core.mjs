@@ -8,6 +8,7 @@
 // a forced roll picks one event); forced tails, console message, 404 line and tab title; exorcise and summon; the third
 // try of .ghost/note.txt; blocked storage keeps the ghost quiet without errors; ghost lines are not in Tab completion.
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -102,15 +103,34 @@ try {
     const page = await created.newPage();
     page.on('pageerror', error => errors.push(error.message));
     await page.addInitScript(() => { Math.random = () => 0.01; });
+    // Storage is set from a page with no app code (robots.txt), so no ghost timer of the previous page can save over it.
+    const preset = async set => {
+      await page.goto(base + '/robots.txt');
+      await page.evaluate(set);
+      await page.goto(base + '/');
+      await page.locator('.startup-sequence').waitFor({ state: 'detached' });
+    };
     await page.goto(base + '/');
-    await page.evaluate(() => { localStorage.setItem('migrainz-ghost-v1', JSON.stringify({ visits: 5, lastEvent: 5, exorcised: false, milestones: [], adEver: false, chapters: [] })); sessionStorage.removeItem('migrainz-ghost-session-v1'); });
-    await page.reload();
-    await page.locator('.startup-sequence').waitFor({ state: 'detached' });
+    await preset(`localStorage.setItem('migrainz-ghost-v1', JSON.stringify({ visits: 5, lastEvent: 5, exorcised: false, milestones: [], adEver: false, chapters: [] })); sessionStorage.removeItem('migrainz-ghost-session-v1');`);
     let record = await stored(page);
     assert.deepEqual([record.session.visit, record.session.roll], [6, false], 'the visit after an event never rolls');
-    await page.evaluate(() => { localStorage.setItem('migrainz-ghost-v1', JSON.stringify({ visits: 9, lastEvent: 2, exorcised: false, milestones: [], adEver: false, chapters: [] })); sessionStorage.removeItem('migrainz-ghost-session-v1'); });
-    await page.reload();
-    await page.locator('.startup-sequence').waitFor({ state: 'detached' });
+    // 18b: the edges. Two visits after an event: still quiet; three after: may roll. A first visit and an exorcised
+    // browser never roll, even with the luckiest draw.
+    const visitWith = async (record, expected, message) => {
+      await preset(`localStorage.setItem('migrainz-ghost-v1', ${JSON.stringify(JSON.stringify(record))}); sessionStorage.removeItem('migrainz-ghost-session-v1');`);
+      const got = await stored(page);
+      assert.equal(got.session.roll, expected, `${message} (${JSON.stringify(got)})`);
+    };
+    await visitWith({ visits: 6, lastEvent: 5 }, false, 'two visits after an event: quiet');
+    await visitWith({ visits: 7, lastEvent: 5 }, true, 'three visits after an event: may roll');
+    await visitWith({ visits: 0, lastEvent: -10 }, false, 'a first visit never rolls');
+    await visitWith({ visits: 20, lastEvent: 0, exorcised: true }, false, 'an exorcised browser never rolls');
+    // Corrupt or odd stored values are replaced, not left to silence the ghost.
+    await preset(`localStorage.setItem('migrainz-ghost-v1', '{not json'); sessionStorage.setItem('migrainz-ghost-session-v1', JSON.stringify({ visit: 3, shown: null, roll: 'yes' }));`);
+    record = await stored(page);
+    assert.equal(typeof record.local.visits, 'number', 'corrupt record replaced');
+    assert.deepEqual([record.session.visit, record.session.roll], [3, false], 'odd session values normalised');
+    await preset(`localStorage.setItem('migrainz-ghost-v1', JSON.stringify({ visits: 9, lastEvent: 2, exorcised: false, milestones: [], adEver: false, chapters: [] })); sessionStorage.removeItem('migrainz-ghost-session-v1');`);
     record = await stored(page);
     assert.deepEqual([record.session.visit, record.session.roll, typeof record.session.pick], [10, true, 'string'], 'a lucky roll picks one event for the visit');
     pass('rarity: cooldown after an event; a roll picks the visit\'s one event');
@@ -138,7 +158,9 @@ try {
     await page.goto(base + '/no-such-page');
     await page.locator('.ghost-line').waitFor();
     assert.match(await page.locator('.ghost-line').textContent(), /this page doesn.t exist\. requisitions\.exe does\./);
-    assert.equal(await page.locator('.ghost-line a').count(), 0, 'requisitions.exe is plain text while the store address is a placeholder');
+    // requisitions.exe links to the store only once its real address is set (data/site.ts).
+    const placeholder = /shopIsPlaceholder:\s*true/.test(readFileSync('data/site.ts', 'utf8'));
+    assert.equal(await page.locator('.ghost-line a').count(), placeholder ? 0 : 1, 'requisitions.exe links only to a real store address');
     pass('forced: tails on help, echo, date, whoami; console message; tab title away and back; 404 line');
 
     // 4. exorcise: quiet (no tails, who without tty0, exit plain), console message not repeated; summon brings it back.
@@ -151,6 +173,15 @@ try {
     assert.ok(ghostLines(await run(page, 'summon')).includes('missed me?'));
     assert.ok(ghostLines(await run(page, 'help')).length === 1, 'tails back after summon');
     pass('exorcise silences the ghost; summon brings it back');
+
+    // 18b: two tabs. Exorcise in one; the other's saves never undo it.
+    const other = await openPage(created);
+    await run(page, 'exorcise');
+    await run(other, 'cat .ghost/note.txt');
+    await run(other, 'help');
+    assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('migrainz-ghost-v1')).exorcised), true, 'still exorcised after the other tab saved');
+    assert.deepEqual(ghostLines(await run(other, 'who')), [], 'the other tab knows (who without tty0)');
+    pass('two tabs: an exorcise in one is not undone by the other');
     await created.close();
   }
 

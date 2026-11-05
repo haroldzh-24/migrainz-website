@@ -1,8 +1,12 @@
 # Features
 
+## Implemented - 2026-11-05 / The ghost in the terminal (batch 19)
+
+- Rarely: a second user types and erases a message, a second cursor blinks, the terminal types `open requisitions.exe` by itself after a minute idle, the about page's typing slips; on visits 3, 7 and 13 the ghost says welcome back.
+
 ## Implemented - 2026-11-04 / The ghost: core and hidden shell (batch 18)
 
-- A ghost haunts the public terminal: hidden commands (`who`, `ls -a`, `cat .ghost/note.txt`, `sudo`, `exit`, `exorcise`, `summon`), rare sales pitches after some commands, a console message, a tab title, a 404 line. Never on a first visit; `exorcise` turns it off in that browser.
+- A ghost haunts the public terminal: hidden commands (`who`, `ls -a`, `cat .ghost/note.txt`, `sudo`, `exit`, `exorcise`, `summon`), sales pitches after some commands (at most two a visit), a console message, a tab title, a 404 line. Never on a first visit; `exorcise` turns it off in that browser.
 
 ## Implemented - 2026-11-04 / Typing terminal pages (batch 17)
 
