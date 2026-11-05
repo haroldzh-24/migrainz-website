@@ -2814,3 +2814,8 @@ html[data-typeout="pending"] .directory-page > h1 ~ *, .directory-page[data-type
 [data-type-wait] { opacity: 0; }
 [data-type-glow-off] { text-shadow: none !important; }
 @media (prefers-reduced-motion: reduce) { [data-type-wait] { opacity: 1; } }
+
+/* Batches 18 to 20: the ghost's voice. Brighter than the terminal text, with the heading glow (none with CRT off). */
+.home-term-log p[data-kind="ghost"], .ghost-line { color: var(--crt-bright); text-shadow: var(--crt-glow-head); }
+.ghost-line { margin: 16px 0 0; }
+.ghost-line a { color: var(--crt-accent); text-decoration: underline; }

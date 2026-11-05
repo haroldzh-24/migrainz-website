@@ -16,6 +16,7 @@ import HighlightEffects from "@/components/HighlightEffects";
 import ModeSwitch from "@/components/ModeSwitch";
 import NavigationStatus from "@/components/NavigationStatus";
 import PageTransition from "@/components/PageTransition";
+import GhostSystem from "@/components/GhostSystem";
 import PhoneTabBar from "@/components/PhoneTabBar";
 import { site } from "@/data/site";
 import "./globals.css";
@@ -107,6 +108,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           <ModeSwitch />
           <NavigationStatus />
           <PageTransition />
+          <GhostSystem />
           <footer className="shell footer">
             <span>© 2026 MIGRAINZ</span>
             <span>{viewer.signedIn ? 'PATREON ID VERIFIED' : 'PUBLIC NODE / UNAUTHENTICATED ACCESS'}</span>

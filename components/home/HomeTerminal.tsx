@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import { useSound } from "@/components/SoundProvider";
 import { openRoute } from "@/lib/graphics-mode";
 import { useTerminalTyping } from "@/components/home/useTerminalTyping";
+import { ghost } from "@/lib/ghost";
 
-type Line = { text: string; kind: "in" | "out" | "ok" | "err" | "dim"; id?: number };
+type Line = { text: string; kind: "in" | "out" | "ok" | "err" | "dim" | "ghost"; id?: number };
 export type TerminalProject = { slug: string; code: string; title: string; status: string };
 
 // Directory names the shell knows, in the order `ls` prints them; each goes to an existing route or opens a promo window.
@@ -66,12 +67,25 @@ export default function HomeTerminal({ projects, clearance }: { projects: Termin
     window.addEventListener("migrainz:open-route-cancelled", cancelled);
     return () => window.removeEventListener("migrainz:open-route-cancelled", cancelled);
   }, []);
+  // The ghost speaks through the terminal (batches 18 to 20): migrainz:ghost-say { lines }.
+  const printRef = useRef<(next: Line[]) => void>(() => {});
+  useEffect(() => {
+    const said = (event: Event) => {
+      const lines = (event as CustomEvent<{ lines?: string[] }>).detail?.lines ?? [];
+      if (lines.length) printRef.current(lines.map(text => ({ text, kind: "ghost" as const })));
+    };
+    window.addEventListener("migrainz:ghost-say", said);
+    return () => window.removeEventListener("migrainz:ghost-say", said);
+  }, []);
 
   const print = (next: Line[], reset = false) => {
     const numbered = next.map(line => ({ ...line, id: nextId.current++ }));
     typing.enqueue(numbered.filter(line => line.kind !== "in").map(line => line.id));
     setLines(current => (reset ? numbered : [...current, ...numbered]).slice(-OUTPUT_LIMIT));
   };
+  printRef.current = next => print(next);
+  // A ghost tail after some commands: from the second visit, about 1 command in 3 (batch 18).
+  const tail = (out: Line[], text: string) => { if (ghost.allows("tails") && ghost.chance("tails", 1 / 3)) out.push({ text, kind: "ghost" }); };
   const find = (name: string) => {
     const wanted = name.toLowerCase().replace(/^\/+|\/+$/g, "");
     if (/^\d{1,2}$/.test(wanted)) return SECTIONS[Number(wanted) - 1];
@@ -113,6 +127,10 @@ export default function HomeTerminal({ projects, clearance }: { projects: Termin
         { text: "crt on|reduced|off · phosphor green|amber · sound on|off · boot", kind: "out" },
         { text: "Up/Down recall commands; Tab completes a name.", kind: "dim" },
       );
+      tail(out, "help yourself      run requisitions.exe");
+    } else if ((command === "ls" || command === "dir") && /^-a\b/.test(argument) && !ghost.exorcised()) {
+      out.push({ text: ".   ..   .ghost/", kind: "ghost" });
+      SECTIONS.forEach((section, index) => out.push({ text: `${String(index + 1).padStart(2, "0")}  ${section.file}`, kind: "out" }));
     } else if (command === "ls" || command === "dir") {
       if (/^projects?(\.db)?\/?$/i.test(argument) || (!argument && cwd === "~/projects")) {
         if (!projects.length) out.push({ text: "no public projects mounted", kind: "dim" });
@@ -137,6 +155,10 @@ export default function HomeTerminal({ projects, clearance }: { projects: Termin
         const section = find(wanted);
         if (section) go(section, out); else out.push({ text: `open: ${argument || "?"}: not found. Try ls projects.`, kind: "err" });
       }
+    } else if (command === "cat" && /^\.?ghost\/?(note(\.txt)?)?$|^\.ghost\//i.test(argument) && !ghost.exorcised()) {
+      const tries = ghost.noteTry();
+      out.push({ text: `cat: ${argument}: permission denied`, kind: "err" });
+      out.push({ text: tries >= 3 ? "fine. it says: buy a print." : "(it's mine)", kind: "ghost" });
     } else if (command === "cat") {
       if (/^(info|about)(\.txt)?$|^readme$/i.test(argument)) {
         out.push({ text: "STUDIO MIGRAINZ", kind: "ok" }, { text: "Artwork, comics, objects and works in progress.", kind: "out" }, { text: "Full file: cd info", kind: "dim" });
@@ -147,10 +169,29 @@ export default function HomeTerminal({ projects, clearance }: { projects: Termin
       else out.push({ text: "system: monitor not available on this page", kind: "err" });
     } else if (command === "whoami") {
       out.push({ text: `visitor · clearance ${clearance} · node 01`, kind: "out" });
+      tail(out, "could be a patron. just saying.");
     } else if (command === "date") {
       out.push({ text: new Date().toString(), kind: "out" });
+      tail(out, "a good day to support the arts.");
     } else if (command === "echo") {
       out.push({ text: argument, kind: "out" });
+      if (argument.trim()) tail(out, `... ${argument.trim()} ... patreon.key`);
+    } else if (command === "who" || command === "w") {
+      const now = new Date();
+      const stamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+      out.push({ text: "USER      LINE    SINCE               IDLE", kind: "dim" }, { text: `public    tty1    ${stamp}    now`, kind: "out" });
+      if (!ghost.exorcised()) {
+        const days = Math.floor((now.getTime() - new Date(1999, 11, 31, 23, 59).getTime()) / 86400000);
+        out.push({ text: `????      tty0    1999-12-31 23:59    ${days.toLocaleString("en-US")} days`, kind: "ghost" });
+      }
+    } else if (command === "exit" || command === "logout") {
+      out.push(ghost.exorcised() ? { text: "this is a public terminal. there is nothing to log out of.", kind: "dim" } : { text: "there's no exit. there's a gift shop.", kind: "ghost" });
+    } else if (command === "exorcise") {
+      if (ghost.exorcised()) out.push({ text: "nothing to exorcise.", kind: "dim" });
+      else { ghost.exorcise(); out.push({ text: "> exorcising tty0 ............ OK", kind: "ok" }, { text: "fine. i'll be quiet. type summon if you miss me.", kind: "ghost" }); }
+    } else if (command === "summon") {
+      if (!ghost.exorcised()) out.push({ text: "it never left.", kind: "ghost" });
+      else { ghost.summon(); out.push({ text: "> summoning tty0 ............ OK", kind: "ok" }, { text: "missed me?", kind: "ghost" }); }
     } else if (command === "clear" || command === "cls") {
       print([], true);
       return;
@@ -175,6 +216,7 @@ export default function HomeTerminal({ projects, clearance }: { projects: Termin
       window.setTimeout(() => window.location.reload(), 300);
     } else if (command === "sudo") {
       out.push({ text: `nice try. clearance ${clearance}.`, kind: "err" });
+      if (!ghost.exorcised()) out.push({ text: "clearance comes from patreon.key. i don't make the rules. i just enforce them.", kind: "ghost" });
     } else {
       out.push({ text: `${command}: command not found. Type help.`, kind: "err" });
     }

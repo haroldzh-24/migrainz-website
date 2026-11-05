@@ -1,5 +1,19 @@
 # Changelog
 
+## Changed - 2026-11-04 / Batch 18: the ghost in the machine, core and hidden shell (feat/batch-18-ghost-core)
+
+Rework plan batch 18 (Harold, 2026-11-04: "a small gimmick ... like a ghost in the machine", some of it shilling his stuff "so it's creepy and kinda funny"; "the key is not to have these happen all the time").
+
+- `lib/ghost.ts`: what the ghost knows, kept only in this browser (localStorage `migrainz-ghost-v1`, sessionStorage `migrainz-ghost-session-v1`; nothing is sent anywhere). A visit is a tab session, counted once; its roll is stored, so a reload never re-rolls. Rarity: never on a first visit; at most one ambient event per visit, on about 1 visit in 8 (1 in 4 between midnight and 4 a.m.), the event picked with the roll so no stunt always wins; none for the 2 visits after one; never while the page is busy, with reduced motion or CRT off (stunts only), or once exorcised. Blocked storage: quiet. (The ambient events themselves come in batches 19 and 20.)
+- Hidden terminal commands (not in `help` or Tab completion): `who` (a second session `????  tty0`, idle since 1999-12-31 23:59, its day count live), `ls -a` (`.ghost/`), `cat .ghost/note.txt` (permission denied, "(it's mine)"; the third try in a visit: "fine. it says: buy a print."), `sudo` (adds "clearance comes from patreon.key. i don't make the rules. i just enforce them."), `exit` ("there's no exit. there's a gift shop."), `exorcise` (the ghost goes quiet in this browser) and `summon` (back).
+- Tails, from the second visit, on about 1 command in 3: `help` ("help yourself      run requisitions.exe"), `echo x` ("... x ... patreon.key"), `date` ("a good day to support the arts."), `whoami` ("could be a patron. just saying.").
+- `components/GhostSystem.tsx` (in the layout): counts the visit; once per visit from the second, a message in the browser's developer console (an eye, "you're looking under the floorboards.", the Patreon page link on this site, "(i'd join. i can't. i don't have hands.)", the gift shop line); on about 1 visit in 3, after 20 s in the background the tab is renamed "come back", "the shop is still open" or "i'm cold. patreon is warm.", and on return "you left me running" for 3 s (restored only if the title is still the ghost's).
+- The terminal 404, from the second visit: "this page doesn't exist. requisitions.exe does." (`requisitions.exe` links to the store once its real address is set; plain text while it is a placeholder).
+- The ghost's lines are brighter, with the heading glow (none with CRT off); `migrainz:ghost-say` lets later stunts speak through the terminal.
+- Every pitch is the ghost joking: no prices, scarcity or claims about products.
+- Tests: new `scripts/verify-ghost-core.mjs` in the regression run; every other browser script runs with the ghost blocked (`scripts/policy-watch.cjs` sets the test override; it works only outside production builds).
+- Check: `check-20261105-012521`: all 16 steps passed (simulated). The terminal opened at 1366 and 390 with ghost lines.
+
 ## Changed - 2026-11-04 / Batch 17 (with 15b): dark terminal pages type their first screen (feat/batch-17-page-typing)
 
 Rework plan batch 17 (Harold, 2026-11-04: terminal pages display "one letter/space at a time ... with that strobing dash thing").
