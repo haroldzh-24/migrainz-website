@@ -1,5 +1,9 @@
 # Features
 
+## Implemented - 2026-11-04 / Typing terminal pages (batch 17)
+
+- Dark terminal pages type their first screen once per visit behind a `_` cursor; a tap or key finishes it.
+
 ## Implemented - 2026-11-04 / Typing terminal (batch 16)
 
 - The homepage terminal types out what it prints, one character at a time behind a `_` cursor; complete at once with reduced motion or CRT off.

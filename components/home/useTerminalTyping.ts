@@ -17,15 +17,18 @@ const LINE_PAUSE_MS = 60;
 export function useTerminalTyping(log: RefObject<HTMLDivElement | null>, cursor: RefObject<HTMLSpanElement | null>) {
   const pending = useRef<number[]>([]);
   const queue = useRef<Item[]>([]);
-  const loop = useRef({ frame: 0, last: 0, carry: 0, rate: TYPE_CPS, pauseUntil: 0 });
+  const loop = useRef({ frame: 0, last: 0, carry: 0, rate: TYPE_CPS, pauseUntil: 0, following: true, setTop: -1 });
 
   const hideCursor = () => { if (cursor.current) cursor.current.hidden = true; };
   // The log follows the typing point (as a real terminal scrolls line by line), not straight to its last line.
   const follow = (item: Item) => {
-    const root = log.current;
-    if (!root) return;
+    const root = log.current, state = loop.current;
+    if (!root || !state.following) return;
+    // The visitor scrolled the log themselves (16b): stop following until the next command.
+    if (state.setTop >= 0 && Math.abs(root.scrollTop - state.setTop) > 1) { state.following = false; return; }
     const bottom = item.line.offsetTop + item.line.offsetHeight;
     if (bottom > root.scrollTop + root.clientHeight || item.line.offsetTop < root.scrollTop) root.scrollTop = bottom - root.clientHeight;
+    state.setTop = root.scrollTop;
   };
   const placeCursor = (item: Item) => {
     const element = cursor.current, holder = cursor.current?.parentElement;
@@ -33,10 +36,12 @@ export function useTerminalTyping(log: RefObject<HTMLDivElement | null>, cursor:
     follow(item);
     const box = caretBox(item.node, item.range.startOffset);
     if (!box) { element.hidden = true; return; }
+    // Absolute positions start inside the panel's border (16b); the cursor takes the line's own font size.
     const area = holder.getBoundingClientRect();
-    element.style.left = `${box.left - area.left}px`;
-    element.style.top = `${box.top - area.top}px`;
+    element.style.left = `${box.left - area.left - holder.clientLeft}px`;
+    element.style.top = `${box.top - area.top - holder.clientTop}px`;
     element.style.height = element.style.lineHeight = `${box.height}px`;
+    element.style.fontSize = getComputedStyle(item.line).fontSize;
     element.hidden = false;
   };
 
@@ -52,6 +57,11 @@ export function useTerminalTyping(log: RefObject<HTMLDivElement | null>, cursor:
     queue.current = [];
     pending.current = [];
     hideCursor();
+    // Typing over: the log may show its newest line again (unless the visitor scrolled away).
+    const root = log.current;
+    if (had && root && state.following) root.scrollTop = root.scrollHeight;
+    state.following = true;
+    state.setTop = -1;
     if (had) {
       setBusy("typing", false);
       window.dispatchEvent(new CustomEvent("migrainz:typing", { detail: { state: "end", where: "terminal" } }));
@@ -73,7 +83,6 @@ export function useTerminalTyping(log: RefObject<HTMLDivElement | null>, cursor:
         item.line.removeAttribute("data-typing");
         queue.current.shift();
         state.pauseUntil = now + LINE_PAUSE_MS;
-        state.carry = 0;
         break;
       }
       item.range.setStart(item.node, next);
@@ -111,7 +120,8 @@ export function useTerminalTyping(log: RefObject<HTMLDivElement | null>, cursor:
     if (!added) return;
     const state = loop.current;
     const left = queue.current.reduce((sum, item) => sum + item.node.length - item.range.startOffset, 0);
-    state.rate = Math.max(TYPE_CPS, (left * 1000) / CAP_MS);
+    // All of a command's output within CAP_MS, line pauses included (16b).
+    state.rate = Math.max(TYPE_CPS, (left * 1000) / Math.max(500, CAP_MS - LINE_PAUSE_MS * Math.max(0, queue.current.length - 1)));
     placeCursor(queue.current[0]);
     if (!state.frame) {
       state.last = performance.now();

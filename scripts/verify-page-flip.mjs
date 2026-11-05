@@ -33,7 +33,18 @@ const open = async ({ width = 1366, height = 768, reducedMotion = 'no-preference
     try { sessionStorage.setItem('migrainz-announcement:studio-transmission-001', 'studio-transmission-001'); } catch {}
     // Each flip start/end, with what was on screen at that moment. window.__holdFlip stops time at the first frame.
     window.__flips = [];
+    // 15b: a frame after each start, whether the canvas really has pixels drawn (the fixture pages are same-origin).
+    window.__drawn = [];
     window.addEventListener('migrainz:page-flip', event => {
+      if (event.detail.state === 'start') setTimeout(() => {
+        const canvas = document.querySelector('.page-flip canvas');
+        let painted = 0;
+        try {
+          const data = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+          for (let i = 3; i < data.length; i += 64) if (data[i] > 0) painted++;
+        } catch { painted = -1; }
+        window.__drawn.push(painted);
+      }, 120);
       const holder = document.querySelector('.page-flip');
       const box = holder && !holder.hidden ? holder.getBoundingClientRect() : null;
       window.__flips.push({ ...event.detail, at: performance.now(), shown: Boolean(box), box: box && { x: box.x, y: box.y, w: box.width, h: box.height },
@@ -76,6 +87,8 @@ try {
     // page is in place under the still-turning overlay.
     await page.waitForFunction(() => /02\.svg/.test(document.querySelector('.comic-page-stage img.art-viewer-image')?.getAttribute('src') ?? '') && document.querySelector('.page-flip')?.hidden === false);
     assert.equal(start.busy, 'page-turn', 'busy while turning');
+    await page.waitForFunction(() => window.__drawn.length > 0);
+    assert.ok((await page.evaluate(() => window.__drawn[0])) > 50, 'the turning page is really drawn on the canvas');
     assert.equal(await page.locator('.comic-reader-navigation output').textContent(), 'PAGE 2 / 3', 'counter changes at once');
     const parts = await boxes(page);
     assert.ok(start.box.y >= parts.title.bottom - 0.5, `${layout}: not over the title bar`);
@@ -97,7 +110,10 @@ try {
       await next(page).click();
       await ended(page, 2);
       assert.equal(await page.locator('.comic-reader-navigation output').textContent(), 'PAGE 3 / 3', 'two NEXTs: page 3');
-      assert.equal(await page.locator('.page-flip').count(), 1, 'one overlay');
+      // 15b: the second click really finished the first turn (its end comes with the second start, not ~550 ms later).
+      const pair = await flips(page);
+      const firstEnd = pair.find(f => f.state === 'end'), secondStart = pair.filter(f => f.state === 'start')[1];
+      if (secondStart.at - pair[0].at < 500) assert.ok(Math.abs(firstEnd.at - secondStart.at) < 50, 'the first turn ended when the second began');
       pass('wide: a second NEXT mid-flip finishes the first and ends on page 3');
       // 3. PREV brings the earlier page back (drawn), and focus stays on PREV.
       await reset(page);
@@ -106,6 +122,8 @@ try {
       await ended(page);
       const back = await flips(page);
       assert.deepEqual(back.map(f => [f.state, f.direction]), [['start', 'prev'], ['end', 'prev']], 'PREV flips back');
+      // 15b: PREV really animated (a timed-out wait would end within ~300 ms).
+      assert.ok(back[1].at - back[0].at > 450, `PREV turned for its full length (${Math.round(back[1].at - back[0].at)} ms)`);
       assert.equal(await page.evaluate(() => document.activeElement?.textContent), 'PREV', 'focus stays on PREV');
       // 4. Arrow keys and GO TO flip; GO TO is one flip in the direction of travel.
       await loaded(page);
@@ -125,7 +143,29 @@ try {
       await page.keyboard.press('ArrowRight');
       await page.waitForTimeout(300);
       assert.deepEqual(await flips(page), [], 'no flip past the last page');
+      assert.ok(await page.evaluate(() => document.activeElement?.closest('.comic-page-stage, .comic-reader-content') !== null), 'focus stays in the reader');
+      // 15b: panning or a click on the page during a turn finishes it at once.
+      await page.getByLabel('Go to page').selectOption({ value: '0' });
+      await ended(page, 1);
+      await loaded(page);
+      await reset(page);
+      await next(page).click();
+      await page.waitForFunction(() => window.__flips.some(f => f.state === 'start'));
+      await page.locator('.comic-page-stage .art-viewer-canvas').dispatchEvent('pointerdown');
+      await ended(page);
+      const cut = await flips(page);
+      assert.ok(cut[1].at - cut[0].at < 300, `a press on the page ends the turn at once (${Math.round(cut[1].at - cut[0].at)} ms)`);
+      // The canvas memory is released between turns.
+      assert.deepEqual(await page.evaluate(() => { const c = document.querySelector('.page-flip canvas'); return [c.width, c.height]; }), [0, 0], 'canvas memory released');
       pass('wide: PREV, arrow keys and GO TO flip; focus kept; nothing past the last page');
+    }
+    if (layout === 'narrow') {
+      await loaded(page);
+      await reset(page);
+      await next(page).click().catch(() => {});
+      await page.waitForTimeout(250);
+      await page.screenshot({ path: path.join(out, 'page-flip-390-mid.png') });
+      await ended(page).catch(() => {});
     }
     const sideways = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
     assert.ok(!sideways, `${layout}: no sideways scroll`);

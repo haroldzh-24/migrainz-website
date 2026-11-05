@@ -2,7 +2,7 @@
 // keeps it: `hydrated` turns true in its passive effect after the first render (which runs after every layout effect of
 // that render), and `lastPath` is updated there too, so a heading mounting with the new page still reads, in its own
 // layout effect, the path it came from. Client-only; never read during server rendering.
-export const arrival: { hydrated: boolean; lastPath: string | null } = { hydrated: false, lastPath: null };
+export const arrival: { hydrated: boolean; lastPath: string | null; enter: { to: string; at: number; animated: boolean } | null } = { hydrated: false, lastPath: null, enter: null };
 
 /**
  * A once-per-visit record of paths (a visit is a tab session): a module Set, which client navigations share, plus

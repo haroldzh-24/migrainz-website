@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import ClassifiedPlaceholder from '@/components/ClassifiedPlaceholder';
 import DecodeText from "@/components/DecodeText";
+import TypeOut from "@/components/TypeOut";
 import type { Classified } from '@/lib/content/types';
 
 export function Directory({
@@ -26,6 +27,7 @@ export function Directory({
       <p className="eyebrow directory-path">{path}</p>
       <h1><DecodeText text={title} /></h1>
       {children}
+      <TypeOut />
     </section>
   );
 }

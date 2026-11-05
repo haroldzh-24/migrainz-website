@@ -61,6 +61,7 @@ export default function HomeTerminal({ projects, clearance }: { projects: Termin
   useEffect(() => {
     const cancelled = (event: Event) => {
       if ((event as CustomEvent<{ source?: string }>).detail?.source !== "terminal") return; // only moves the terminal began
+      typing.finish(); // the ^C line is complete at once, so nothing types above it (16b)
       setCwd("~"); setLines(current => [...current, { text: "^C cancelled; still at ~", kind: "dim" as const, id: nextId.current++ }].slice(-OUTPUT_LIMIT)); };
     window.addEventListener("migrainz:open-route-cancelled", cancelled);
     return () => window.removeEventListener("migrainz:open-route-cancelled", cancelled);
