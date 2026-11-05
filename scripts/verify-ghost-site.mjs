@@ -161,7 +161,9 @@ try {
   }
   {
     const { context, page } = await open('misclick', { reducedMotion: 'reduce', href: '/projects' });
-    await page.waitForTimeout(2500);
+    // Settled first, then as long as the positive misclick test allows (20c), so a slow boot cannot hide a stunt.
+    await page.waitForFunction(() => document.documentElement.dataset.power === 'on' && !document.querySelector('.startup-sequence'));
+    await page.waitForTimeout(8000);
     assert.equal(await page.locator('.ghost-misclick').count(), 0);
     pass('reduced motion: no misclick on the grey desktop');
     await context.close();
@@ -169,10 +171,14 @@ try {
   // 8. Exorcised: nothing, even when forced (20b).
   {
     const { context, page } = await open('watcher,amber,misclick,boot-ad', { pre: { visits: 6, lastEvent: -10, exorcised: true } });
-    await page.waitForTimeout(3000);
+    await page.waitForFunction(() => document.documentElement.dataset.power === 'on' && !document.querySelector('.startup-sequence'));
+    await page.waitForTimeout(8000);
     assert.equal(await page.evaluate(() => document.documentElement.dataset.phosphor), 'green');
     assert.deepEqual(await page.evaluate(() => window.__ghost), [], 'no stunts once exorcised');
-    assert.equal(await page.locator('.ghost-file').count(), 0);
+    // The archive file too (visit 7 here), on the page where it would show.
+    await page.goto(base + '/archive');
+    await page.waitForTimeout(1500);
+    assert.equal(await page.locator('.ghost-file').count(), 0, 'no unlisted.txt once exorcised');
     pass('exorcised: no stunts even when forced');
     await context.close();
   }

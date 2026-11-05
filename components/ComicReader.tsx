@@ -71,7 +71,10 @@ export default function ComicReader({
   const seen = useRef(new Set<number>([0]));
   const [ghostLine, setGhostLine] = useState(false);
   // 20b: the strip stays while the pointer is on it or focus is in it, and gives focus back to the reader if it goes.
-  const [ghostHeld, setGhostHeld] = useState(false);
+  // Hover and focus are held apart (20c): leaving with the mouse never ends a hold that focus still has.
+  const [ghostHover, setGhostHover] = useState(false);
+  const [ghostFocus, setGhostFocus] = useState(false);
+  const ghostHeld = ghostHover || ghostFocus;
   const strip = useRef<HTMLParagraphElement>(null);
   useEffect(() => {
     if (!ghostLine || ghostHeld) return;
@@ -154,10 +157,10 @@ export default function ComicReader({
         </footer>
         <PageFlip ref={flip} />
         {/* Mounted before the strip appears, so screen readers announce its words (20b). */}
-        <span className="visually-hidden" role="status">{ghostLine && next ? "i've read what happens next." : ""}</span>
+        <span className="visually-hidden" role="status">{ghostLine && next ? `i've read what happens next. Link: chapter ${next.number}.` : ""}</span>
         {ghostLine && next && <p ref={strip} className="ghost-chapter"
-          onMouseEnter={() => setGhostHeld(true)} onMouseLeave={() => setGhostHeld(false)}
-          onFocus={() => setGhostHeld(true)} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setGhostHeld(false); }}>
+          onPointerEnter={event => { if (event.pointerType === "mouse") setGhostHover(true); }} onPointerLeave={() => setGhostHover(false)}
+          onFocus={() => setGhostFocus(true)} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setGhostFocus(false); }}>
           <span aria-hidden="true">i&apos;ve read what happens next.</span> <Link href={next.href}>{`CHAPTER ${String(next.number).padStart(2, "0")} →`}</Link>
         </p>}
       </section>

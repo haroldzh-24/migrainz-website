@@ -39,11 +39,12 @@ export default function GhostHome() {
     // Activity cancels a pending retry of the Watcher's look; afterIdle then waits the full idle time again (20b).
     const cancelRetry = () => window.clearTimeout(retry);
     const ACTIVITY = ["keydown", "pointermove", "pointerdown", "wheel", "touchstart"] as const;
-    for (const type of ACTIVITY) window.addEventListener(type, cancelRetry, { passive: true, capture: true });
+    const watching = ghost.drawn("watcher"); // only the visit that drew the Watcher's look listens (20c)
+    if (watching) for (const type of ACTIVITY) window.addEventListener(type, cancelRetry, { passive: true, capture: true });
     let stopWatch = () => {}, restore = () => {};
 
     // The Watcher looks at the shop.
-    const stopIdle = !ghost.drawn("watcher") ? () => {} : afterIdle(ghost.delay("watcher", WATCHER_IDLE_MS), function look() {
+    const stopIdle = !watching ? () => {} : afterIdle(ghost.delay("watcher", WATCHER_IDLE_MS), function look() {
       if (cancelled) return;
       if (unsettled()) { retry = window.setTimeout(look, 1000); return; }
       const target = document.querySelector<HTMLElement>("#shop .nav-trigger");
