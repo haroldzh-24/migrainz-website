@@ -1,5 +1,6 @@
 "use client";
 
+import { reducedMotion } from "@/components/home/motion";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useId, useRef, useState, type MutableRefObject, type PointerEvent } from "react";
@@ -305,7 +306,7 @@ export function ArtworkCanvas({ image, view, onChange, schematic = false, reader
         }}
         onLoad={(event) => {
           setNatural({ width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight });
-          const motion = scan && slow && document.documentElement.dataset.crt === "on" && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+          const motion = scan && slow && document.documentElement.dataset.crt === "on" && !reducedMotion();
           setDecode(motion ? "scan" : "done");
         }}
         style={ready ? box : { visibility: "hidden" }} />
@@ -352,7 +353,7 @@ export default function ArtViewer() {
     if (!row || !current) return;
     const outer = row.getBoundingClientRect(), inner = current.getBoundingClientRect();
     const left = inner.left < outer.left ? row.scrollLeft + inner.left - outer.left - 8 : inner.right > outer.right ? row.scrollLeft + inner.right - outer.right + 8 : null;
-    if (left !== null) row.scrollTo({ left, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    if (left !== null) row.scrollTo({ left, behavior: reducedMotion() ? "auto" : "smooth" });
   }, [imageIndex, active?.id]);
   // Escape closes the viewer whenever it is open, also after another window took focus (bugs.md 2026-10-22). One Escape
   // closes one thing: it listens on window, after the document-level handlers (inspector, promo and monitor windows),

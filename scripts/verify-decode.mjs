@@ -22,6 +22,13 @@ const policies = require('./policy-watch.cjs').watchBrowser(browser);
 const errors = [];
 const pass = message => console.log('PASS ' + message);
 
+// Batch 22: SYSTEM ▸ MOTION: REDUCED and the plain view (saved settings) must act like the OS reduced-motion setting.
+const REDUCED_SETUPS = [
+  { name: 'reduced motion', options: { reducedMotion: 'reduce' } },
+  { name: 'MOTION: REDUCED', options: {}, storage: ['migrainz-motion', 'reduced'] },
+  { name: 'plain view', options: {}, storage: ['migrainz-view', 'plain'] },
+];
+const applySetup = async (context, setup) => { if (setup.storage) await context.addInitScript(([key, value]) => { try { localStorage.setItem(key, value); } catch {} }, setup.storage); };
 const open = async ({ width = 1366, height = 768, reducedMotion = 'no-preference', blockStorage = false } = {}) => {
   const context = await browser.newContext({ viewport: { width, height }, reducedMotion });
   await context.addInitScript(blocked => {
@@ -155,15 +162,16 @@ try {
   }
 
   // 6. Reduced motion: no decode.
-  {
-    const { context, page } = await open({ reducedMotion: 'reduce' });
+  for (const setup of REDUCED_SETUPS) {
+    const { context, page } = await open(setup.options);
+    await applySetup(context, setup);
     await page.goto(base + '/');
     await ready(page);
     await page.locator('.terminal-nav a[href="/tracker"]').click();
     await page.waitForURL(/\/tracker$/);
     await page.waitForTimeout(1500);
-    assert.deepEqual(await decodes(page), [], 'reduced motion: no decode');
-    pass('reduced motion: no decode');
+    assert.deepEqual(await decodes(page), [], `${setup.name}: no decode`);
+    pass(`${setup.name}: no decode`);
     await context.close();
   }
 

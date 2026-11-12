@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, type ReactNode } from "react";
 import WatcherArt from "./WatcherArt";
+import { onMotionChange, reducedMotion } from "@/components/home/motion";
 
 // Full deflection distance, and the eye sockets' centre as a fraction of the 1200px source canvas.
 const FULL_DEFLECTION = 180;
@@ -27,11 +28,10 @@ export default function Watcher({ children }: { children?: ReactNode }) {
   // The checks run at each tick, so switching CRT mode or reduced motion takes effect without a reload.
   useEffect(() => {
     const element = jitter.current!;
-    const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
     let next = 0, back = 0;
     const schedule = () => { next = window.setTimeout(jolt, JITTER_MIN_MS + Math.random() * (JITTER_MAX_MS - JITTER_MIN_MS)); };
     const jolt = () => {
-      if (document.documentElement.dataset.crt === "on" && !motion.matches && !document.hidden) {
+      if (document.documentElement.dataset.crt === "on" && !reducedMotion() && !document.hidden) {
         element.dataset.jitter = Math.random() < 0.5 ? "left" : "right";
         back = window.setTimeout(() => { delete element.dataset.jitter; }, JITTER_MS);
       }
@@ -52,7 +52,6 @@ export default function Watcher({ children }: { children?: ReactNode }) {
     const readoutY = container.querySelector<HTMLElement>("#readout-y")!;
     const head = container.querySelector<HTMLElement>(".watcher-art")!;
     const eyes = container.querySelector<SVGGElement>(".watcher-eyes")!;
-    const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
     let position: { x: number; y: number } | null = null;
     let target = { x: 0, y: 0 };
     const eye = { x: 0, y: 0 }, body = { x: 0, y: 0 };
@@ -103,7 +102,7 @@ export default function Watcher({ children }: { children?: ReactNode }) {
       if (moving) frame = requestAnimationFrame(tick);
     };
     const wake = () => {
-      if (!frame && !preference.matches && !document.hidden) {
+      if (!frame && !reducedMotion() && !document.hidden) {
         previous = performance.now();
         frame = requestAnimationFrame(tick);
       }
@@ -111,7 +110,7 @@ export default function Watcher({ children }: { children?: ReactNode }) {
     const reset = () => {
       clearTimeout(hold);
       position = null; dirty = true;
-      if (preference.matches || document.hidden) {
+      if (reducedMotion() || document.hidden) {
         cancelAnimationFrame(frame); frame = 0;
         target = { x: 0, y: 0 }; eye.x = eye.y = body.x = body.y = 0;
         readout();
@@ -119,7 +118,7 @@ export default function Watcher({ children }: { children?: ReactNode }) {
       } else wake();
     };
     const track = (event: PointerEvent) => {
-      if (preference.matches || document.hidden) return;
+      if (reducedMotion() || document.hidden) return;
       clearTimeout(hold);
       position = { x: event.clientX, y: event.clientY }; dirty = true; wake();
     };
@@ -133,7 +132,7 @@ export default function Watcher({ children }: { children?: ReactNode }) {
     // Keyboard focus: look at the focused control for a moment, then recentre.
     const glance = (event: Event) => {
       const detail = (event as CustomEvent<WatcherGlanceDetail>).detail;
-      if (!detail || preference.matches || document.hidden) return;
+      if (!detail || reducedMotion() || document.hidden) return;
       clearTimeout(hold);
       position = { x: detail.x, y: detail.y }; dirty = true; wake();
       hold = window.setTimeout(reset, detail.hold ?? TOUCH_HOLD_MS);
@@ -148,7 +147,7 @@ export default function Watcher({ children }: { children?: ReactNode }) {
     window.addEventListener("scroll", rescroll, { passive: true });
     window.addEventListener(WATCHER_GLANCE_EVENT, glance);
     root_.addEventListener("pointerleave", leave);
-    preference.addEventListener("change", reset);
+    const stopSettings = onMotionChange(reset);
     window.addEventListener("blur", reset);
     document.addEventListener("visibilitychange", reset);
     return () => {
@@ -161,7 +160,7 @@ export default function Watcher({ children }: { children?: ReactNode }) {
       window.removeEventListener("scroll", rescroll);
       window.removeEventListener(WATCHER_GLANCE_EVENT, glance);
       root_.removeEventListener("pointerleave", leave);
-      preference.removeEventListener("change", reset);
+      stopSettings();
       window.removeEventListener("blur", reset);
       document.removeEventListener("visibilitychange", reset);
     };

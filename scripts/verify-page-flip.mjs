@@ -27,6 +27,13 @@ const errors = [];
 const pass = message => console.log('PASS ' + message);
 const READER = '/comics/blushland/chapter-01';
 
+// Batch 22: SYSTEM ▸ MOTION: REDUCED and the plain view (saved settings) must act like the OS reduced-motion setting.
+const REDUCED_SETUPS = [
+  { name: 'reduced motion', options: { reducedMotion: 'reduce' } },
+  { name: 'MOTION: REDUCED', options: {}, storage: ['migrainz-motion', 'reduced'] },
+  { name: 'plain view', options: {}, storage: ['migrainz-view', 'plain'] },
+];
+const applySetup = async (context, setup) => { if (setup.storage) await context.addInitScript(([key, value]) => { try { localStorage.setItem(key, value); } catch {} }, setup.storage); };
 const open = async ({ width = 1366, height = 768, reducedMotion = 'no-preference' } = {}) => {
   const context = await browser.newContext({ viewport: { width, height }, reducedMotion });
   await context.addInitScript(() => {
@@ -188,14 +195,15 @@ try {
   }
 
   // 7. Reduced motion and CRT off: the page turns at once, no overlay.
-  {
-    const { context, page } = await open({ reducedMotion: 'reduce' });
+  for (const setup of REDUCED_SETUPS) {
+    const { context, page } = await open(setup.options);
+    await applySetup(context, setup);
     await page.goto(base + READER);
     await ready(page);
     await loaded(page);
     await next(page).click();
     await page.waitForTimeout(300);
-    assert.deepEqual(await flips(page), [], 'reduced motion: no flip');
+    assert.deepEqual(await flips(page), [], `${setup.name}: no flip`);
     await context.close();
   }
   {

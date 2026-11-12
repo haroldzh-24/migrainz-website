@@ -1,5 +1,6 @@
 "use client";
 
+import { reducedMotion } from "@/components/home/motion";
 import { usePathname } from "next/navigation";
 import { useLayoutEffect, useRef, useState } from "react";
 import { arrival, visitRecord } from "@/lib/arrival";
@@ -35,7 +36,7 @@ function shouldDecode(element: HTMLElement | null, text: string) {
   if (path === "/" || isGraphicsPath(path) || isGraphicsPath(arrival.lastPath ?? "/")) return false;
   if (root.dataset.power !== "on" || document.querySelector("main#top.power-on")) return false;
   if (element.closest(".retro-window") || document.querySelector(".graphics-route")) return false;
-  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || root.dataset.crt === "off") return false;
+  if (reducedMotion() || root.dataset.crt === "off") return false;
   return PRINTABLE.test(text) && !decoded.has(path);
 }
 

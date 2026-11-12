@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { useSound } from "@/components/SoundProvider";
-import CrtToggle, { PhosphorToggle } from "@/components/CrtToggle";
+import CrtToggle, { MotionToggle, PhosphorToggle, ViewToggle } from "@/components/CrtToggle";
 
 /**
  * Header SYSTEM menu: display settings behind a disclosure button. The panel stays mounted while closed (hidden)
@@ -55,6 +55,8 @@ export default function SystemMenu() {
           SND: {enabled ? "ON" : "OFF"}
         </button>
         <PhosphorToggle />
+        <ViewToggle />
+        <MotionToggle />
       </div>
     </div>
   );

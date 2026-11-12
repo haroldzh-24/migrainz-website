@@ -35,11 +35,14 @@ const plexMono = localFont({
 
 // Runs before first paint so a saved CRT mode or phosphor colour never flashes the default.
 // Batch 17: also marks html[data-typeout="pending"] before the first paint when a dark terminal page will type its
-// first screen (components/TypeOut.tsx): motion allowed, CRT not off, the Highlight API there, not "/" or a grey-window
+// first screen (components/TypeOut.tsx): motion allowed (OS setting, SYSTEM ▸ MOTION, not the plain view), CRT not off, the Highlight API there, not "/" or a grey-window
 // path, not typed this visit, and neither the boot nor the announcement will show. The mark hides the text until typing
 // starts, and clears itself after 2 s if the page never gets that far (then it does not type).
-const typeOutCheck = `var w=location.pathname,s=sessionStorage,t=[];try{t=JSON.parse(s.getItem("migrainz-typed-v1")||"[]")}catch(e){}var g=!/^\\/projects\\/[^/]+\\/equipment\\/?$/.test(w)&&/^\\/(projects|comics|archive)(\\/|$)/.test(w),a=${JSON.stringify(announcement.enabled ? announcement.id : "")},c=!a||s.getItem("migrainz-announcement:"+a)===a;if(w!=="/"&&!g&&c&&Array.isArray(t)&&t.indexOf(w)<0&&d.crt!=="off"&&typeof CSS!=="undefined"&&CSS.highlights&&typeof Highlight==="function"&&!matchMedia("(prefers-reduced-motion: reduce)").matches&&!matchMedia("(forced-colors: active)").matches){d.typeout="pending";setTimeout(function(){if(d.typeout==="pending")delete d.typeout},2000)}`;
-const crtModeScript = `try{var d=document.documentElement.dataset,m=localStorage.getItem("crt-effects"),p=localStorage.getItem("crt-phosphor");if(m==="on"||m==="reduced"||m==="off")d.crt=m;if(p==="green"||p==="amber")d.phosphor=p;${typeOutCheck}}catch(e){}`;
+const typeOutCheck = `var w=location.pathname,s=sessionStorage,t=[];try{t=JSON.parse(s.getItem("migrainz-typed-v1")||"[]")}catch(e){}var g=!/^\\/projects\\/[^/]+\\/equipment\\/?$/.test(w)&&/^\\/(projects|comics|archive)(\\/|$)/.test(w),a=${JSON.stringify(announcement.enabled ? announcement.id : "")},c=!a||s.getItem("migrainz-announcement:"+a)===a;if(w!=="/"&&!g&&c&&Array.isArray(t)&&t.indexOf(w)<0&&d.crt!=="off"&&d.motion!=="reduced"&&d.view!=="plain"&&typeof CSS!=="undefined"&&CSS.highlights&&typeof Highlight==="function"&&!matchMedia("(prefers-reduced-motion: reduce)").matches&&!matchMedia("(forced-colors: active)").matches){d.typeout="pending";setTimeout(function(){if(d.typeout==="pending")delete d.typeout},2000)}`;
+// Batch 22: also the reading view (SYSTEM ▸ VIEW, `migrainz-view`: html[data-view="plain"]) and SYSTEM ▸ MOTION
+// (`migrainz-motion`: html[data-motion="reduced"]), so a plain page is light from its first frame and nothing typed is
+// hidden in it.
+const crtModeScript = `try{var d=document.documentElement.dataset,m=localStorage.getItem("crt-effects"),p=localStorage.getItem("crt-phosphor"),v=localStorage.getItem("migrainz-view"),o=localStorage.getItem("migrainz-motion");if(m==="on"||m==="reduced"||m==="off")d.crt=m;if(p==="green"||p==="amber")d.phosphor=p;if(v==="terminal"||v==="plain")d.view=v;if(o==="auto"||o==="reduced")d.motion=o;${typeOutCheck}}catch(e){}`;
 
 export const dynamic = "force-dynamic";
 
@@ -70,7 +73,7 @@ export const metadata: Metadata = {
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const viewer = await viewerAccess();
   return (
-    <html lang="en" data-scroll-behavior="smooth" data-crt="on" data-phosphor="green" className={plexMono.variable} suppressHydrationWarning>
+    <html lang="en" data-scroll-behavior="smooth" data-crt="on" data-phosphor="green" data-view="terminal" data-motion="auto" className={plexMono.variable} suppressHydrationWarning>
       <head><InlineScript code={crtModeScript} /></head>
       <body>
         {/* Display-time recolour, black to --crt-bg through --crt-dim and --crt-text to white at --crt-bright.

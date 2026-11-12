@@ -4,6 +4,7 @@
 // so React is untouched, the layout is final from the first frame, textContent and screen readers always get the full
 // text, and search engines and no-JS visitors see everything. Where the API is missing (or forced colours are on), text
 // simply shows complete. Client-only.
+import { reducedMotion } from "@/components/home/motion";
 
 export const TYPE_CPS = 55;
 
@@ -12,7 +13,7 @@ export const typingSupported = () =>
 
 /** Typing may run: supported, motion allowed, CRT not off. */
 export const typingAllowed = () =>
-  typingSupported() && !window.matchMedia("(prefers-reduced-motion: reduce)").matches && document.documentElement.dataset.crt !== "off";
+  typingSupported() && !reducedMotion() && document.documentElement.dataset.crt !== "off";
 
 let shared: Highlight | null = null;
 /** The one "untyped" highlight; each user adds and removes its own ranges. */

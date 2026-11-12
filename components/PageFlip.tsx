@@ -1,5 +1,6 @@
 "use client";
 
+import { reducedMotion } from "@/components/home/motion";
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { setBusy } from "@/lib/busy";
 import { cssTime } from "@/lib/css-time";
@@ -37,7 +38,7 @@ const DEFAULT_MS = 550;
 
 const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 const smooth = (a: number, b: number, x: number) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
-const plain = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches || document.documentElement.dataset.crt === "off";
+const plain = () => reducedMotion() || document.documentElement.dataset.crt === "off";
 const flipMs = () => cssTime("--motion-page-flip", DEFAULT_MS);
 const usable = (image: HTMLImageElement | null): image is HTMLImageElement =>
   Boolean(image && image.complete && image.naturalWidth > 0 && image.style.visibility !== "hidden");
