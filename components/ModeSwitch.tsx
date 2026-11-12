@@ -4,6 +4,7 @@ import { reducedMotion } from "@/components/home/motion";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { GRAPHICS_LINES, LAST_TERMINAL_KEY, fileForPath, isGraphicsPath } from "@/lib/graphics-mode";
+import { boxOf, phoneWidth, playZoomOutline, routeWindow, slideSheetUp, type Box } from "@/components/zoom-outline";
 
 /**
  * The switch between the green terminal and the grey-window desktop (design canvas board 2; Harold, 2026-10-29: "the
@@ -15,11 +16,15 @@ import { GRAPHICS_LINES, LAST_TERMINAL_KEY, fileForPath, isGraphicsPath } from "
  * A plain key, click or tap during the print, collapse or line skips to the end; other keys pass. Pages say which mode
  * they are in with <GraphicsRouteMarker /> (components/GraphicsRouteMarker.tsx); a link can opt out with data-mode-switch="off".
  * Durations are mirrored in globals.css ("The switch itself").
+ * Batch 27 (Win95 polish, P2-2): as the desktop is revealed, a stepping dotted outline zooms from the clicked item to the
+ * window (components/zoom-outline.ts); on phones the window slides up as a sheet instead. Closing the route's window on
+ * the desktop ("migrainz:close-route", after its outline to the taskbar button) goes back to the last terminal page,
+ * which plays the reverse. Neither delays anything: they play over the reveal and while the route loads.
  */
 export const MODE_TIMING = { step: 70, hold: 120, collapse: 200, line: 170, black: 140, reveal: 240, fade: 160, rblack: 60, rline: 170, ropen: 200, settle: 400, slow: 1200, wait: 15000, doubleClick: 250 };
 
 type Stage = "idle" | "print" | "collapse" | "line" | "black" | "reveal" | "fade-in" | "fade-out" | "rblack" | "rline" | "ropen";
-type Forward = { from: string; pushed: boolean; started: number; push: () => void; source?: string };
+type Forward = { from: string; pushed: boolean; started: number; push: () => void; source?: string; origin?: Box | null };
 
 const graphicsShown = () => Boolean(document.querySelector(".graphics-route"));
 const plain = () => reducedMotion() || document.documentElement.dataset.crt === "off";
@@ -73,15 +78,22 @@ export default function ModeSwitch() {
     check();
   };
 
+  // The window arrives (forward reveal, flick): the outline from the clicked item, or the sheet on phones.
+  const arrive = (origin?: Box | null) => {
+    const target = routeWindow();
+    if (phoneWidth()) slideSheetUp(target);
+    else playZoomOutline(origin ?? null, boxOf(target), "open");
+  };
+
   // Forward: terminal page to a grey-window route.
-  const open = (href: string, source?: string) => {
+  const open = (href: string, source?: string, origin?: Box | null) => {
     const url = new URL(href, window.location.href);
     const path = url.pathname + url.search + url.hash;
     clear();
     // The routes are dynamic, which Next does not prefetch on its own: ask for the full route now (what
     // <Link prefetch={true}> does), so the server works while the animation runs and the push finds it ready.
     try { routerRef.current.prefetch(path, { kind: "full" } as unknown as Parameters<ReturnType<typeof useRouter>["prefetch"]>[1]); } catch { /* best effort */ }
-    const run: Forward = { from: window.location.pathname, pushed: false, started: performance.now(), source, push: () => { if (!run.pushed) { run.pushed = true; routerRef.current.push(path); } } };
+    const run: Forward = { from: window.location.pathname, pushed: false, started: performance.now(), source, origin, push: () => { if (!run.pushed) { run.pushed = true; routerRef.current.push(path); } } };
     forward.current = run;
     if (plain()) {
       setLines([]);
@@ -104,7 +116,7 @@ export default function ModeSwitch() {
     later(at, () => {
       setStage("black");
       run.push();
-      later(MODE_TIMING.black, () => whenArrived(run, () => { setStage("reveal"); later(MODE_TIMING.reveal, finish); }));
+      later(MODE_TIMING.black, () => whenArrived(run, () => { setStage("reveal"); arrive(run.origin); later(MODE_TIMING.reveal, finish); }));
     });
   };
 
@@ -128,18 +140,19 @@ export default function ModeSwitch() {
   // Links and the homepage terminal. Capture on window runs before React's handlers, so next/link sees the click as
   // handled (defaultPrevented) and leaves the navigation to this component.
   useEffect(() => {
-    const follow = (href: string, source?: string) => {
+    const follow = (href: string, source?: string, origin?: Box | null) => {
       const url = new URL(href, window.location.href);
       if (url.origin !== window.location.origin || !isGraphicsPath(url.pathname) || url.pathname === window.location.pathname) return false;
       if (graphicsShown() || forward.current) return false;
-      openRef.current(url.href, source);
+      openRef.current(url.href, source, origin);
       return true;
     };
     const onClick = (event: MouseEvent) => {
       if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
       const anchor = event.target instanceof Element ? event.target.closest("a[href]") : null;
       if (!(anchor instanceof HTMLAnchorElement) || (anchor.target && anchor.target !== "_self") || anchor.hasAttribute("download") || anchor.closest('[data-mode-switch="off"]')) return;
-      if (follow(anchor.href)) event.preventDefault();
+      // The clicked item's box, saved now (the page under it is about to go) for the zoom outline.
+      if (follow(anchor.href, undefined, boxOf(anchor))) event.preventDefault();
     };
     const onOpenRoute = (event: Event) => {
       const detail = (event as CustomEvent<{ href?: string; source?: string }>).detail;
@@ -148,6 +161,14 @@ export default function ModeSwitch() {
     // Browser Back or Forward during a run: the visitor has gone elsewhere, so the run ends at once (before the push it
     // never navigates; after it, the cover simply lifts on wherever history went).
     const onPop = () => { if (forward.current) finish(); };
+    // The route's window was closed on the desktop: back to the last terminal page (the reverse plays on arrival).
+    const onCloseRoute = () => {
+      if (!graphicsShown() || forward.current) return;
+      let href = "/";
+      try { href = sessionStorage.getItem(LAST_TERMINAL_KEY) || "/"; } catch { /* optional storage */ }
+      routerRef.current.push(href);
+    };
+    window.addEventListener("migrainz:close-route", onCloseRoute);
     window.addEventListener("click", onClick, true);
     window.addEventListener("migrainz:open-route", onOpenRoute);
     window.addEventListener("popstate", onPop);
@@ -155,6 +176,7 @@ export default function ModeSwitch() {
       window.removeEventListener("click", onClick, true);
       window.removeEventListener("migrainz:open-route", onOpenRoute);
       window.removeEventListener("popstate", onPop);
+      window.removeEventListener("migrainz:close-route", onCloseRoute);
       clear();
     };
     // finish only touches refs and setters.
@@ -204,7 +226,7 @@ export default function ModeSwitch() {
       later(MODE_TIMING.fade, done);
     } else if (now) {
       setStage("black");
-      later(MODE_TIMING.black, () => { setStage("reveal"); later(MODE_TIMING.reveal, done); });
+      later(MODE_TIMING.black, () => { setStage("reveal"); arrive(null); later(MODE_TIMING.reveal, done); });
     } else {
       setStage("rblack");
       later(MODE_TIMING.rblack, () => setStage("rline"));

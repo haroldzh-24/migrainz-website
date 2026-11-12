@@ -13,6 +13,7 @@ import { useSound } from "@/components/SoundProvider";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { LAST_TERMINAL_KEY } from "@/lib/graphics-mode";
+import { zoomToTaskbar } from "@/components/zoom-outline";
 
 type WindowPosition = { x: number; y: number };
 type WindowSize = { width: number; height: number };
@@ -223,6 +224,7 @@ export function WindowManagerProvider({ children }: { children: ReactNode }) {
   };
   const minimizeWindow = (id: string) => {
     if (id === "system") hideDesktop();
+    else zoomToTaskbar(id, "minimize"); // batch 27: window → its taskbar button (desktop only; decoration)
     // The opener is kept: restoring and then closing the viewer still returns there.
     if (id === viewerWindowId && !desktopVisible) handBackFocus(viewerHandBack(viewerOpener.current));
     setWindows((current) => current.map((window) => window.id === id ? { ...window, minimized: true, focused: false } : window));
@@ -235,6 +237,7 @@ export function WindowManagerProvider({ children }: { children: ReactNode }) {
   };
   const closeWindow = (id: string) => {
     if (id === "system") hideDesktop();
+    else zoomToTaskbar(id, "close");
     if (id === viewerWindowId) {
       try { window.sessionStorage.setItem(viewerClosedKey, "1"); } catch { /* Optional storage. */ }
       // Not while the SYSTEM monitor is showing (it manages its own focus).
@@ -329,7 +332,7 @@ export function useWindowManager() {
   return context;
 }
 
-export function RetroWindow({ id, title, defaultPosition, defaultSize, defaultOpen = true, defaultMaximized = false, className, children, titlebarContent, onToggleMaximize, renderBeforeWorkspace = false }: {
+export function RetroWindow({ id, title, defaultPosition, defaultSize, defaultOpen = true, defaultMaximized = false, className, children, titlebarContent, onToggleMaximize, renderBeforeWorkspace = false, routeWindow = false }: {
   id: string;
   title: string;
   defaultPosition: WindowPosition;
@@ -348,6 +351,9 @@ export function RetroWindow({ id, title, defaultPosition, defaultSize, defaultOp
   // .graphics-route marker, keyed by :root:has() in globals.css) relies on the same: a previous route kept hidden in the
   // DOM would turn terminal pages teal.
   renderBeforeWorkspace?: boolean;
+  // The window the route opened (RouteApplication, the comic reader; batch 27): closing it on the desktop goes back to
+  // the last terminal page with the reverse switch (components/ModeSwitch.tsx, "migrainz:close-route").
+  routeWindow?: boolean;
 }) {
   const manager = useWindowManager();
   const targetWorkspace = id === "system" ? manager.systemWorkspace : manager.workspace;
@@ -412,14 +418,17 @@ export function RetroWindow({ id, title, defaultPosition, defaultSize, defaultOp
   if (!current.open || current.minimized) return null;
   if (!targetWorkspace) return renderBeforeWorkspace ? <BeforeWorkspace.Provider value={true}><div className="retro-window-pending" hidden>{children}</div></BeforeWorkspace.Provider> : null;
   const size = windowSize(id, current.size, targetWorkspace);
-  return createPortal(<section ref={windowElement} tabIndex={-1} className={`retro-window${className ? ` ${className}` : ""}`} data-maximized={current.maximized || undefined} data-focused={current.focused} style={{ left: current.position.x, top: current.position.y, width: size.width, height: size.height, zIndex: current.zIndex }} onFocusCapture={() => { if (!current.focused) manager.focusWindow(id, "click"); }} onPointerDown={() => manager.focusWindow(id)} aria-label={`${title} window`}>
+  return createPortal(<section ref={windowElement} tabIndex={-1} className={`retro-window${className ? ` ${className}` : ""}`} data-window-id={id} data-route-window={routeWindow || undefined} data-maximized={current.maximized || undefined} data-focused={current.focused} style={{ left: current.position.x, top: current.position.y, width: size.width, height: size.height, zIndex: current.zIndex }} onFocusCapture={() => { if (!current.focused) manager.focusWindow(id, "click"); }} onPointerDown={() => manager.focusWindow(id)} aria-label={`${title} window`}>
     <div className="retro-window-titlebar" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={stopDragging} onPointerCancel={stopDragging}>
       <strong>{title}</strong>
       {titlebarContent}
       <span className="retro-window-controls">
         {onToggleMaximize && <button type="button" className="art-viewer-maximize" aria-label={`${current.maximized ? "Restore" : "Maximize"} ${title}`} onClick={onToggleMaximize}>{current.maximized ? "❐" : "□"}</button>}
         <button type="button" aria-label={`Minimize ${title}`} onClick={() => manager.minimizeWindow(id)}>_</button>
-        <button type="button" aria-label={`Close ${title}`} onClick={() => manager.closeWindow(id)}>×</button>
+        <button type="button" aria-label={`Close ${title}`} onClick={() => {
+          manager.closeWindow(id);
+          if (routeWindow && document.querySelector(".graphics-route")) window.dispatchEvent(new CustomEvent("migrainz:close-route"));
+        }}>×</button>
       </span>
     </div>
     <div className="retro-window-body">{children}</div>
@@ -432,15 +441,24 @@ export function WindowLauncher({ id, children }: { id: string; children: ReactNo
 }
 
 export function WindowTaskbar({ system = false, inside = false }: { system?: boolean; inside?: boolean }) {
-  const { windows, viewerTabs, restoreWindow, desktopVisible } = useWindowManager();
-  const visibleWindows = windows.filter((window) => (system ? window.id === "system" : window.open && window.minimized) && (window.id !== viewerWindowId || viewerTabs.length > 0));
+  const { windows, viewerTabs, restoreWindow, minimizeWindow, desktopVisible } = useWindowManager();
+  // On the desktop taskbar (inside) every open window has a button (batch 27, Win95); elsewhere the dock holds the
+  // minimized windows only.
+  const visibleWindows = windows.filter((window) => (system ? window.id === "system" : window.open && (inside || window.minimized)) && (window.id !== viewerWindowId || viewerTabs.length > 0));
   if (!visibleWindows.length) return null;
   // Inside the desktop taskbar (already a navigation landmark) the window buttons are a group, not a second landmark.
   const Tag = inside ? "div" : "nav";
-  return <Tag className="window-taskbar" role={inside ? "group" : undefined} aria-label={system ? "SYSTEM window dock" : "Window dock"}>
+  return <Tag className="window-taskbar" role={inside ? "group" : undefined} aria-label={system ? "SYSTEM window dock" : inside ? "Open windows" : "Window dock"}>
     {visibleWindows.map((window) => {
       const visible = window.open && !window.minimized && (window.id !== "system" || desktopVisible);
-      return <button type="button" key={window.id} className={visible ? "is-open" : ""} aria-label={`${visible ? "Focus" : "Restore"} ${window.title}`} onClick={() => restoreWindow(window.id)}>[{window.title}]</button>;
+      if (inside) {
+        // Win95 taskbar button: named by the window, pressed while it is the active window; pressing the active one
+        // minimizes it, any other brings it up and to the front.
+        const active = visible && window.focused;
+        return <button type="button" key={window.id} data-window-id={window.id} className={active ? "is-open" : ""} aria-pressed={active} aria-label={window.title}
+          onClick={() => active ? minimizeWindow(window.id) : restoreWindow(window.id)}>[{window.title}]</button>;
+      }
+      return <button type="button" key={window.id} data-window-id={window.id} className={visible ? "is-open" : ""} aria-label={`${visible ? "Focus" : "Restore"} ${window.title}`} onClick={() => restoreWindow(window.id)}>[{window.title}]</button>;
     })}
   </Tag>;
 }

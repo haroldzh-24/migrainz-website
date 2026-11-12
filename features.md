@@ -1,5 +1,12 @@
 # Features
 
+## Implemented - 2026-11-12 / Win95 desktop polish (batch 27, P2-2)
+
+- Opening a project, comic or archive from the terminal now ends with a Win95 zoom: a dotted outline steps from the link you clicked to the window. Closing or minimizing a window zooms it down to its taskbar button; closing the project window (or the comic reader) takes you back to the terminal page you came from.
+- The desktop taskbar has a button for every open window; the active window's button is pressed in, pressing it minimizes the window, pressing another brings that window to the front.
+- On phones the window slides up from the bottom as a sheet after the switch.
+- None of the motion plays with MOTION: REDUCED, the plain view, CRT reduced or off, or the system's reduced-motion setting.
+
 ## Implemented - 2026-11-12 / Scroll-told project page (batch 26, board 21)
 
 - A project's overview reads as one file you scroll through inside its window: the title and key art, the logline and description, then CHARACTERS (cards with role and faction), EQUIPMENT (one turning schematic and the `.EQP` list), CHAPTERS (page counts), and the factions, writing, artwork, files and production log as before. An ON THIS PAGE index beside it (a strip at the top on phones) shows where you are, with a progress rail and SCROLL nnn% in the header; click an entry to jump there. Big outlined section numbers drift slightly and pictures reveal once as you scroll; all of it still with MOTION: REDUCED, the plain view, CRT off or in print. Every link and tab is unchanged.
