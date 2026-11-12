@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import SystemMenu from "@/components/SystemMenu";
+import { openPalette } from "@/lib/palette";
 
 export default function TerminalHeader() {
   const [clock, setClock] = useState("--:--:--");
@@ -32,6 +33,10 @@ export default function TerminalHeader() {
           <i aria-hidden="true" />
           ONLINE
         </span>
+        {/* Batch 23: the command palette (board 7). Shown with the menu bar (above 860 px); phones use SYSTEM ▸ SEARCH. */}
+        <button className="topbar-search" type="button" aria-keyshortcuts="Control+K Meta+K" onClick={event => openPalette("", event.currentTarget)}>
+          SEARCH<span className="topbar-search-key" aria-hidden="true">CTRL+K</span>
+        </button>
         <SystemMenu />
       </div>
     </header>

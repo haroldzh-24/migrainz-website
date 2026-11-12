@@ -2955,6 +2955,65 @@ html[data-view="plain"] .startup-page { visibility: visible !important; }
     --crt-bg: #fff; --crt-panel: #fff; --crt-text: #1b1b1b; --crt-bright: #1b1b1b; --crt-mid: #444444; --crt-dim: #555555; --crt-accent: #1a4fb5;
     --crt-border: rgba(0, 0, 0, 0.2); --crt-text-rgb: 27, 27, 27; --crt-bright-rgb: 27, 27, 27; --crt-border-rgb: 0, 0, 0;
   }
-  .crt, .crt-bezel, .phone-tabs, .public-window-dock, .skip-link, .system-menu, .nav-status, .startup-sequence, .mode-switch { display: none !important; }
+  .crt, .crt-bezel, .phone-tabs, .public-window-dock, .skip-link, .system-menu, .topbar-search, .command-palette, .nav-status, .startup-sequence, .mode-switch { display: none !important; }
   body::before { background: #fff !important; }
 }
+
+/* Batch 23: the command palette (design canvas board 7; components/CommandPalette.tsx). A modal dialog over a dimmed
+   page: one big input, results grouped RECORDS / COMMANDS (label left, hint right), a key line at the bottom. Built on
+   the colour tokens, so amber and the plain view follow; no motion of its own (it simply appears). Sits above windows,
+   the dock and the mode switch (90), below the boot screen (10000), which blocks Ctrl+K anyway. */
+.topbar-search { border: 0; padding: 0; background: transparent; color: var(--green); font: inherit; cursor: pointer; white-space: nowrap; letter-spacing: inherit; }
+.topbar-search:hover, .topbar-search:focus-visible { color: var(--crt-bright); text-shadow: var(--crt-glow-ui); }
+.topbar-search-key { margin-left: 8px; color: var(--crt-dim); }
+@media (max-width: 860px) { .topbar-search { display: none; } }
+.palette-toggle-key { color: var(--crt-dim); }
+.command-palette { position: fixed; inset: 0; z-index: 120; display: flex; justify-content: center; align-items: flex-start; padding: 64px 16px 16px; }
+.command-palette-backdrop { position: absolute; inset: 0; background: rgba(3, 5, 3, 0.6); }
+.command-palette-dialog {
+  position: relative; display: flex; flex-direction: column; width: 100%; max-width: 640px; max-height: calc(100dvh - 96px);
+  background: var(--crt-panel); color: var(--crt-text); border: 1px solid rgba(var(--crt-border-rgb, 140, 220, 160), 0.4);
+  box-shadow: 0 0 0 1px #000, 0 20px 60px rgba(0, 0, 0, 0.7); font-family: var(--crt-font);
+}
+.command-palette-field { display: block; }
+.command-palette-input {
+  display: block; width: 100%; box-sizing: border-box; margin: 0; padding: 16px 18px; border: 0; border-bottom: 1px solid rgba(var(--crt-border-rgb, 140, 220, 160), 0.3);
+  border-radius: 0; background: var(--crt-deep); color: var(--crt-bright); caret-color: var(--crt-bright); font: inherit; font-size: 18px; outline: none;
+}
+.command-palette-input::placeholder { color: var(--crt-dim); opacity: 1; font-size: 16px; } /* board 7's full text fits the 640 px input at 16px */
+.command-palette-input:focus-visible { box-shadow: inset 0 0 0 1px var(--crt-bright); }
+.command-palette-results { flex: 1 1 auto; min-height: 0; max-height: 470px; overflow: auto; overscroll-behavior: contain; padding: 6px 0; }
+/* Board 7 draws the group labels and the key line at 11px in --crt-dim; the site's 12px floor (redesign plan "Theme") and
+   contrast on the panel make them 12px in --crt-mid. */
+.command-palette-group { margin: 10px 18px 4px; font-size: 12px; letter-spacing: .14em; color: var(--crt-mid); }
+.command-palette-option { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 10px 18px; font-size: 14px; color: var(--crt-text); cursor: pointer; }
+.command-palette-label { min-width: 0; overflow-wrap: anywhere; }
+.command-palette-hint { flex: 0 1 auto; min-width: 0; font-size: 12px; color: var(--crt-dim); text-align: right; overflow-wrap: anywhere; }
+.command-palette-option[aria-selected="true"] { background: rgba(var(--crt-border-rgb, 140, 220, 160), 0.1); color: var(--crt-bright); box-shadow: inset 2px 0 0 var(--crt-bright); }
+.command-palette-option[aria-selected="true"] .command-palette-hint { color: var(--crt-mid); }
+.command-palette-note, .command-palette-empty { margin: 14px 18px; font-size: 14px; color: var(--crt-mid); }
+.command-palette-empty b { color: var(--crt-bright); }
+.command-palette-keys { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 0; padding: 10px 18px; border-top: 1px solid var(--crt-border); font-size: 12px; color: var(--crt-mid); }
+@media (max-width: 480px) {
+  .command-palette { padding: 12px 8px 8px; }
+  .command-palette-dialog { max-height: calc(100dvh - 20px); }
+  .command-palette-input { font-size: 17px; padding: 14px 14px; }
+  .command-palette-input::placeholder { font-size: 15px; }
+  .command-palette-option { padding: 11px 14px; flex-wrap: wrap; }
+  .command-palette-group, .command-palette-note, .command-palette-empty { margin-left: 14px; margin-right: 14px; }
+  .command-palette-keys { padding: 8px 14px; }
+}
+/* No keyboard on touch-only screens: the key line would describe keys that are not there. */
+@media (hover: none) and (pointer: coarse) { .command-palette-keys { display: none; } }
+/* Plain view: a light dialog (board 11 colours) over a lightly dimmed page; Arial labels, no glow. */
+html[data-view="plain"] .command-palette-backdrop { background: rgba(0, 0, 0, 0.32); }
+html[data-view="plain"] .command-palette-dialog { background: #fbfaf7; color: #1b1b1b; border-color: #8a8a8a; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3); font-family: var(--plain-sans); }
+html[data-view="plain"] .command-palette-input { background: #fff; color: #1b1b1b; caret-color: #1b1b1b; border-bottom-color: #8a8a8a; font-family: var(--plain-sans); }
+html[data-view="plain"] .command-palette-input::placeholder { color: #595959; }
+html[data-view="plain"] .command-palette-input:focus-visible { box-shadow: inset 0 0 0 2px #1a4fb5; }
+html[data-view="plain"] .command-palette-group { color: #555; letter-spacing: .1em; }
+html[data-view="plain"] .command-palette-option[aria-selected="true"] { background: #e3eaf8; color: #1b1b1b; box-shadow: inset 3px 0 0 #1a4fb5; }
+html[data-view="plain"] .command-palette-option[aria-selected="true"] .command-palette-hint { color: #444; }
+html[data-view="plain"] .command-palette-hint { color: #555; }
+html[data-view="plain"] .command-palette-empty b { color: #1b1b1b; }
+html[data-view="plain"] .topbar-search { color: var(--crt-text); }

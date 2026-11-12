@@ -568,7 +568,7 @@ try {
     else { const response = await get(local(icon.href)); if (response.status() !== 200) fail(`icon ${local(icon.href)} returned ${response.status()}`); }
     const robots = await get('/robots.txt');
     const robotsText = await robots.text();
-    for (const rule of ['Disallow: /admin', 'Disallow: /api/', 'Allow: /api/media/file/', 'Disallow: /auth/', 'Disallow: /boot-status'])
+    for (const rule of ['Disallow: /admin', 'Disallow: /api/', 'Allow: /api/media/file/', 'Disallow: /auth/', 'Disallow: /boot-status', 'Disallow: /search-index'])
       if (robots.status() !== 200 || !robotsText.includes(rule)) fail(`robots.txt lacks "${rule}" (status ${robots.status()})`);
     const meta = Object.fromEntries(tags('meta').map(tag => [tag.property ?? tag.name, tag.content]).filter(([key]) => key));
     for (const key of ['og:title', 'og:description', 'og:image', 'og:site_name', 'twitter:card']) if (!meta[key]) fail(`homepage has no ${key} meta tag`);
@@ -599,14 +599,14 @@ try {
   if (!selfTest) {
     const firstMedia = [...mediaLoaded].find(p => !/\.svg$/i.test(p));
     if (!firstMedia) fail('no media file was loaded by any page; cannot check media headers');
-    const headerPaths = ['/', '/projects', '/no-such-page', '/api/projects', '/robots.txt', '/opengraph-image.png', '/boot-status',
+    const headerPaths = ['/', '/projects', '/no-such-page', '/api/projects', '/robots.txt', '/opengraph-image.png', '/boot-status', '/search-index',
       '/admin', '/admin/login', '/admin/create-first-user', '/admin-notes', '/auth/patreon/start', ...(firstMedia ? [firstMedia] : [])];
     const before = failures.length;
     for (const p of headerPaths) {
       const response = await api.request.get(base + p, { timeout: 90000, maxRedirects: 0 });
       for (const problem of headerProblems(response.headers(), new URL(base + p).pathname)) fail(`${p} (${response.status()}): security header: ${problem}`);
       // Route headers still apply next to the config's (Patreon's private headers; the media route's own nosniff).
-      if (p === '/auth/patreon/start' && response.headers()['cache-control'] !== 'private, no-store') fail(`${p}: lost its private cache-control (${response.headers()['cache-control']})`);
+      if (['/auth/patreon/start', '/boot-status', '/search-index'].includes(p) && response.headers()['cache-control'] !== 'private, no-store') fail(`${p}: lost its private cache-control (${response.headers()['cache-control']})`);
     }
     console.log(`${failures.length > before ? 'FAIL' : 'PASS'} security headers on ${headerPaths.length} responses (pages, 404, API, ${firstMedia ?? 'no media'}, admin, Patreon redirect, metadata)`);
   }

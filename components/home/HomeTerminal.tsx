@@ -4,6 +4,8 @@ import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from
 import { useRouter } from "next/navigation";
 import { useSound } from "@/components/SoundProvider";
 import { openRoute } from "@/lib/graphics-mode";
+import { setDisplayMode } from "@/lib/display-mode";
+import { PENDING_KEY, TERMINAL_RUN_EVENT, openPalette } from "@/lib/palette";
 import { useTerminalTyping } from "@/components/home/useTerminalTyping";
 import { ghost } from "@/lib/ghost";
 import GhostTerminal from "@/components/ghost/GhostTerminal";
@@ -21,16 +23,9 @@ const SECTIONS = [
   { key: "requisitions", file: "requisitions.exe", promo: "shop", aliases: ["shop", "store", "requisitions.exe"] },
   { key: "patreon", file: "patreon.key", promo: "patreon", aliases: ["patreon.key", "clearance"] },
 ] as const;
-const COMMANDS = ["help", "ls", "cd", "open", "cat", "system", "whoami", "date", "echo", "clear", "crt", "phosphor", "view", "motion", "sound", "boot"];
+const COMMANDS = ["help", "ls", "cd", "open", "search", "cat", "system", "whoami", "date", "echo", "clear", "crt", "phosphor", "view", "motion", "sound", "boot"];
 const HISTORY_LIMIT = 50;
 const OUTPUT_LIMIT = 80;
-
-/** Writes a display mode the same way the SYSTEM menu does, and tells its buttons to catch up. */
-function setDisplayMode(attribute: "crt" | "phosphor" | "view" | "motion", storageKey: string, value: string) {
-  document.documentElement.dataset[attribute] = value;
-  try { localStorage.setItem(storageKey, value); } catch { /* storage may be blocked */ }
-  window.dispatchEvent(new CustomEvent("migrainz:display-mode", { detail: { attribute, value } }));
-}
 
 /**
  * The homepage terminal (design canvas board 23): a small shell that lists and opens the site's sections. It only
@@ -83,6 +78,20 @@ export default function HomeTerminal({ projects, clearance }: { projects: Termin
     return () => window.removeEventListener("migrainz:ghost-say", said);
   }, []);
 
+  // Batch 23: the command palette's `help` runs here (migrainz:terminal-run), also after it navigated home first (a
+  // one-shot sessionStorage note, read once on mount).
+  const runRef = useRef<(raw: string) => void>(() => {});
+  const inputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const request = (command: string) => { inputRef.current?.focus({ preventScroll: false }); runRef.current(command); };
+    const onRun = (event: Event) => { const command = (event as CustomEvent<{ command?: string }>).detail?.command; if (command) request(command); };
+    window.addEventListener(TERMINAL_RUN_EVENT, onRun);
+    let pending: string | null = null;
+    try { pending = sessionStorage.getItem(PENDING_KEY); sessionStorage.removeItem(PENDING_KEY); } catch { /* optional storage */ }
+    if (pending === "help") request(pending); // only the palette's own request, never arbitrary stored text
+    return () => window.removeEventListener(TERMINAL_RUN_EVENT, onRun);
+  }, []);
+
   const print = (next: Line[], reset = false) => {
     const numbered = next.map(line => ({ ...line, id: nextId.current++ }));
     typing.enqueue(numbered.filter(line => line.kind !== "in").map(line => line.id));
@@ -127,6 +136,7 @@ export default function HomeTerminal({ projects, clearance }: { projects: Termin
         { text: "ls                 list files (ls projects lists projects)", kind: "out" },
         { text: "cd <name|1-7>      open a section; cd .. goes home", kind: "out" },
         { text: "open <project>     open a project, e.g. open " + (projects[0]?.slug ?? "blushland"), kind: "out" },
+        { text: "search <text>      search records (Ctrl+K anywhere)", kind: "out" },
         { text: "cat info.txt       about the studio", kind: "out" },
         { text: "system             open the SYSTEM monitor", kind: "out" },
         { text: "whoami · date · echo <text> · clear", kind: "out" },
@@ -162,6 +172,10 @@ export default function HomeTerminal({ projects, clearance }: { projects: Termin
         const section = find(wanted);
         if (section) go(section, out); else out.push({ text: `open: ${argument || "?"}: not found. Try ls projects.`, kind: "err" });
       }
+    } else if (command === "search" || command === "find") {
+      // Batch 23: the command palette (board 7), with the rest of the line as its query; Escape comes back here.
+      out.push({ text: "> opening search ...", kind: "ok" });
+      openPalette(argument, inputRef.current);
     } else if (command === "cat" && /^\.?ghost\/?(note(\.txt)?)?$|^\.ghost\//i.test(argument) && !ghost.exorcised()) {
       const tries = ghost.noteTry();
       out.push({ text: `cat: ${argument}: permission denied`, kind: "err" });
@@ -204,19 +218,19 @@ export default function HomeTerminal({ projects, clearance }: { projects: Termin
       return;
     } else if (command === "crt") {
       const mode = argument.toLowerCase();
-      if (["on", "reduced", "off"].includes(mode)) { setDisplayMode("crt", "crt-effects", mode); out.push({ text: `crt.drv ......... ${mode}`, kind: "ok" }); }
+      if (["on", "reduced", "off"].includes(mode)) { setDisplayMode("crt", mode); out.push({ text: `crt.drv ......... ${mode}`, kind: "ok" }); }
       else out.push({ text: "usage: crt on|reduced|off", kind: "err" });
     } else if (command === "phosphor") {
       const mode = argument.toLowerCase();
-      if (["green", "amber"].includes(mode)) { setDisplayMode("phosphor", "crt-phosphor", mode); out.push({ text: `phosphor ........ ${mode}`, kind: "ok" }); }
+      if (["green", "amber"].includes(mode)) { setDisplayMode("phosphor", mode); out.push({ text: `phosphor ........ ${mode}`, kind: "ok" }); }
       else out.push({ text: "usage: phosphor green|amber", kind: "err" });
     } else if (command === "view") {
       const mode = argument.toLowerCase();
-      if (mode === "terminal" || mode === "plain") { setDisplayMode("view", "migrainz-view", mode); out.push({ text: `view ............ ${mode}`, kind: "ok" }); }
+      if (mode === "terminal" || mode === "plain") { setDisplayMode("view", mode); out.push({ text: `view ............ ${mode}`, kind: "ok" }); }
       else out.push({ text: "usage: view terminal|plain", kind: "err" });
     } else if (command === "motion") {
       const mode = argument.toLowerCase();
-      if (mode === "auto" || mode === "reduced") { setDisplayMode("motion", "migrainz-motion", mode); out.push({ text: `motion .......... ${mode}`, kind: "ok" }); }
+      if (mode === "auto" || mode === "reduced") { setDisplayMode("motion", mode); out.push({ text: `motion .......... ${mode}`, kind: "ok" }); }
       else out.push({ text: "usage: motion auto|reduced (auto follows your system setting)", kind: "err" });
     } else if (command === "sound" || command === "snd") {
       const mode = argument.toLowerCase();
@@ -239,6 +253,8 @@ export default function HomeTerminal({ projects, clearance }: { projects: Termin
     }
     print(out);
   };
+
+  runRef.current = run;
 
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Enter") {
@@ -282,7 +298,7 @@ export default function HomeTerminal({ projects, clearance }: { projects: Termin
         <GhostTerminal onSessions={setSessions} />
         <label htmlFor="home-terminal-input" className="visually-hidden">Terminal command</label>
         <span aria-hidden="true">public@migrainz:{cwd}$</span>
-        <input id="home-terminal-input" value={value} onChange={event => setValue(event.target.value)} onKeyDown={onKeyDown}
+        <input ref={inputRef} id="home-terminal-input" value={value} onChange={event => setValue(event.target.value)} onKeyDown={onKeyDown}
           placeholder="help" autoComplete="off" autoCapitalize="off" spellCheck={false} enterKeyHint="go" />
       </div>
     </section>

@@ -14,6 +14,7 @@ import InlineScript from "@/components/InlineScript";
 import { announcement } from "@/data/announcement";
 import HighlightEffects from "@/components/HighlightEffects";
 import ModeSwitch from "@/components/ModeSwitch";
+import CommandPalette from "@/components/CommandPalette";
 import NavigationStatus from "@/components/NavigationStatus";
 import PageTransition from "@/components/PageTransition";
 import GhostSystem from "@/components/GhostSystem";
@@ -110,6 +111,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           <ArtViewer />
           <AccessDeniedWindow />
           <ModeSwitch />
+          <CommandPalette />
           <NavigationStatus />
           <PageTransition />
           <GhostSystem />

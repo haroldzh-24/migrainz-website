@@ -1,8 +1,9 @@
 # Batch 21 (roadmap 0.7 / 4.4; Harold, 2026-11-12: yes). Runs the non-browser part of `npm run check` on every pull
 # request and every push to main. Free for public repositories (GitHub Actions minutes cost nothing there).
 #
-# - Needs NO secrets and loads no .env file: none is committed (.gitignore), and `npm run build` compiles offline with
-#   build-only placeholders (scripts/build-env.mjs); no database, Blob store, Vercel or Neon is contacted. Do not add
+# - Needs NO secrets and loads no .env file: none is committed (.gitignore). The build runs offline with build-only
+#   placeholders (scripts/build-env.mjs); the installs (npm ci, the pinned test tools fetched by npm exec) need the npm
+#   registry. No database, Blob store, Vercel or Neon is contacted. Do not add
 #   secrets or env vars here: that would be a change to secrets (AGENTS.md "Ask Harold first").
 # - The browser steps (regression, equipment-navigation, equipment-browser, viewer-pinch, window-pass) stay local:
 #   they need Chrome, a seeded dev fixture server and about 15 minutes on a 2-core machine, and their timing checks
@@ -12,6 +13,8 @@
 #   on (README: Node 20.9+; the Payload 3.92 upgrade will need ^22.23.4 or >=24.22.1). Update it with that upgrade.
 # - Pushing this file needs a GitHub token with the `workflow` scope (a plain `repo` token is refused for files under
 #   .github/workflows/). Every push to main is still a live deploy and needs Harold's OK.
+# - The two actions are pinned to commit SHAs (21b), with the tag in a comment; update both together, checking the tag's
+#   commit with `git ls-remote https://github.com/actions/<name>.git refs/tags/<tag>`.
 name: check
 
 on:
@@ -31,10 +34,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0 (= v4 on 2026-11-12)
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0 (= v4 on 2026-11-12)
         with:
           node-version: 22.23.4
           cache: npm

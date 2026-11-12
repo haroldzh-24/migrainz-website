@@ -54,6 +54,8 @@ try {
   await completed(launch(['--import', 'tsx', 'scripts/migrate-legacy-content.ts', '--apply']));
   await completed(launch(['--import', 'tsx', 'scripts/verify-content-migration.ts']));
   await completed(launch(['--import', 'tsx', 'scripts/seed-desktop-fixture.ts']));
+  // Batch 23: the command palette's index for an anonymous visitor and a signed-in patron (its own private fixture).
+  await completed(launch(['--import', 'tsx', '--import', './scripts/stubs/register.mjs', 'scripts/verify-search-index.ts']));
   const freePort = () => new Promise((resolve, reject) => {
     const probe = net.createServer();
     probe.once('error', reject);
@@ -117,6 +119,7 @@ try {
   server = await startServer();
   // Batch 22: on the fresh server, so the first server's memory growth (bugs.md) does not reach it.
   await completed(launch(['scripts/verify-plain-motion.mjs']));
+  await completed(launch(['scripts/verify-command-palette.mjs']));
   await completed(launch(['scripts/verify-site-health.mjs']));
   await completed(launch(['scripts/verify-site-health.mjs', '--self-test']));
 } catch (error) {

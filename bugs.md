@@ -14,6 +14,15 @@
 - No dedicated test yet (6c/7c, listed by the 8b review): the idle caption following a CRT-mode or reduced-motion change, the lens dropping a sample that went stale while loading, the motion helper reading the latest visibility entry.
 - Status: Open; questions for Harold.
 
+### 2026-11-12 - Batch 23: command palette limits
+
+- Patron records never appear in the palette, also for a signed-in patron (plan: public only); a patron finds them on the pages as before. The patron case is tested in-process (`scripts/verify-search-index.ts`, real access rules, offline Patreon fixture), not through the browser fixture server, which cannot sign in a patron (`scripts/fixture-env.mjs` refuses Patreon credentials).
+- The index is fetched once per page load (the first open) and kept until the page is reloaded; a record published meanwhile appears after a reload.
+- Matching is a plain substring (no typo tolerance, no ranking beyond "name starts with the text first"); at most 20 records are shown.
+- Ctrl+K is left to the browser in text fields, the homepage terminal (use `search`), the Art Viewer and the comic reader, during the boot, the power-on and a mode switch (the browser's own Ctrl+K, usually its search bar, runs there).
+- The key line is hidden on touch-only screens. Checked only in headless Chrome on the dev fixture (axe, keyboard, screenshots at 390 and 1366); not with a real screen reader, Safari, Firefox or a phone.
+- Status: Open (recorded).
+
 ### 2026-11-12 - Batch 22: plain view and MOTION limits
 
 - Switching to the plain view or MOTION: REDUCED while something is already moving: page wipes, decode, page flips and the mode switch check at their start, so one already running finishes; terminal typing that has started finishes (a tap or key still completes it at once). The CSS rules stop CSS animations at once.
@@ -30,7 +39,7 @@
 
 ### 2026-11-05 - Ghost limits (batches 18 to 20)
 
-- ~~A visit is a tab session, so a visitor opening links in new tabs reaches "visit 3" quickly.~~ Fixed batch 21 (Harold, 2026-11-12): a new visit counts only after 30 minutes with no recorded activity in the browser; a new tab within 30 minutes continues the visit (tested in `verify-ghost-core.mjs`). Limits: activity is written at most once a minute (and when the tab is hidden), so a gap can read up to a minute short; a tab left open past the gap keeps its visit until its next page load; two tabs of one visit share its one ambient event through storage, but a stunt both tabs claim within the same moment could still play in each (not tested).
+- ~~A visit is a tab session, so a visitor opening links in new tabs reaches "visit 3" quickly.~~ Fixed batch 21 (Harold, 2026-11-12): a new visit counts only after 30 minutes with no recorded activity in the browser; a new tab within 30 minutes continues the visit (tested in `verify-ghost-core.mjs`). Limits: activity is written at most once a minute (and when the tab is hidden), so a gap can read up to a minute short; a tab left open past the gap keeps its visit until its next page load; two tabs of one visit share its one ambient event through storage, but a stunt both tabs claim within the same moment could still play in each (not tested). 21b (batch 23, from batch 21's review): after another tab saved, a tab ignored its own activity until some ghost call reloaded the record (two open tabs could keep nulling each other), and a re-read after another tab's save stamped `lastActive` as if there had been activity and wrote storage, pinging the other tabs; now activity reloads the record and is recorded, and a re-read stamps and writes nothing (tested: keys and pointer presses after another tab saved, the once-a-minute throttle, activity keeping the visit for a new tab, two tabs sharing the visit's event and ad).
 - Without the Navigation API, after "Back wins" on an ambiguous history move the fallback trail can be off by one for later moves (16b note).
 - Background timers (the tab title) depend on the browser: Chrome throttles them, iOS may suspend the tab.
 - The end-of-chapter strip is not covered by an automated test: the fixture has no readable next chapter (checked by hand with a temporary change). It covers the bottom of the page for 6 s.
