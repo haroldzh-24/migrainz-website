@@ -83,11 +83,13 @@ try {
   assert(await page.locator('.artwork-file img').first().evaluate(el => el.naturalWidth > 0));
   results.push('Faction hover/focus preview; character/equipment drawings');
   await page.getByRole('button', { name: 'Minimize PROJECT: BLUSHLAND', exact: true }).click();
-  const tab = page.locator('.public-window-dock').getByRole('button', { name: 'Restore PROJECT: BLUSHLAND', exact: true });
-  assert.equal(await tab.count(), 1); await tab.click(); await tab.waitFor({ state: 'detached' });
+  // Batch 27: the desktop taskbar names each open window's button by the window and presses the active one.
+  const tab = page.locator('.public-window-dock').getByRole('button', { name: 'PROJECT: BLUSHLAND', exact: true });
+  assert.equal(await tab.count(), 1); assert.equal(await tab.getAttribute('aria-pressed'), 'false');
+  await tab.click(); await app.waitFor(); await page.waitForFunction(() => document.querySelector('.public-window-dock button[data-window-id="project"]')?.getAttribute('aria-pressed') === 'true');
   await page.getByRole('button', { name: 'Close PROJECT: BLUSHLAND', exact: true }).click();
   await app.waitFor({ state: 'detached' }); assert.equal(await tab.count(), 0); await page.getByRole('button', { name: 'OPEN PROJECT: BLUSHLAND' }).click();
-  results.push('Minimize/restore/close tabs and reopen');
+  results.push('Minimize/restore/close taskbar buttons (pressed state) and reopen');
   await page.locator('.artwork-file a').first().click();
   await page.getByRole('region', { name: 'ART VIEWER window' }).waitFor();
   await page.getByRole('button', { name: 'Close ART VIEWER', exact: true }).click(); results.push('Existing ART VIEWER opens');

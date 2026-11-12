@@ -158,6 +158,8 @@ try {
   server = await startServer();
   await step(['scripts/verify-dossier.mjs']);
   await step(['scripts/verify-scroll-file.mjs']);
+  // Batch 27: Win95 desktop polish (zoom outline, taskbar buttons, phone sheet).
+  await step(['scripts/verify-desktop-polish.mjs']);
   // Batch 25: one more fresh server for the site-health crawl. With verify-dossier added, the third server was killed
   // for memory (cgroup OOM, about 5.4 GB resident) during the crawl in this sandbox's 6 GB limit (bugs.md "Check environment").
   await stopServer(server);

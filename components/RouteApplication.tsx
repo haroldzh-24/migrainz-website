@@ -29,7 +29,7 @@ export default function RouteApplication({ id, title, navigation = [], children 
       <Link href="/">RETURN TO TERMINAL</Link>
     </div>
     <RetroWindow id={id} title={title} defaultMaximized defaultPosition={{ x: 24, y: 24 }} defaultSize={{ width: 1000, height: 720 }}
-      className="project-application" onToggleMaximize={() => manager.toggleMaximizeWindow(id)} renderBeforeWorkspace>
+      className="project-application" onToggleMaximize={() => manager.toggleMaximizeWindow(id)} renderBeforeWorkspace routeWindow>
       {navigation.length > 0 && <nav className="project-app-nav" aria-label="Project sections">{navigation.map(item =>
         <Link key={item.href} href={item.href} aria-current={pathname === item.href ? 'page' : undefined}>{item.label}</Link>)}</nav>}
       <div className="project-app-content" key={pathname}>{children}</div>

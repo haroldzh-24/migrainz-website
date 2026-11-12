@@ -14,6 +14,15 @@
 - No dedicated test yet (6c/7c, listed by the 8b review): the idle caption following a CRT-mode or reduced-motion change, the lens dropping a sample that went stale while loading, the motion helper reading the latest visibility entry.
 - Status: Open; questions for Harold.
 
+### 2026-11-12 - Batch 27: Win95 desktop polish limits
+
+- The opening outline plays over the reveal (starting with it, above the fading cover) rather than strictly after it, so it adds no time; it ends about 40 ms after the cover is gone. The plan said "after the desktop reveal"; holding it until the reveal ended would have left the window visible before its outline.
+- No outline when a route is opened without a click on a link: the command palette, the homepage terminal's typed commands, a key that skips the switch, browser Forward (flick). The phone sheet plays on the flick too.
+- Closing the route's window now leaves the desktop for the last terminal page with the reverse (decided in docs/redesign-plan.md); the empty desktop with OPEN … / RETURN TO TERMINAL is still reached by minimizing. The window disappears first, so the empty desktop shows for the time the terminal page takes to load (the outline plays over it).
+- The outline on phones only plays for close and minimize (to the taskbar button); opening uses the sheet.
+- Checked only in headless Chrome on the dev fixture (1366x768 and 390x844; screenshots are frozen frames: the outline's and reveal's timers held and animations paused); not on a real phone, Safari or Firefox, and not with a screen reader.
+- Status: Open (recorded limits).
+
 ### 2026-11-12 - Batch 26: scroll-told project page limits and open questions for Harold
 
 - **Open questions for Harold** (recorded, not changed):

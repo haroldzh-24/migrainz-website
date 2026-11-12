@@ -132,6 +132,7 @@ export default function ComicReader({
       id={windowID}
       title="COMIC READER"
       className="comic-reader-window"
+      routeWindow
       defaultPosition={{ x: 32, y: 24 }}
       defaultSize={{ width: 1040, height: 700 }}
       defaultMaximized

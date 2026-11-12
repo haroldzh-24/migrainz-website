@@ -2604,9 +2604,29 @@ html[data-motion="reduced"] .mode-switch-wait span, html[data-view="plain"] .mod
 @keyframes mode-line-out { from { opacity: 1; } to { opacity: 0; } }
 @keyframes mode-fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes mode-fade-out { from { opacity: 1; } to { opacity: 0; } }
+/* Batch 27 (P2-2): the desktop taskbar has a button for every open window; the active window's button is pressed in. */
+:root:has(.graphics-route) .public-window-dock .window-taskbar button { min-height: 32px; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+:root:has(.graphics-route) .public-window-dock .window-taskbar button[aria-pressed="true"] {
+  border-style: solid; border-color: #404040 #fff #fff #404040; background: #dcdcdc;
+}
+/* Zoom outline (components/zoom-outline.ts; ZOOM there): 7 dotted frames, 40 ms each, from one box to the other.
+   Only opacity animates; decoration that never takes input. Off with reduced motion, MOTION: REDUCED, the plain view,
+   CRT not "on" and in print (the script does not start it then either). */
+/* White drawn with "difference" inverts what is under it, like Win95's XOR outline: dark over a grey window, light over
+   the teal desktop and the black cover. */
+.zoom-outline { position: fixed; inset: 0; z-index: 95; pointer-events: none; overflow: hidden; mix-blend-mode: difference; }
+.zoom-outline i {
+  position: absolute; box-sizing: border-box; border: 2px dotted #fff; opacity: 0;
+  animation: zoom-step 40ms step-end calc(var(--zoom-step, 0) * 40ms) 1 none;
+}
+@keyframes zoom-step { from, to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .zoom-outline { display: none; } }
+html[data-motion="reduced"] .zoom-outline, html[data-view="plain"] .zoom-outline, html[data-crt]:not([data-crt="on"]) .zoom-outline { display: none; }
+@media print { .zoom-outline { display: none !important; } }
 @media (max-width: 700px) {
   :root:has(.graphics-route) .public-window-layer { top: calc(var(--header-bottom, 0px) + 4px); }
   :root:has(.graphics-route) .taskbar-terminal { min-height: 44px; }
+  :root:has(.graphics-route) .public-window-dock .window-taskbar button { min-height: 44px; max-width: 200px; }
   .mode-switch-log { bottom: 84px; font-size: 13px; }
 }
 
