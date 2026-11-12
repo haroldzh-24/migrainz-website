@@ -3,8 +3,10 @@
 //   BASE_URL=http://127.0.0.1:<port> node scripts/verify-ghost-core.mjs
 // Every other browser script runs with the ghost blocked (policy-watch.cjs); this one turns it back on per context with
 // localStorage migrainz-ghost-test ("" = the real rules, "force:<names>" = those always on).
-// Checks: a first visit gets no tails, console message or 404 line, while the hidden commands answer; a visit is a tab
-// session, counted once (also across a reload, which keeps its stored roll); the rarity rules (cooldown after an event,
+// Checks: a first visit gets no tails, console message or 404 line, while the hidden commands answer; a visit counted
+// once (a reload keeps its stored roll; batch 21: a new tab within 30 minutes of the last activity joins the same visit,
+// after 30 minutes the next load is a new visit, in a new tab or the same one; a tab whose record predates the activity
+// time keeps its visit); the rarity rules (cooldown after an event,
 // a forced roll picks one event); forced tails, console message, 404 line and tab title; exorcise and summon; the third
 // try of .ghost/note.txt; blocked storage keeps the ghost quiet without errors; ghost lines are not in Tab completion.
 import assert from 'node:assert/strict';
@@ -90,10 +92,58 @@ try {
     await page.reload();
     await page.locator('.startup-sequence').waitFor({ state: 'detached' });
     assert.deepEqual((await stored(page)).session, before.session, 'a reload keeps the visit and its roll');
-    // A new tab is a new visit.
+    // Batch 21: a new tab within 30 minutes is the same visit, with the same roll; activity is stored.
     const second = await openPage(created);
-    assert.equal((await stored(second)).session.visit, 2, 'a new tab is the next visit');
-    pass('first visit: quiet, hidden commands answer, third note try gives in, not in Tab completion; visits counted per tab');
+    const joined = await stored(second);
+    assert.equal(joined.session.visit, 1, 'a new tab within 30 minutes continues the visit');
+    assert.deepEqual([joined.session.roll, joined.session.pick], [before.session.roll, before.session.pick], 'the new tab shares the visit\'s roll');
+    assert.ok(Math.abs(Date.now() - joined.local.lastActive) < 5 * 60 * 1000, `the last activity time is stored (${joined.local.lastActive})`);
+    assert.equal(joined.local.current?.visit, 1, 'the current visit is shared in localStorage');
+    await second.close();
+    pass('first visit: quiet, hidden commands answer, third note try gives in, not in Tab completion; a new tab within 30 min is the same visit');
+    await created.close();
+  }
+
+  // 1b. Batch 21: the 30-minute gap. Times are moved back in storage from a page with no app code (robots.txt).
+  {
+    const created = await context('');
+    const page = await openPage(created);
+    const age = async minutes => {
+      await page.goto(base + '/robots.txt');
+      await page.evaluate(ms => { const record = JSON.parse(localStorage.getItem('migrainz-ghost-v1')); record.lastActive = Date.now() - ms; localStorage.setItem('migrainz-ghost-v1', JSON.stringify(record)); }, minutes * 60 * 1000);
+    };
+    await age(29);
+    const fresh = await openPage(created);
+    assert.equal((await stored(fresh)).session.visit, 1, 'a new tab 29 minutes after the last activity: same visit');
+    await fresh.close();
+    await age(31);
+    const later = await openPage(created);
+    assert.equal((await stored(later)).session.visit, 2, 'a new tab 31 minutes after the last activity: a new visit');
+    await later.close();
+    // The same tab after the gap: a new visit too, with a new roll.
+    await age(31);
+    await page.goto(base + '/');
+    await page.locator('.startup-sequence').waitFor({ state: 'detached' });
+    assert.equal((await stored(page)).session.visit, 3, 'the same tab after 31 minutes: a new visit');
+    // Activity keeps the visit going: a key press after the time was moved back writes it again.
+    await age(29);
+    await page.goto(base + '/');
+    await page.locator('.startup-sequence').waitFor({ state: 'detached' });
+    assert.equal((await stored(page)).session.visit, 3, 'a reload within 30 minutes: same visit');
+    await page.evaluate(() => { const record = JSON.parse(localStorage.getItem('migrainz-ghost-v1')); record.lastActive = Date.now() - 29 * 60 * 1000; localStorage.setItem('migrainz-ghost-v1', JSON.stringify(record)); });
+    await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+    assert.ok(Date.now() - (await stored(page)).local.lastActive < 60 * 1000, 'hiding or showing the tab records activity');
+    // A record from before batch 21 (no activity time): the tab keeps its visit; a new tab starts the next one.
+    await page.goto(base + '/robots.txt');
+    await page.evaluate(() => { const record = JSON.parse(localStorage.getItem('migrainz-ghost-v1')); delete record.lastActive; delete record.current; localStorage.setItem('migrainz-ghost-v1', JSON.stringify(record)); });
+    await page.goto(base + '/');
+    await page.locator('.startup-sequence').waitFor({ state: 'detached' });
+    assert.equal((await stored(page)).session.visit, 3, 'an old record without an activity time: the tab keeps its visit');
+    await page.goto(base + '/robots.txt');
+    await page.evaluate(() => { const record = JSON.parse(localStorage.getItem('migrainz-ghost-v1')); delete record.lastActive; delete record.current; localStorage.setItem('migrainz-ghost-v1', JSON.stringify(record)); });
+    const next = await openPage(created);
+    assert.equal((await stored(next)).session.visit, 4, 'an old record without an activity time: a new tab is the next visit');
+    pass('visits: a new one only after 30 minutes without activity (new tab or same tab); activity is recorded; old records keep working');
     await created.close();
   }
 

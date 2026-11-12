@@ -1,8 +1,15 @@
 # Features
 
+## Implemented - 2026-11-12 / Ghost visits, unlisted.txt live, CI (batch 21)
+
+- The ghost counts a new visit only after 30 minutes without activity in the browser; links opened in new tabs no longer add visits.
+- `unlisted.txt` (archive, from the fifth visit) shows in production builds too: Harold approved its text.
+- GitHub Actions (`.github/workflows/check.yml`): typecheck, build and the other non-browser checks on every pull request and push to `main`; no secrets. Browser checks stay local.
+- robots.txt kept as built (artwork files may be fetched by image search; Harold, 2026-11-12).
+
 ## Implemented - 2026-11-05 / The ghost across the site (batch 20)
 
-- Rarely: the Watcher looks at the shop, the screen turns amber for a moment ("this is my good side."), the studio ad says it was not approved by the studio, a tty0.exe box blinks "sorry. misclick." on the grey desktop. From the fifth visit the archive lists `unlisted.txt` (off on the live site until Harold approves its text). Finishing a chapter by reading: "i've read what happens next." with a link to the next chapter.
+- Rarely: the Watcher looks at the shop, the screen turns amber for a moment ("this is my good side."), the studio ad says it was not approved by the studio, a tty0.exe box blinks "sorry. misclick." on the grey desktop. From the fifth visit the archive lists `unlisted.txt` (text approved by Harold 2026-11-12; on the live site from batch 21's push). Finishing a chapter by reading: "i've read what happens next." with a link to the next chapter.
 
 ## Implemented - 2026-11-05 / The ghost in the terminal (batch 19)
 

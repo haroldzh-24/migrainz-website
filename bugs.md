@@ -14,13 +14,18 @@
 - No dedicated test yet (6c/7c, listed by the 8b review): the idle caption following a CRT-mode or reduced-motion change, the lens dropping a sample that went stale while loading, the motion helper reading the latest visibility entry.
 - Status: Open; questions for Harold.
 
+### 2026-11-12 - Check environment: fixture dev server killed for memory (batch 21)
+
+- `check-20261112-092749`: the regression step failed with `ERR_CONNECTION_REFUSED` in `verify-equipment-directory.mjs` after ~26 min; the kernel log shows the cgroup OOM killer ending `next-server` at about 5 GB resident (this cloud sandbox's shell processes share a 6 GB limit). The dev server's memory grows through the run (about 4.9 GB near the end of the re-run). Re-run `--only regression` (`check-20261112-095647`) passed. Not a code fault; on a machine with more memory it should not occur. If it repeats, consider restarting the fixture server between regression scripts.
+- Status: Open (watching).
+
 ### 2026-11-05 - Ghost limits (batches 18 to 20)
 
-- A visit is a tab session, so a visitor opening links in new tabs reaches "visit 3" quickly; counting a new visit only after a gap (e.g. 30 minutes) would be Harold's call.
+- ~~A visit is a tab session, so a visitor opening links in new tabs reaches "visit 3" quickly.~~ Fixed batch 21 (Harold, 2026-11-12): a new visit counts only after 30 minutes with no recorded activity in the browser; a new tab within 30 minutes continues the visit (tested in `verify-ghost-core.mjs`). Limits: activity is written at most once a minute (and when the tab is hidden), so a gap can read up to a minute short; a tab left open past the gap keeps its visit until its next page load; two tabs of one visit share its one ambient event through storage, but a stunt both tabs claim within the same moment could still play in each (not tested).
 - Without the Navigation API, after "Back wins" on an ambiguous history move the fallback trail can be off by one for later moves (16b note).
 - Background timers (the tab title) depend on the browser: Chrome throttles them, iOS may suspend the tab.
 - The end-of-chapter strip is not covered by an automated test: the fixture has no readable next chapter (checked by hand with a temporary change). It covers the bottom of the page for 6 s.
-- `unlisted.txt`'s text is a draft waiting for Harold's wording; until then the row is off in production builds (20b).
+- ~~`unlisted.txt`'s text is a draft waiting for Harold's wording; until then the row is off in production builds (20b).~~ Approved as written (Harold, 2026-11-12); on in production builds since batch 21.
 - Checked only in headless Chrome on the dev fixture.
 - Status: Open (recorded).
 
