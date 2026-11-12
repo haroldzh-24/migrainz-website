@@ -8,7 +8,8 @@
 // 390; no boot or announcement in the plain view; switching back restores the terminal; MOTION: REDUCED and the plain
 // view stop the homepage's moving layers (watchMotion) at once and the Watcher jitter; forced ghost events do not fire
 // in the plain view (but do in the terminal view); printing uses the plain view (beforeprint/afterprint) and the print
-// stylesheet is light without script; no page errors. Other scripts (decode, page transitions, page flip, typing,
+// stylesheet is light (serif 19 px) without script; no page errors. 22b: printing does not wake motion observers; the
+// plain view works before hydration (scripts blocked); storage that throws; OS reduced motion with MOTION: AUTO. Other scripts (decode, page transitions, page flip, typing,
 // type-out, mode switch) run their reduced-motion case with MOTION: REDUCED and the plain view too.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -260,6 +261,10 @@ try {
     await ready(page);
     await page.emulateMedia({ media: 'print' });
     assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement).backgroundColor), 'rgb(255, 255, 255)', 'print stylesheet: white page');
+    // 22b: the print stylesheet carries the plain view's type too (no script needed).
+    const printed = await looks(page);
+    assert.match(printed.paragraphFont, /Georgia/, 'print stylesheet: serif reading text');
+    assert.equal(printed.paragraphSize, '19px', 'print stylesheet: 19 px reading text');
     assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('.crt')).display), 'none', 'print stylesheet: no scanlines');
     assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('main#top h1')).color), 'rgb(27, 27, 27)', 'print stylesheet: dark heading');
     await page.evaluate(() => dispatchEvent(new Event('beforeprint')));
@@ -268,7 +273,90 @@ try {
     assert.equal((await html(page)).view, 'terminal', 'afterprint: back to the terminal view');
     assert.equal(await page.evaluate(() => localStorage.getItem('migrainz-view')), null, 'printing saves nothing');
     await page.emulateMedia({ media: 'screen' });
-    pass('print = plain view (beforeprint/afterprint; print stylesheet without script)');
+    pass('print = plain view (beforeprint/afterprint; print stylesheet without script, serif 19 px)');
+    await context.close();
+  }
+
+  // 7 (22b). The print switch is not a setting change: motion observers ignore it (the homepage caption does not type
+  // again). Control: a real VIEW change re-types it.
+  {
+    const { context, page } = await open();
+    await page.goto(base + '/');
+    await ready(page);
+    await page.waitForTimeout(1500); // the idle caption has finished typing
+    const count = () => page.evaluate(() => window.__captionChanges);
+    await page.evaluate(() => { window.__captionChanges = 0; new MutationObserver(() => { window.__captionChanges += 1; }).observe(document.querySelector('.home-caption'), { childList: true, subtree: true, characterData: true }); });
+    await page.evaluate(() => { dispatchEvent(new Event('beforeprint')); });
+    await page.waitForTimeout(100);
+    await page.evaluate(() => { dispatchEvent(new Event('afterprint')); });
+    await page.waitForTimeout(1200);
+    assert.equal(await count(), 0, 'beforeprint/afterprint: the caption does not type again');
+    assert.equal((await html(page)).view, 'terminal');
+    await openSystem(page);
+    await motionButton(page).click();
+    await page.waitForTimeout(400);
+    assert.ok(await count() > 0, 'control: a real setting change re-renders the caption');
+    pass('22b: printing does not wake motion observers (no re-typed caption); a real setting change still does');
+    await context.close();
+  }
+
+  // 8 (22b). The plain view before hydration: every script chunk blocked, the server render alone is readable, scrolls
+  // and takes focus (no inert / aria-hidden wrapper, no boot scroll lock).
+  {
+    const { context, page } = await open({ width: 390, height: 844, boot: true, storage: { 'migrainz-view': 'plain' } });
+    await context.route(url => /\/_next\/static\/chunks\/.*\.js(\?|$)/.test(url.href), route => route.abort());
+    await page.goto(base + '/about', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(1000);
+    const state = await page.evaluate(() => {
+      const wrapper = document.querySelector('.startup-page');
+      return { view: document.documentElement.dataset.view, boot: document.querySelector('.startup-sequence')?.dataset.phase ?? null, inert: wrapper.hasAttribute('inert'),
+        hidden: wrapper.getAttribute('aria-hidden'), visibility: getComputedStyle(wrapper).visibility, overflow: getComputedStyle(document.body).overflowY, tall: document.documentElement.scrollHeight > innerHeight };
+    });
+    assert.deepEqual(state, { view: 'plain', boot: 'boot', inert: false, hidden: null, visibility: 'visible', overflow: 'visible', tall: true }, `server render in the plain view (${JSON.stringify(state)})`);
+    await page.keyboard.press('Tab');
+    assert.equal(await page.evaluate(() => document.activeElement?.className), 'skip-link', 'Tab reaches the page');
+    await page.mouse.move(200, 400);
+    await page.mouse.wheel(0, 500);
+    await page.waitForTimeout(400);
+    assert.ok(await page.evaluate(() => scrollY) > 0, 'the page scrolls');
+    pass('22b: plain view before hydration (scripts blocked): visible, scrolls, focusable; no inert or aria-hidden wrapper');
+    await context.close();
+  }
+
+  // 9 (22b). Storage that throws (blocked site data): the head script fails quietly; the server defaults stay.
+  {
+    const context = await browser.newContext({ viewport: { width: 1366, height: 768 } });
+    await context.addInitScript(() => {
+      for (const name of ['localStorage', 'sessionStorage']) Object.defineProperty(window, name, { configurable: true, get() { throw new DOMException('blocked', 'SecurityError'); } });
+    });
+    const page = await context.newPage();
+    const own = [];
+    page.on('pageerror', error => own.push(error.message));
+    await page.goto(base + '/about');
+    await page.locator('main#top h1').waitFor();
+    await page.waitForTimeout(1500);
+    const first = await html(page);
+    assert.deepEqual([first.view, first.motion, first.crt, first.phosphor], ['terminal', 'auto', 'on', 'green'], 'storage throwing: server defaults on <html>');
+    assert.deepEqual(own, [], `storage throwing: no page errors (${own.join(' | ')})`);
+    pass('22b: storage that throws: the head script fails quietly, defaults stay, no page errors');
+    await context.close();
+  }
+
+  // 10 (22b). OS reduced motion with MOTION: AUTO counts as reduced (watchMotion layers stay still; nothing typed hidden).
+  {
+    const context = await browser.newContext({ viewport: { width: 1366, height: 768 }, reducedMotion: 'reduce' });
+    await context.addInitScript(() => { try { sessionStorage.setItem('migrainz-announcement:studio-transmission-001', 'studio-transmission-001'); localStorage.setItem('migrainz-motion', 'auto'); } catch {} });
+    const page = await context.newPage();
+    page.on('pageerror', error => errors.push(error.message));
+    await page.goto(base + '/');
+    await ready(page);
+    assert.equal((await html(page)).motion, 'auto');
+    await page.locator('.home-globe-map').scrollIntoViewIfNeeded();
+    const before = await page.locator('.home-globe-map').textContent();
+    await page.waitForTimeout(1200);
+    assert.equal(await page.locator('.home-globe-map').textContent(), before, 'OS reduce + MOTION: AUTO: the globe stays still');
+    assert.equal(await page.evaluate(() => document.documentElement.dataset.typeout ?? null), null, 'nothing hidden for typing');
+    pass('22b: OS reduced motion with MOTION: AUTO acts as reduced');
     await context.close();
   }
 

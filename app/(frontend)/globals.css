@@ -2935,11 +2935,16 @@ html[data-view="plain"]:has(.graphics-route) .application-desktop a:focus-visibl
 html[data-view="plain"] .project-application { --bg: #fbfaf7; --green: #1b1b1b; --green2: #444; --dim: #555; --hot: #1b1b1b; --line: rgba(0, 0, 0, 0.16); --muted: #555; --panel: #f2f0ea; }
 html[data-view="plain"] .project-app-content { background: #fbfaf7; color: #1b1b1b; font-family: var(--plain-sans); }
 html[data-view="plain"] .project-app-content h1 { font-size: clamp(26px, 4vw, 34px); }
-/* No boot in the plain view (StartupSequence): the page shows from the server render, not only after hydration. */
+/* No boot in the plain view (StartupSequence): the server HTML still holds the boot screen until hydration, so these
+   rules hide it, show the page wrapper and undo the boot's scroll lock (:has() still matches a display:none boot).
+   StartupSequence leaves the wrapper's inert / aria-hidden off until hydration (22b), so the plain page can be read,
+   scrolled and tabbed through from the server render. */
 html[data-view="plain"] .startup-sequence[data-phase="boot"] { display: none; }
 html[data-view="plain"] .startup-page { visibility: visible !important; }
-/* Print = the plain view. ViewToggle switches html[data-view="plain"] on for the print (beforeprint / afterprint);
-   this block carries the same colours and drops the screen layers when no script runs. */
+html[data-view="plain"] body:has(.startup-sequence[data-phase="boot"]) { overflow: visible; }
+/* Print = the plain view. ViewToggle switches html[data-view="plain"] on for the print (beforeprint / afterprint;
+   printViewSwitch, so motion observers ignore it, 22b); this block carries the same colours and reading type and drops
+   the screen layers when no script runs. */
 @media print {
   /* :root:root outranks :root, the amber phosphor and the CRT modes. */
   :root:root {
@@ -2954,6 +2959,12 @@ html[data-view="plain"] .startup-page { visibility: visible !important; }
   :root:root:has(.graphics-route) :is(main.shell, footer.footer) {
     --crt-bg: #fff; --crt-panel: #fff; --crt-text: #1b1b1b; --crt-bright: #1b1b1b; --crt-mid: #444444; --crt-dim: #555555; --crt-accent: #1a4fb5;
     --crt-border: rgba(0, 0, 0, 0.2); --crt-text-rgb: 27, 27, 27; --crt-bright-rgb: 27, 27, 27; --crt-border-rgb: 0, 0, 0;
+  }
+  /* The plain view's type (22b), so a print without script reads like the plain view too. */
+  :root:root body { font-family: Arial, Helvetica, sans-serif; letter-spacing: 0; }
+  :root:root :is(h1, h2, h3, h4):not(:where(.home-watcher *, .retro-window-titlebar *, .promo-window *)) { font-family: Georgia, "Times New Roman", serif; text-shadow: none; letter-spacing: 0; }
+  :root:root :is(main.shell, .project-app-content) :is(p, dd, blockquote, .content-writing li):not(:where(.eyebrow, .directory-path, .breadcrumbs, .home-screen *, .home-watcher *, .startup-sequence *)) {
+    font-family: Georgia, "Times New Roman", serif; font-size: 19px; line-height: 1.7; letter-spacing: 0; max-width: 70ch; text-shadow: none;
   }
   .crt, .crt-bezel, .phone-tabs, .public-window-dock, .skip-link, .system-menu, .topbar-search, .command-palette, .nav-status, .startup-sequence, .mode-switch { display: none !important; }
   body::before { background: #fff !important; }
@@ -3017,3 +3028,70 @@ html[data-view="plain"] .command-palette-option[aria-selected="true"] .command-p
 html[data-view="plain"] .command-palette-hint { color: #555; }
 html[data-view="plain"] .command-palette-empty b { color: #1b1b1b; }
 html[data-view="plain"] .topbar-search { color: var(--crt-text); }
+
+/* Batch 24: lore links with preview cards (design canvas board 8; components/LoreLink.tsx, LoreText.tsx). A record name in
+   lore text is a link (bright, dashed underline; solid with the ui glow on hover/focus) with a 280 px card under it:
+   character = portrait + name + `character.rec · <faction>` + one line + OPEN RECORD; equipment = name + `<file>.EQP` +
+   a 70 px poster strip; faction = name + `faction.dir · <n> members` + one line. The card never covers the link, takes
+   no space (no layout shift) and is shifted left to stay inside the window. Terminal colours by default; inside the grey
+   windows (where every lore page lives) it reads as a Win95 tooltip card on the light content; the plain view draws it
+   light with Arial labels. Fades in over --motion-lock only when motion is allowed. */
+.lore-term { position: relative; }
+.lore-link { color: var(--crt-bright); text-decoration: none; border-bottom: 1px dashed var(--crt-mid); }
+.lore-link:is(:hover, :focus-visible) { border-bottom-style: solid; text-shadow: var(--crt-glow-ui); }
+.lore-preview {
+  display: none; position: absolute; left: var(--lore-shift, 0px); top: calc(100% + 8px); z-index: 30;
+  box-sizing: border-box; width: var(--lore-width, 280px); padding: 12px;
+  background: var(--crt-panel); color: var(--crt-text); border: 1px solid rgba(var(--crt-border-rgb, 140, 220, 160), .45);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, .7); font: 400 12px/1.5 var(--crt-font); font-style: normal; letter-spacing: 0;
+  text-align: left; text-transform: none; text-shadow: none; white-space: normal; overflow-wrap: anywhere; cursor: auto;
+}
+/* Bridges the 8 px gap, so the pointer can move from the link onto the card (and its OPEN RECORD) without losing it. */
+.lore-preview::before { content: ""; position: absolute; left: 0; right: 0; top: -9px; height: 9px; }
+@media (hover: hover) { .lore-term:hover:not([data-dismissed]) > .lore-preview { display: block; } }
+.lore-term:focus-within:not([data-dismissed]) > .lore-preview, .lore-term[data-open] > .lore-preview { display: block; }
+@media (prefers-reduced-motion: no-preference) {
+  html:not([data-motion="reduced"]):not([data-view="plain"]) .lore-preview { animation: lore-preview-in var(--motion-lock) var(--motion-ease); }
+}
+@keyframes lore-preview-in { from { opacity: 0; } }
+.lore-preview-head { display: flex; gap: 10px; align-items: flex-start; }
+.lore-preview-portrait { flex: none; display: block; width: 56px; height: 56px; overflow: hidden; background: var(--crt-deep, #060a06); border: 1px solid rgba(var(--crt-border-rgb, 140, 220, 160), .2); }
+.lore-preview-portrait img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.lore-preview-title { display: block; min-width: 0; }
+.lore-preview-title b { display: block; color: var(--crt-bright); font-size: 13px; font-weight: 700; }
+.lore-preview-meta { display: block; color: var(--crt-dim); }
+.lore-preview-poster { display: block; margin-top: 8px; height: 70px; background: var(--crt-bg); border: 1px solid rgba(var(--crt-border-rgb, 140, 220, 160), .2); }
+.lore-preview-poster img { display: block; width: 100%; height: 100%; object-fit: contain; filter: var(--crt-tune-filter); }
+.lore-preview-summary { display: block; margin-top: 8px; }
+.lore-preview .lore-preview-open { display: block; margin-top: 8px; color: var(--crt-accent); text-decoration: none; border: 0; }
+/* The CROSS-REFERENCES aside: beside the lore text when there is room, under it otherwise (container query). */
+.lore-layout { container: lore / inline-size; display: flex; flex-wrap: wrap; gap: 0 32px; align-items: flex-start; }
+.lore-main { flex: 999 1 400px; min-width: 0; }
+.lore-references { flex: 1 1 220px; min-width: 0; margin: 1em 0; padding-left: 20px; border-left: 1px solid var(--line, var(--crt-border)); }
+.lore-references h2 { margin: 0 0 10px; font-size: 12px; font-weight: 400; letter-spacing: .12em; color: var(--dim); }
+.lore-references ul { list-style: none; margin: 0; padding: 0; font-size: 14px; line-height: 2.2; }
+.lore-references-kind { color: var(--dim); font-size: 12px; }
+@container lore (max-width: 651px) {
+  .lore-references { margin-top: 4px; padding: 10px 0 0; border-left: 0; border-top: 1px solid var(--line, var(--crt-border)); }
+}
+/* Grey windows: the light content, a Win95 tooltip-style card (white, dark 1 px frame, hard shadow), navy OPEN RECORD. */
+.project-application .lore-link { color: var(--hot); border-bottom-color: var(--dim); }
+.project-application .lore-link:is(:hover, :focus-visible) { color: #000; }
+.project-application .lore-preview { background: #fff; color: #222; border-color: #404040; box-shadow: 2px 2px 0 rgba(0, 0, 0, .35); font-family: monospace; }
+.project-application .lore-preview-title b { color: #111; }
+.project-application .lore-preview-meta { color: #555; }
+.project-application .lore-preview-portrait { background: #ddd; border-color: #999; }
+.project-application .lore-preview-poster { background: var(--crt-bg); border-color: #999; }
+.project-application .lore-preview .lore-preview-open { color: #000080; }
+/* Plain view: light card, Arial labels, the plain link colour. */
+html[data-view="plain"] .lore-link, html[data-view="plain"] :where(p, dd) a.lore-link { color: var(--plain-link); text-decoration: none; border-bottom: 1px dashed var(--plain-link); }
+html[data-view="plain"] .lore-link:is(:hover, :focus-visible) { color: var(--plain-link); border-bottom-style: solid; }
+html[data-view="plain"] .lore-preview { background: #fff; color: #1b1b1b; border-color: rgba(0, 0, 0, .3); box-shadow: 0 6px 24px rgba(0, 0, 0, .18); font-family: var(--plain-sans); }
+html[data-view="plain"] .lore-preview-title b { color: #1b1b1b; }
+html[data-view="plain"] .lore-preview-meta { color: #555; }
+html[data-view="plain"] .lore-preview-portrait { background: #ecebe6; border-color: rgba(0, 0, 0, .2); }
+html[data-view="plain"] .lore-preview .lore-preview-open, html[data-view="plain"] :where(p, dd) .lore-preview a.lore-preview-open { color: var(--plain-link); text-decoration: none; }
+html[data-view="plain"] .lore-references h2 { font-family: var(--plain-sans); font-size: 13px; letter-spacing: .08em; color: #555; }
+html[data-view="plain"] .lore-references a { color: var(--plain-link); text-decoration: underline; text-underline-offset: 2px; }
+html[data-view="plain"] .lore-references-kind { color: #555; font-family: var(--plain-sans); }
+@media print { .lore-preview { display: none !important; } .lore-link { border-bottom: 0; } }

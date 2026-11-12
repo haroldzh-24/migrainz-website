@@ -6,7 +6,9 @@ import ContentWriting from "@/components/ContentWriting";
 import DesktopFile, { DesktopFolder } from "@/components/DesktopFile";
 import ContentGallery from "@/components/ContentGallery";
 import FactionGrid from "@/components/FactionGrid";
-import { getProject, getProjectIdentity, getFactions, getArchiveItems } from "@/lib/content/queries";
+import { getProject, getProjectIdentity, getFactions, getArchiveItems, getLoreIndex } from "@/lib/content/queries";
+import { createLoreLinker } from "@/lib/content/lore";
+import { LoreLayout, LoreReferences, LoreText } from "@/components/LoreText";
 import { projectHref, chapterHref } from "@/lib/content/types";
 export async function generateMetadata({
   params,
@@ -26,6 +28,11 @@ export default async function ProjectPage({
   const identity = await getProjectIdentity(project.slug);
   const factions = identity ? await getFactions(identity.id) : [];
   const archiveItems = (await getArchiveItems()).filter(item => item.projectSlug === project.slug);
+  // Lore links (board 8) in the description and the writing; the aside sits beside the description.
+  const lore = createLoreLinker(identity ? await getLoreIndex(identity.id) : []);
+  const description = lore.text(project.description);
+  const writing = lore.writing(project.writing);
+  const references = lore.used();
   return (
     <Directory
       path={`SYS:/PROJECTS/${project.slug.toUpperCase()}/`}
@@ -35,13 +42,15 @@ export default async function ProjectPage({
         {project.id} / {project.status} / UPDATED{" "}
         <time dateTime={project.updated}>{project.updated}</time>
       </p>
-      <p className="lede">{project.description}</p>
+      <LoreLayout aside={references.length ? <LoreReferences entries={references} /> : null}>
+        <p className="lede"><LoreText segments={description} /></p>
+      </LoreLayout>
       <section id="factions" className="section-block">
         <h2>FACTIONS</h2>
         <FactionGrid project={project} factions={factions} />
       </section>
       {project.hero && <ContentGallery images={[project.hero]} />}
-      <div id="writing"><ContentWriting data={project.writing} /></div>
+      <div id="writing"><ContentWriting data={writing} /></div>
       {archiveItems.length > 0 && <div className="directory-list">
         {archiveItems.map(item => <DirectoryLink key={item.slug} classification={item.classification} safeLabel={item.safeLabel} href={`/archive#item-${item.slug}`} name={item.title} meta="ARCHIVE RECORD" />)}
       </div>}

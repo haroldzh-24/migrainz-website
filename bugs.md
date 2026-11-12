@@ -14,6 +14,16 @@
 - No dedicated test yet (6c/7c, listed by the 8b review): the idle caption following a CRT-mode or reduced-motion change, the lens dropping a sample that went stale while loading, the motion helper reading the latest visibility entry.
 - Status: Open; questions for Harold.
 
+### 2026-11-12 - Batch 24: lore link limits
+
+- Only names written exactly as the record's name link (case-sensitive, whole words); a name split across two differently formatted pieces of rich text (e.g. half of it bold) is not matched; nicknames and plurals do not link. Two records with the same name: the character wins over a faction, a faction over equipment.
+- Lore links are computed per request on the server from the public listings (one extra set of lean listing queries per project, character and faction page); no caching beyond the request.
+- `appears in` rows on a character page list the chapters shown in its RELATED COMIC CHAPTERS list (non-placeholder chapters the visitor can see); they are not limited to `public` chapters for a signed-in patron, unlike the lore links and cards.
+- Project updates (production notes) and equipment descriptions are not linked (not in the plan's list of lore fields).
+- The fixture's project page (BLUSHLAND) has no lore text naming records, so the project page's aside is not shown in the fixture; the project page uses the same components as the faction page (tested there) and its description and writing are linked by the same code.
+- Checked only in headless Chrome on the dev fixture (hover, focus, touch emulation, axe, screenshots at 390 and 1366); not with a real screen reader, Safari, Firefox or a phone.
+- Status: Open (recorded).
+
 ### 2026-11-12 - Batch 23: command palette limits
 
 - Patron records never appear in the palette, also for a signed-in patron (plan: public only); a patron finds them on the pages as before. The patron case is tested in-process (`scripts/verify-search-index.ts`, real access rules, offline Patreon fixture), not through the browser fixture server, which cannot sign in a patron (`scripts/fixture-env.mjs` refuses Patreon credentials).
@@ -28,13 +38,14 @@
 - Switching to the plain view or MOTION: REDUCED while something is already moving: page wipes, decode, page flips and the mode switch check at their start, so one already running finishes; terminal typing that has started finishes (a tap or key still completes it at once). The CSS rules stop CSS animations at once.
 - The ghost's tab title, if it was already set on that visit, stays until the next page load after switching to the plain view.
 - Schematic clips and posters keep their terminal recolour (dark) in the plain view, as media; the homepage Watcher panel stays dark by design (plan: the hero panel stays). The comic reader and the Art Viewer are unchanged (art on neutral grey).
-- Print without script: the print stylesheet gives a white page with dark text and hides the CRT layers, but the serif reading styles come only with the plain view, which the page's script switches on for printing.
+- ~~Print without script: the print stylesheet gives a white page with dark text and hides the CRT layers, but the serif reading styles come only with the plain view, which the page's script switches on for printing.~~ Since 22b (batch 24) the print stylesheet carries the plain reading type too.
 - Checked only in headless Chrome on the dev fixture (axe colour contrast, computed styles, screenshots); not on real devices, Safari or Firefox, and no real print to paper.
 - Status: Open (recorded).
 
 ### 2026-11-12 - Check environment: fixture dev server killed for memory (batch 21)
 
 - `check-20261112-092749`: the regression step failed with `ERR_CONNECTION_REFUSED` in `verify-equipment-directory.mjs` after ~26 min; the kernel log shows the cgroup OOM killer ending `next-server` at about 5 GB resident (this cloud sandbox's shell processes share a 6 GB limit). The dev server's memory grows through the run (about 4.9 GB near the end of the re-run). Re-run `--only regression` (`check-20261112-095647`) passed. Not a code fault; on a machine with more memory it should not occur. If it repeats, consider restarting the fixture server between regression scripts.
+- Batch 24: `check-20261112-140525` (`--only regression`): `verify-mode-switch.mjs` round 1 saw the forward run stop at `black` on `/projects` (a route the batch does not touch); the script passed twice in a row on its own against a fresh fixture server, and passed in the next run: a timing flake under load. `check-20261112-144013` and `check-20261112-151404` (`--only regression`): the first dev server was killed for memory (cgroup OOM, about 4.9 GB resident) during `verify-equipment-directory.mjs` both times. Fix (batch 24): `scripts/regression.mjs` now restarts the fixture server after `verify-type-out.mjs` too (three fresh servers per run), so none of them reaches the limit.
 - Status: Open (watching).
 
 ### 2026-11-05 - Ghost limits (batches 18 to 20)
@@ -203,6 +214,12 @@
 - Status: Open
 
 ## Resolved Bugs
+
+### 2026-11-12 - Batch 22 review (22b): plain view before hydration, print and observers
+
+- Found by the independent review of batch 22: in the plain view the server HTML kept the page wrapper `inert` + `aria-hidden` and the boot's `body { overflow: hidden }` (`:has()` matches a `display: none` boot) until hydration, so a slow or failed script left the plain page unscrollable and unfocusable; printing toggled `data-view` and every motion observer reacted twice (the homepage caption typed again, the Watcher and spinners reset); a print without script had the plain colours but not its type.
+- Fixed in batch 24 (22b): wrapper attributes only after hydration, the scroll lock undone in the plain view, `printViewSwitch()` for the print toggle, the plain type in the print stylesheet. Tests in `scripts/verify-plain-motion.mjs` (scripts blocked; print with a control that shows 26 caption re-renders without the fix; storage throwing; OS reduce + MOTION: AUTO).
+- Status: Resolved (batch 24).
 
 ### 2026-10-27 - Missing records returned HTTP 200 (soft 404) (audit)
 

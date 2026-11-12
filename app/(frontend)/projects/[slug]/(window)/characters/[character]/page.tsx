@@ -3,7 +3,9 @@ import Link from "next/link";
 import { Directory, DirectoryLink } from "@/components/Directory";
 import ContentWriting from "@/components/ContentWriting";
 import ContentGallery from "@/components/ContentGallery";
-import { getProject, getCharacterEquipment } from "@/lib/content/queries";
+import { getProject, getCharacterEquipment, getProjectIdentity, getLoreIndex } from "@/lib/content/queries";
+import { createLoreLinker } from "@/lib/content/lore";
+import { LoreLayout, LoreReferences, LoreText } from "@/components/LoreText";
 import EquipmentCards from "@/components/EquipmentCards";
 import { projectHref, chapterHref } from "@/lib/content/types";
 import { CharacterViewerButton } from "@/components/CharacterViewerLink";
@@ -29,7 +31,14 @@ export default async function CharacterPage({
   if (!project) return lockedPageOrNotFound({ projectSlug: ids.slug, kind: "characters", slug: ids.character });
   const character = project.characters.find((c) => c.slug === ids.character && !c.classification);
   if (!character) return lockedPageOrNotFound({ projectSlug: ids.slug, kind: "characters", slug: ids.character });
-  const equipment = await getCharacterEquipment(ids.slug, ids.character);
+  const [equipment, identity] = await Promise.all([getCharacterEquipment(ids.slug, ids.character), getProjectIdentity(ids.slug)]);
+  // Lore links (board 8): public characters, factions and equipment of this project, never this record itself.
+  const lore = createLoreLinker(identity ? await getLoreIndex(identity.id) : [], { self: `character:${character.slug}` });
+  const description = lore.text(character.description);
+  const writing = lore.writing(character.writing);
+  const appearsIn = project.chapters.filter((c) => !c.classification && character.chapterSlugs.includes(c.slug))
+    .map((c) => ({ label: typeof c.chapterNumber === "number" ? `${project.title} ch. ${String(c.chapterNumber).padStart(2, "0")}` : c.title, href: chapterHref(project, c) }));
+  const references = lore.used();
   return (
     <Directory
       path={`SYS:/PROJECTS/${project.slug.toUpperCase()}/CHARACTERS/${character.slug.toUpperCase()}`}
@@ -52,8 +61,10 @@ export default async function CharacterPage({
         </div>}
         <div>
           <p className="eyebrow">{character.role}</p>
-          <p className="lede">{character.description}</p>
-          <ContentWriting data={character.writing} />
+          <LoreLayout aside={references.length || appearsIn.length ? <LoreReferences entries={references} appearsIn={appearsIn} /> : null}>
+            <p className="lede"><LoreText segments={description} /></p>
+            <ContentWriting data={writing} />
+          </LoreLayout>
           <p>RECORD STATUS: PUBLIC</p>
         </div>
       </div>
