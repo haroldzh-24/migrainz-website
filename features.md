@@ -1,5 +1,9 @@
 # Features
 
+## Implemented - 2026-11-12 / Command palette (batch 23, board 7)
+
+- Ctrl+K (⌘K on a Mac) anywhere, the header's SEARCH, SYSTEM ▸ SEARCH on phones, or `search <text>` in the homepage terminal: one box to find any public record (projects, chapters, characters, factions, equipment, archive items) by name, kind, code or file name, and to run commands (`cd /archive`, `crt off`, `view plain`, `motion reduced`, `help` ...). ↑↓ to move, Enter to open (records open with the usual terminal → desktop switch), Esc to close. Public records only; works in the plain view and with MOTION: REDUCED.
+
 ## Implemented - 2026-11-12 / Plain reading view and SYSTEM ▸ MOTION (batch 22)
 
 - SYSTEM ▸ VIEW: PLAIN shows the same page as a light page with dark serif text, no CRT effects and no motion: good for long lore, screen readers, slow phones and printing. Remembered in the browser; `view plain` / `view terminal` in the homepage terminal too. Printing always uses it.

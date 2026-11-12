@@ -115,7 +115,11 @@ if (typeof window !== "undefined") window.addEventListener("storage", event => {
 // Activity keeps the visit going (batch 21): written at most once a minute, and always when the tab is hidden or left,
 // only once this page has loaded the ghost (no storage write from a page that never asked).
 function touch(always = false) {
-  if (broken || !local || !session) return;
+  if (broken || !session) return;
+  // 21b: another tab saved since (the storage listener dropped `local`): read the record again instead of ignoring this
+  // tab's activity until some ghost call happens to reload it.
+  if (!local && !load()) return;
+  if (!local) return;
   const now = Date.now();
   if (!always && now - local.lastActive < TOUCH_EVERY_MS && now >= local.lastActive) return;
   local.lastActive = now;
@@ -159,7 +163,12 @@ function load(): boolean {
     // Already loaded on this page (read again after another tab saved): the page keeps its visit, whatever the gap.
     const mine = session ?? normaliseSession(read(sessionStorage, SESSION_KEY));
     if (session) {
+      // 21b: a re-read after another tab saved is not activity: no new `lastActive` and no localStorage write (which
+      // would ping every other tab again). Only this tab's own copy of the visit is refreshed.
       session = mergeVisit(session, shared);
+      local.visits = Math.max(local.visits, session.visit);
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+      return true;
     } else if (mine && (recent || lastActive === 0)) {
       // This tab's visit goes on; if another tab has since started a newer one (after a gap), this page joins it.
       session = shared && shared.visit > mine.visit ? { ...shared } : mergeVisit(mine, shared);
@@ -188,7 +197,6 @@ function load(): boolean {
   }
 }
 
-// Reduced motion covers the OS setting, SYSTEM ▸ MOTION: REDUCED and the plain view (batch 22).
 // Reduced motion covers the OS setting, SYSTEM ▸ MOTION: REDUCED and the plain view (batch 22).
 const quietMode = () => reducedMotion() || document.documentElement.dataset.crt === "off";
 const busyNow = () => Boolean(document.documentElement.dataset.busy) || document.documentElement.dataset.power !== "on"

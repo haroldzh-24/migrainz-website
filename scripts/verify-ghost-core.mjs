@@ -125,7 +125,7 @@ try {
     await page.goto(base + '/');
     await page.locator('.startup-sequence').waitFor({ state: 'detached' });
     assert.equal((await stored(page)).session.visit, 3, 'the same tab after 31 minutes: a new visit');
-    // Activity keeps the visit going: a key press after the time was moved back writes it again.
+    // A reload within 30 minutes keeps the visit; a tab switch records activity (real keys and pointers: block 1c).
     await age(29);
     await page.goto(base + '/');
     await page.locator('.startup-sequence').waitFor({ state: 'detached' });
@@ -144,6 +144,59 @@ try {
     const next = await openPage(created);
     assert.equal((await stored(next)).session.visit, 4, 'an old record without an activity time: a new tab is the next visit');
     pass('visits: a new one only after 30 minutes without activity (new tab or same tab); activity is recorded; old records keep working');
+    await created.close();
+  }
+
+  // 1c. 21b: real activity, and two tabs. Tab B (robots.txt, no app code) writes the shared record, which fires a storage
+  // event in tab A; A's next real key or pointer press reads the record again and records the activity (before 21b it
+  // was ignored until some ghost call reloaded the record), the read itself stamps nothing, and the once-a-minute
+  // throttle holds.
+  {
+    const created = await context('');
+    const a = await openPage(created);
+    const b = await created.newPage();
+    await b.goto(base + '/robots.txt');
+    const write = (minutes, shared = false) => b.evaluate(([ms, share]) => {
+      const record = JSON.parse(localStorage.getItem('migrainz-ghost-v1'));
+      record.lastActive = Date.now() - ms;
+      if (share) record.current = { ...record.current, ad: true, event: 'shared-test-event', shown: [...record.current.shown, 'shared-test-line'] };
+      localStorage.setItem('migrainz-ghost-v1', JSON.stringify(record));
+    }, [minutes * 60 * 1000, shared]);
+    // A real mouse press on plain text (the header's NODE 01 label), so it opens nothing.
+    const press = async () => { const box = await a.locator('.topbar-meta span').first().boundingBox(); await a.mouse.move(box.x + box.width / 2, box.y + box.height / 2); await a.mouse.down(); await a.mouse.up(); };
+    const visit = (await stored(a)).session.visit;
+    await write(29);
+    await a.waitForTimeout(1500); // the storage event reaches A; nothing there may stamp a new time without activity
+    const untouched = (await stored(a)).local.lastActive;
+    assert.ok(Date.now() - untouched > 28 * 60 * 1000, `re-reading after another tab saved stamps no activity (${Date.now() - untouched} ms old)`);
+    await a.keyboard.press('Shift');
+    const keyed = (await stored(a)).local.lastActive;
+    assert.ok(Date.now() - keyed < 60 * 1000, 'a key press after another tab saved records the activity');
+    await a.waitForTimeout(300);
+    await a.keyboard.press('Shift');
+    await press();
+    assert.equal((await stored(a)).local.lastActive, keyed, 'within a minute, further keys and pointer presses write nothing (throttle)');
+    // A pointer press alone records activity too (after the time was moved back by the other tab).
+    await write(10);
+    await a.waitForTimeout(500);
+    await press();
+    assert.ok(Date.now() - (await stored(a)).local.lastActive < 60 * 1000, 'a pointer press records the activity');
+    // Activity prevents a new visit: 31 minutes without activity, then a key press in A, then a new tab: same visit.
+    await write(31);
+    await a.waitForTimeout(500);
+    await a.keyboard.press('Shift');
+    const c = await openPage(created);
+    assert.equal((await stored(c)).session.visit, visit, 'activity in an open tab keeps the visit going for a new tab');
+    await c.close();
+    // Two tabs share what the visit has used (mergeVisit): another tab's ad and shown lines reach A's own copy.
+    await write(5, true);
+    await a.waitForTimeout(500);
+    await a.keyboard.press('Shift');
+    const merged = (await stored(a)).session;
+    assert.equal(merged.ad, true, 'the other tab\'s ad counts for this tab');
+    assert.equal(merged.event, 'shared-test-event', 'the other tab\'s ambient event counts for this tab');
+    assert.ok(merged.shown.includes('shared-test-line'), 'the other tab\'s shown lines count for this tab');
+    pass('activity: keys and pointer presses record it after another tab saved (throttled), a re-read stamps nothing, activity keeps the visit, two tabs share the visit\'s event and ad');
     await created.close();
   }
 
