@@ -1,11 +1,16 @@
 // The ghost in the machine (rework plan, batches 18 to 20; Harold, 2026-11-04). A second "user" haunts the public
 // terminal and, now and then, tries to sell you something. What it knows lives only in this browser:
 //   localStorage  migrainz-ghost-v1          visits, the visit of the last ambient event, exorcised, milestones shown,
-//                                            whether an ad was ever opened, chapters finished, the archive file unlocked
+//                                            whether an ad was ever opened, chapters finished, the last activity time
+//                                            and a copy of the current visit (so a new tab can join it)
 //   sessionStorage migrainz-ghost-session-v1 this visit's number and its stored roll (a reload never re-rolls), the
 //                                            ambient event used, an ad opened this visit, lines already shown
-// A visit is a tab session (as the boot and the shop ad). Blocked or corrupt storage: the ghost stays quiet; hidden
-// terminal commands still answer. Nothing is sent anywhere.
+// A visit (batch 21, Harold 2026-11-12) ends after 30 minutes with no recorded activity in this browser: a page load,
+// or a pointer, key, scroll or tab switch (written at most once a minute, and when the tab is hidden). A new tab or a
+// reload within 30 minutes continues the same visit, with its roll; after the gap, the next page load is a new visit.
+// Before batch 21 a visit was a tab session, so links opened in new tabs inflated the count. A tab whose record has no
+// activity time yet (stored before batch 21) keeps its own visit. Blocked or corrupt storage: the ghost stays quiet;
+// hidden terminal commands still answer. Nothing is sent anywhere.
 //
 // Rarity (Harold: "the key is not to have these happen all the time"): never on a first visit; at most one ambient
 // event per visit, on about 1 visit in 8 (1 in 4 between midnight and 4 a.m. local time); after one, none for the next
@@ -18,7 +23,13 @@ export type Line = "tails" | "console" | "tab" | "not-found" | "welcome" | "arch
 /** The ambient events a visit can draw (one at most, picked with the roll so no event always wins the race). */
 export const AMBIENT: Ambient[] = ["second-user", "slip", "idle", "second-cursor", "misclick", "watcher", "amber", "boot-ad"];
 
-type Stored = { visits: number; lastEvent: number; exorcised: boolean; milestones: number[]; adEver: boolean; chapters: string[] };
+type Stored = {
+  visits: number; lastEvent: number; exorcised: boolean; milestones: number[]; adEver: boolean; chapters: string[];
+  /** Last recorded activity in this browser (ms since 1970; 0 = unknown, a record from before batch 21). */
+  lastActive: number;
+  /** The current visit, shared so a new tab within the gap joins it (batch 21). */
+  current: Session | null;
+};
 type Session = { visit: number; roll: boolean; pick: Ambient | null; event: string | null; ad: boolean; shown: string[]; noteTries: number };
 
 const LOCAL_KEY = "migrainz-ghost-v1";
@@ -26,12 +37,16 @@ const SESSION_KEY = "migrainz-ghost-session-v1";
 const TEST_KEY = "migrainz-ghost-test";
 export const MILESTONES = [3, 7, 13];
 export const ARCHIVE_VISIT = 5;
+/** A new visit starts only after this long with no recorded activity in this browser (Harold, 2026-11-12). */
+export const VISIT_GAP_MS = 30 * 60 * 1000;
+/** Activity is written to storage at most this often (and always when the tab is hidden). */
+const TOUCH_EVERY_MS = 60 * 1000;
 
 let local: Stored | null = null;
 let session: Session | null = null;
 let broken = false;
 
-const fresh = (): Stored => ({ visits: 0, lastEvent: -10, exorcised: false, milestones: [], adEver: false, chapters: [] });
+const fresh = (): Stored => ({ visits: 0, lastEvent: -10, exorcised: false, milestones: [], adEver: false, chapters: [], lastActive: 0, current: null });
 
 // Reading: storage that throws means the ghost stays quiet (broken); a value that is not valid JSON or has the wrong
 // shape is simply replaced by a fresh one (18b), field by field.
@@ -49,6 +64,7 @@ function normaliseLocal(value: unknown): Stored {
   return {
     visits: Math.max(0, int(record.visits, base.visits)), lastEvent: int(record.lastEvent, base.lastEvent),
     exorcised: record.exorcised === true, milestones: numbers(record.milestones), adEver: record.adEver === true, chapters: strings(record.chapters),
+    lastActive: Math.max(0, int(record.lastActive, base.lastActive)), current: normaliseSession(record.current),
   };
 }
 function normaliseSession(value: unknown): Session | null {
@@ -59,6 +75,18 @@ function normaliseSession(value: unknown): Session | null {
     event: typeof record.event === "string" ? record.event : null, ad: record.ad === true, shown: strings(record.shown), noteTries: Math.max(0, int(record.noteTries, 0)),
   };
 }
+// Two tabs in the same visit (batch 21): what either has used or shown counts for both (one ambient event and one ad
+// per visit, lines once per visit). The roll and pick are the visit's own and the same in both.
+function mergeVisit(mine: Session, other: Session | null): Session {
+  if (!other || other.visit !== mine.visit) return mine;
+  return {
+    ...mine, event: mine.event ?? other.event, ad: mine.ad || other.ad,
+    shown: [...new Set([...mine.shown, ...other.shown])], noteTries: Math.max(mine.noteTries, other.noteTries),
+  };
+}
+// A time stored by a clock that has since moved back is not trusted as "recent" for ever.
+const sane = (time: number, now: number) => (time <= now + 60 * 1000 ? time : 0);
+
 // Another tab may have saved since this one loaded (18b): merge rather than overwrite, so an `exorcise` in one tab is
 // never undone by an older tab, and the visit count never goes down. This tab's own change to `exorcised` wins.
 let exorcisedHere: boolean | null = null;
@@ -66,10 +94,15 @@ function save() {
   if (broken || !local || !session) return;
   try {
     const other = normaliseLocal(read(localStorage, LOCAL_KEY));
+    const now = Date.now();
+    session = mergeVisit(session, other.current);
     local = {
       visits: Math.max(local.visits, other.visits), lastEvent: Math.max(local.lastEvent, other.lastEvent),
       exorcised: exorcisedHere ?? other.exorcised, milestones: [...new Set([...other.milestones, ...local.milestones])],
       adEver: local.adEver || other.adEver, chapters: [...new Set([...other.chapters, ...local.chapters])].slice(-50),
+      lastActive: Math.max(sane(local.lastActive, now), sane(other.lastActive, now)),
+      // A newer visit another tab started stays the shared one; this tab keeps its own until its next page load.
+      current: other.current && other.current.visit > session.visit ? other.current : session,
     };
     localStorage.setItem(LOCAL_KEY, JSON.stringify(local));
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
@@ -77,6 +110,22 @@ function save() {
 }
 // A save in another tab: read again on next use.
 if (typeof window !== "undefined") window.addEventListener("storage", event => { if (event.key === LOCAL_KEY) local = null; });
+
+// Activity keeps the visit going (batch 21): written at most once a minute, and always when the tab is hidden or left,
+// only once this page has loaded the ghost (no storage write from a page that never asked).
+function touch(always = false) {
+  if (broken || !local || !session) return;
+  const now = Date.now();
+  if (!always && now - local.lastActive < TOUCH_EVERY_MS && now >= local.lastActive) return;
+  local.lastActive = now;
+  save();
+}
+if (typeof window !== "undefined") {
+  const options = { capture: true, passive: true } as const;
+  for (const type of ["pointerdown", "keydown", "wheel", "scroll", "touchstart"]) window.addEventListener(type, () => touch(), options);
+  document.addEventListener("visibilitychange", () => touch(true));
+  window.addEventListener("pagehide", () => touch(true));
+}
 
 /** Test override (never in production builds): "block", or "force:<name>,<name>". */
 function override(): { block: boolean; force: Set<string> } {
@@ -91,16 +140,30 @@ function override(): { block: boolean; force: Set<string> } {
 
 export const lateNight = (date = new Date()) => date.getHours() < 4;
 
-/** Loads the record and counts this visit (once per tab session). False when storage is unusable. */
+/**
+ * Loads the record and counts this visit: a new one only after VISIT_GAP_MS with no recorded activity (batch 21). A
+ * tab's own visit continues within the gap (or when the record has no activity time yet); a new tab within the gap
+ * joins the current visit. False when storage is unusable.
+ */
 function load(): boolean {
   if (typeof window === "undefined" || broken) return false;
   if (local && session) return true;
   try {
     local = normaliseLocal(read(localStorage, LOCAL_KEY));
     if (exorcisedHere !== null) local.exorcised = exorcisedHere;
-    const current = session ?? normaliseSession(read(sessionStorage, SESSION_KEY));
-    if (current) {
-      session = current;
+    const now = Date.now();
+    const lastActive = sane(local.lastActive, now);
+    const recent = lastActive > 0 && now - lastActive < VISIT_GAP_MS;
+    const shared = local.current && local.current.visit === local.visits ? local.current : null;
+    // Already loaded on this page (read again after another tab saved): the page keeps its visit, whatever the gap.
+    const mine = session ?? normaliseSession(read(sessionStorage, SESSION_KEY));
+    if (session) {
+      session = mergeVisit(session, shared);
+    } else if (mine && (recent || lastActive === 0)) {
+      // This tab's visit goes on; if another tab has since started a newer one (after a gap), this page joins it.
+      session = shared && shared.visit > mine.visit ? { ...shared } : mergeVisit(mine, shared);
+    } else if (!mine && recent && shared) {
+      session = { ...shared }; // a new tab within the gap: the same visit, its roll and what it has used
     } else {
       local.visits += 1;
       const visit = local.visits;
@@ -110,6 +173,9 @@ function load(): boolean {
       // The tab title's chance (about 1 visit in 3) is rolled once per visit too (18b).
       session = { visit, roll, pick, event: null, ad: false, shown: Math.random() < 1 / 3 ? [] : ["tab-roll-lost"], noteTries: 0 };
     }
+    local.visits = Math.max(local.visits, session.visit);
+    local.lastActive = now;
+    local.current = session;
     localStorage.setItem(LOCAL_KEY, JSON.stringify(local));
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
     return true;

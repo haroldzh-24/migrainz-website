@@ -1,5 +1,19 @@
 # Changelog
 
+## Changed - 2026-11-12 / Batch 21 (with 20d): ghost visits, unlisted.txt approved, CI (batch-21)
+
+Harold's answers of 2026-11-12 03:00 CT ("okay on all"), plus the review notes of 20c.
+
+- `unlisted.txt`: text approved as written; the production-off switch from 20b (`UNLISTED_APPROVED`) is gone, so the archive row shows in production builds too. Every other rule stays (visit 5 or later, not exorcised, storage usable).
+- Ghost visits: a new visit counts only after 30 minutes with no recorded activity in the browser (bugs.md "Ghost limits"). `migrainz-ghost-v1` now also holds `lastActive` (page loads; pointer, key, wheel, scroll and touch at most once a minute; always when the tab is hidden or left) and `current`, a copy of the current visit, so a new tab within 30 minutes joins it with its roll, its ambient event and its ad. A reload or new tab after the gap is the next visit. A tab whose record has no `lastActive` yet (stored before this batch) keeps its visit. The test override (`migrainz-ghost-test`) is unchanged.
+- CI (roadmap 0.7 / 4.4): `.github/workflows/check.yml` runs on pull requests and pushes to `main`: ubuntu-latest, Node 22.23.4 (no `engines` or `.nvmrc` in the repo; the version the local checks run on), `npm ci`, then `npm run check -- --only` the 11 non-browser steps. No secrets, no `.env`. The browser steps stay local (Chrome, a dev fixture server, ~15 min, load-sensitive timing checks). Free for public repos; the push that carries it needs a token with the `workflow` scope (and Harold's OK, as every push).
+- robots.txt kept as built (roadmap 0.9 closed; no change).
+- 20d: the exorcised `/archive` check waits for the boot to finish before its 1.5 s wait; the 20c changelog line now says why 8 s is enough (forced waits are capped at 0.6 s).
+- Tests: `verify-ghost-core.mjs`: a new tab within 30 minutes is the same visit with the same roll; 29 vs 31 minutes in a new tab and in the same tab; a tab switch records activity; a record without `lastActive` keeps the tab's visit and a new tab starts the next. `verify-ghost-site.mjs`: the visit-5 record is set from robots.txt (the archive page saves on leaving now); no production-off switch in `GhostArchiveFile.tsx`.
+- CI checked by a simulation: a clean copy of the tracked files (no `.env*`, no `.next`, no `node_modules`), a minimal environment with no secrets, `npm ci`, then the workflow's command: all 11 steps passed (`check-20261112-092252` in that copy); the build also passed with the network blocked. Not run on GitHub (nothing pushed).
+- Check: `check-20261112-092749`: 15 of 16 steps passed; `regression` failed late (`verify-equipment-directory.mjs`: `ERR_CONNECTION_REFUSED`) because the kernel killed the fixture's dev server for memory (about 5 GB resident, against this sandbox's 6 GB limit; not a code fault, bugs.md). `check-20261112-095647` (`--only regression`): passed. Ghost scripts also passed alone against a fixture. Screenshots at 390 and 1366 (`/archive` with `unlisted.txt` open; the homepage in a second tab, still visit 5) in `test-results/batch-21`.
+
+
 ## Changed - 2026-11-05 / Batch 20c: review fixes for batch 20b (fix/batch-20c)
 
 The review of 20b found nothing blocking; its points:
@@ -7,7 +21,7 @@ The review of 20b found nothing blocking; its points:
 - The end-of-chapter strip holds for hover and focus separately (a mouse passing over no longer ends a keyboard hold), counts only a real mouse as hover (a tap no longer pins it), and its status line mentions the link.
 - The Watcher's activity listeners are added only on the visit that drew it.
 - features.md notes `unlisted.txt` is off on the live site until approved.
-- Tests: the "nothing happens" cases (reduced-motion misclick, exorcised) wait for the page to settle and then as long as the positive tests allow; the exorcised case checks `unlisted.txt` on `/archive`. Strip hold after a mouse pass checked by hand (temporary next chapter, reverted).
+- Tests: the "nothing happens" cases (reduced-motion misclick, exorcised) wait for the page to settle and then 8 s, which is enough only because forced stunts wait at most 0.6 s (`ghost.delay` caps them; corrected in 20d); the exorcised case checks `unlisted.txt` on `/archive`. Strip hold after a mouse pass checked by hand (temporary next chapter, reverted).
 - Check: `check-20261105-044744`: all 16 steps passed (simulated).
 
 ## Changed - 2026-11-05 / Batch 20b: review fixes for batch 20 (fix/batch-20b)

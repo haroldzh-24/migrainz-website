@@ -8,6 +8,7 @@
 // end-of-chapter line only by reading to the last page with a next chapter, never by GO TO; reduced motion: no stunts
 // (also no misclick); exorcised: nothing even when forced; the PHOSPHOR button during the amber pitch.
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -114,16 +115,22 @@ try {
     const { context, page } = await open('', { href: '/archive' });
     await page.waitForTimeout(800);
     assert.equal(await page.locator('.ghost-file').count(), 0, 'no unlisted.txt on an early visit');
+    // Set from a page with no app code (robots.txt), so the archive page's own save on leaving cannot write over it; no
+    // activity time in the record, so the next load is a new visit (batch 21).
+    await page.goto(base + '/robots.txt');
     await page.evaluate(() => { localStorage.setItem('migrainz-ghost-v1', JSON.stringify({ visits: 4, lastEvent: -10 })); sessionStorage.removeItem('migrainz-ghost-session-v1'); localStorage.removeItem('migrainz-ghost-test'); });
     await context.addInitScript(() => { try { localStorage.removeItem('migrainz-ghost-test'); } catch {} });
-    await page.reload();
+    await page.goto(base + '/archive');
     await page.locator('.startup-sequence').waitFor({ state: 'detached' });
     const file = page.locator('.ghost-file');
     await file.waitFor();
     await file.click();
     assert.equal(await file.getAttribute('aria-expanded'), 'true');
     assert.match(await page.locator('.ghost-note pre').textContent(), /— tty0/);
-    pass('archive: unlisted.txt from visit 5, opens in place');
+    // Batch 21: Harold approved the note (2026-11-12); the row is no longer switched off in production builds.
+    const source = readFileSync(new URL('../components/ghost/GhostArchiveFile.tsx', import.meta.url), 'utf8');
+    assert.ok(!/NODE_ENV|UNLISTED_APPROVED/.test(source), 'unlisted.txt has no production-off switch');
+    pass('archive: unlisted.txt from visit 5, opens in place; not switched off in production builds');
     await context.close();
   }
   // 6. End of a chapter: only by reading to the last page, and only with a readable next chapter.
@@ -161,7 +168,8 @@ try {
   }
   {
     const { context, page } = await open('misclick', { reducedMotion: 'reduce', href: '/projects' });
-    // Settled first, then as long as the positive misclick test allows (20c), so a slow boot cannot hide a stunt.
+    // Settled first, then 8 s: forced stunts wait at most 0.6 s (ghost.delay caps them), so a stunt would have shown by
+    // then, and a slow boot cannot hide one (20c, 20d).
     await page.waitForFunction(() => document.documentElement.dataset.power === 'on' && !document.querySelector('.startup-sequence'));
     await page.waitForTimeout(8000);
     assert.equal(await page.locator('.ghost-misclick').count(), 0);
@@ -177,6 +185,8 @@ try {
     assert.deepEqual(await page.evaluate(() => window.__ghost), [], 'no stunts once exorcised');
     // The archive file too (visit 7 here), on the page where it would show.
     await page.goto(base + '/archive');
+    // 20d: the boot first, then the wait (a slow boot could otherwise hide the row).
+    await page.waitForFunction(() => document.documentElement.dataset.power === 'on' && !document.querySelector('.startup-sequence'));
     await page.waitForTimeout(1500);
     assert.equal(await page.locator('.ghost-file').count(), 0, 'no unlisted.txt once exorcised');
     pass('exorcised: no stunts even when forced');
