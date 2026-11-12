@@ -1,5 +1,11 @@
 # Features
 
+## Implemented - 2026-11-12 / Dossier pages for equipment and characters (batch 25, board 3)
+
+- An equipment item opens as a dossier: the turning schematic on the left (a tall frame for vertical weapons), the file name, project code, name, TECHNICAL SPECIFICATIONS table and OPEN IN ART VIEWER on the right, and ISSUED TO cards for the characters who carry it below. Fits a 1366x768 laptop with the specs in view; phones stack it.
+- A character opens the same way: portrait left, RECORD (role, faction, chapters, status, updated) right, EQUIPMENT CARRIED cards below, then the description and file notes with their lore links.
+- Command palette polish (23b): ⌘K shown on Macs in the header and SYSTEM menu too; the page behind the open palette can't be tabbed into; phone rows read the same way; a `help` left over from an unfinished trip home no longer fires later.
+
 ## Implemented - 2026-11-12 / Lore links with previews (batch 24, board 8)
 
 - In project, character and faction texts, names of other public characters, factions and equipment of the same project are links: hover or focus one (tap on a phone) to see a small card (portrait, faction, one line; the `.EQP` file and its schematic poster; member count), then open the record. Each page lists what it links under CROSS-REFERENCES (with the chapters a character appears in). Works in the plain view and with MOTION: REDUCED. Public records only.

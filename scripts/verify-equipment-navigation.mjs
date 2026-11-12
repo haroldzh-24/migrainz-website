@@ -6,6 +6,11 @@
 // The synthetic `/projects/fixture/equipment` page below is a Win95 list of EquipmentViewerLink rows, the list faction
 // pages still use. Since batch 8 the real `/projects/<slug>/equipment` is a terminal directory of plain links outside
 // the window; scripts/verify-equipment-directory.mjs tests that page.
+// Batch 25 (board 3), updated on purpose: the synthetic item page renders the dossier template exactly like
+// app/(frontend)/projects/[slug]/(window)/equipment/[equipment]/page.tsx (schematic figure left, record right with the
+// fields table, the description under the actions); the laptop fit now checks that the schematic, its caption and the
+// whole fields table sit inside the window at 1366x768 and up, with the record beside the schematic, also for a vertical
+// item (tall frame from the poster's ratio). The attached dark specs panel is gone from the page.
 import { build } from 'esbuild';
 import { createServer } from 'node:http';
 import { readFile, mkdir } from 'node:fs/promises';
@@ -28,9 +33,10 @@ import { CharacterViewerLink, CharacterViewerButton } from '@/components/Charact
 import FactionGrid from '@/components/FactionGrid';
 import EquipmentCards from '@/components/EquipmentCards';
 import EquipmentSchematic from '@/components/EquipmentSchematic';
-import EquipmentSpecifications from '@/components/EquipmentSpecifications';
 import RouteApplication from '@/components/RouteApplication';
 import { Directory } from '@/components/Directory';
+import { Dossier } from '@/components/Dossier';
+import ContentGallery from '@/components/ContentGallery';
 const project = { slug: 'fixture', title: 'Fixture Project' };
 const poster = { src: '/poster.svg', thumbnailSrc: '/poster.svg', alt: 'Schematic poster' };
 const concept = { src: '/concept.svg', thumbnailSrc: '/concept.svg', alt: 'Concept art' };
@@ -47,6 +53,7 @@ const real = { ...base, name: 'MP5 10MM Company Custom', images: [], category: '
 const sixSpecs = [...real.specifications, { label: 'YEAR / PERIOD', value: '2019' }];
 items.push({ ...real, slug: 'laptop', specifications: sixSpecs, poster: { src: '/poster-wide.svg', alt: 'poster' } },
   { ...real, slug: 'laptop-short', description: '', poster: { src: '/poster-wide.svg', alt: 'poster' } },
+  { ...real, slug: 'laptop-tall', specifications: sixSpecs, poster: { src: '/poster-tall.svg', alt: 'poster' }, ratio: 0.5 },
   { ...real, slug: 'real-169', poster: { src: '/real-169.png', alt: 'poster' } }, { ...real, slug: 'real-21', poster: { src: '/real-21.png', alt: 'poster' } });
 const character = { slug: 'nobody', name: 'Character Without Art', role: 'Scout', description: '', images: [], updated: '2026-10-21' };
 const faction = { slug: 'crew', name: 'Crew', description: 'No emblem', type: 'Group', status: '', updatedAt: '2026-10-21T00:00:00Z' };
@@ -56,13 +63,17 @@ const page = path.startsWith('/projects/fixture/equipment/') ? items.find(item =
 document.body.insertAdjacentHTML('afterbegin', '<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="crt-tune" color-interpolation-filters="sRGB"><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncR type="table" tableValues="0.039 0.373 0.659 0.831"/><feFuncG type="table" tableValues="0.055 0.541 0.847 0.961"/><feFuncB type="table" tableValues="0.043 0.420 0.690 0.855"/></feComponentTransfer></filter></svg>');
 createRoot(document.getElementById('root')).render(<SoundProvider><WindowManagerProvider><main className="shell">
   {page ? <RouteApplication id="project" title="PROJECT: Fixture Project" navigation={[{ label: 'OVERVIEW', href: '/projects/fixture' }, { label: 'FACTIONS', href: '/projects/fixture#factions' }, { label: 'CHARACTERS', href: '/projects/fixture/characters' }, { label: 'EQUIPMENT', href: '/projects/fixture/equipment' }]}>
-    <Directory path={'SYS:/PROJECTS/FIXTURE/EQUIPMENT/' + page.slug.toUpperCase()} title={page.name} compact>
+    <Directory path={'SYS:/PROJECTS/FIXTURE/EQUIPMENT/' + page.slug.toUpperCase()} title={page.name} compact heading={false}>
       <a className="section-link" href="/projects/fixture/equipment">RETURN TO EQUIPMENT</a>
-      <EquipmentSchematic name={page.name} src={page.slug.startsWith('real-') ? '/' + page.slug + '.mp4' : page.slug === 'poster-only' ? '/poster-only.mp4' : undefined} poster={page.poster?.src}>
-        <p className="eyebrow">{page.category} / UPDATED {page.updated}</p>{page.description && <p className="lede">{page.description}</p>}
-        <EquipmentSpecifications rows={page.specifications} />
-      </EquipmentSchematic>
-      <EquipmentViewerButton project={project} equipment={page} />
+      <Dossier label="Equipment dossier" file={page.name.split(' ').join('_') + '.EQP'} code="FX-001" name={page.name} fieldsCaption="TECHNICAL SPECIFICATIONS"
+        fields={[...(page.category ? [{ label: 'CATEGORY', value: page.category }] : []), ...page.specifications, { label: 'UPDATED', value: page.updated }]}
+        media={page.poster || page.slug.startsWith('real-') ? <figure className="dossier-figure">
+            <EquipmentSchematic name={page.name} ratio={page.ratio} src={page.slug.startsWith('real-') ? '/' + page.slug + '.mp4' : page.slug === 'poster-only' ? '/poster-only.mp4' : undefined} poster={page.poster?.src} />
+            <figcaption>SCHEMATIC · {page.name.split(' ').join('_')}.EQP</figcaption></figure>
+          : page.images.length ? <ContentGallery images={page.images.slice(0, 1)} /> : <div className="dossier-empty-frame" role="img" aria-label="No schematic"><span>NO SCHEMATIC FILED</span></div>}
+        actions={<EquipmentViewerButton project={project} equipment={page} />}>
+        {page.description && <p className="lede dossier-description">{page.description}</p>}
+      </Dossier>
     </Directory></RouteApplication>
     : path === '/projects/fixture/factions/company' ? <RouteApplication id="project" title="PROJECT: Fixture Project" navigation={[{ label: 'EQUIPMENT', href: '/projects/fixture/equipment' }]}>
       <Directory path="SYS:/PROJECTS/FIXTURE/FACTIONS/COMPANY/" title="The Company">
@@ -91,6 +102,7 @@ const server = createServer(async (req, res) => {
     if (prefix && req.url === '/' + key + '.mp4') { res.setHeader('Content-Type', 'video/mp4'); return res.end(await readFile(prefix + '.mp4')); }
     if (prefix && req.url === '/' + key + '.png') { res.setHeader('Content-Type', 'image/png'); return res.end(await readFile(prefix + '-poster.png')); }
   }
+  if (req.url === '/poster-tall.svg') { res.setHeader('Content-Type', 'image/svg+xml'); return res.end(svg('#193', 'TALL', 400, 800)); }
   if (req.url === '/poster-wide.svg') { res.setHeader('Content-Type', 'image/svg+xml'); return res.end(svg('#193', 'WIDE POSTER', 1280, 640)); }
   if (req.url === '/poster.svg') { res.setHeader('Content-Type', 'image/svg+xml'); return res.end(svg('#193', 'SCHEMATIC POSTER')); }
   if (req.url === '/concept.svg') { res.setHeader('Content-Type', 'image/svg+xml'); return res.end(svg('#613', 'CONCEPT ART', 3200, 2400)); }
@@ -128,7 +140,7 @@ try {
     assert.equal(await files.nth(0).locator('img').getAttribute('src'), '/concept.svg');
     assert.equal(await files.nth(1).locator('img').getAttribute('src'), '/poster.svg');
     assert.match(await files.nth(2).textContent(), /NO IMAGE/);
-    assert.equal(await page.locator('.equipment-card img').nth(1).getAttribute('src'), '/poster.svg');
+    assert.equal(await page.locator('.dossier-card img').nth(1).getAttribute('src'), '/poster.svg');
     await page.screenshot({ path: path.join(output, `${name}-1-equipment-list.png`) });
 
     // Clicking the card image and the file name both open the item page, never the viewer.
@@ -139,10 +151,11 @@ try {
       assert.equal(await viewer(page).count(), 0, 'viewer must not open from card click');
     }
     assert.equal(await page.locator('.directory-page h1').textContent(), 'MP5 10MM Company Custom');
+    assert.equal(await page.locator('h1').count(), 1, 'one heading: the dossier carries the title');
 
     // A schematic with no concept art has no viewer button; the module and specs are the whole page.
     assert.equal(await page.getByRole('button', { name: 'OPEN IN ART VIEWER' }).count(), 0, 'no viewer button without concept art');
-    await page.waitForSelector('.equipment-panel');
+    await page.waitForSelector('.dossier');
     await page.screenshot({ path: path.join(output, `${name}-2-item-page-poster-only.png`) });
     // A persisted tab with a poster (no artwork) shows the poster, not a dead end.
     await fresh('/projects/fixture/equipment/poster-only', seedTabs([tab('poster-only', 'MP5 10MM Company Custom', [], posterImage)]));
@@ -219,73 +232,54 @@ try {
       await shotPage.goto(base + '/projects/fixture/equipment/' + key);
       await shotPage.waitForFunction(() => { const v = document.querySelector('video'); return v && v.readyState >= 2 && !v.paused && v.currentTime > 0.2; }, null, { timeout: 15000 });
       assert.equal(await shotPage.getByRole('button', { name: 'OPEN IN ART VIEWER' }).count(), 0);
-      // Description and category line live inside the panel, softer than the bright spec values, with generous line height.
-      const copy = await shotPage.evaluate(() => {
-        const lede = document.querySelector('.equipment-panel .lede'), value = document.querySelector('.equipment-panel dd'), eyebrow = document.querySelector('.equipment-panel .eyebrow');
-        const style = el => getComputedStyle(el);
-        return { inPanel: Boolean(lede && eyebrow), color: style(lede).color, valueColor: style(value).color, font: style(lede).fontFamily, ratio: parseFloat(style(lede).lineHeight) / parseFloat(style(lede).fontSize), outside: document.querySelectorAll('.lede').length - document.querySelectorAll('.equipment-panel .lede').length,
-          order: [...document.querySelector('.equipment-panel').children].map(el => el.className || el.tagName) };
-      });
-      assert(copy.inPanel && copy.outside === 0, 'description and category line must be inside the panel');
-      // Real contrast and hue, even inside the light .project-application theme that redefines --green, --green2 and --hot.
+      // The description sits in the record column under the actions; the fields table reads on the light panel.
       const readable = await shotPage.evaluate(() => {
         const rgb = value => { const n = (value.match(/[\d.]+/g) || []).map(Number); return value.startsWith('color(') ? [n[0] * 255, n[1] * 255, n[2] * 255, n[3] ?? 1] : n; };
         const lum = ([r, g, b]) => { const c = [r, g, b].map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
-        const panel = document.querySelector('.equipment-panel'), bg = rgb(getComputedStyle(panel).backgroundColor);
-        const probe = (name, el) => { const style = getComputedStyle(el), [r, g, b, a = 1] = rgb(style.color); const alpha = a * parseFloat(style.opacity); const mixed = [r, g, b].map((v, i) => v * alpha + bg[i] * (1 - alpha));
-          const [hi, lo] = [Math.max(lum(mixed), lum(bg)), Math.min(lum(mixed), lum(bg))]; return { name, color: style.color, contrast: (hi + 0.05) / (lo + 0.05), green: mixed[1] > mixed[0] * 1.1 && mixed[1] > mixed[2] * 1.1 && mixed[1] >= 130 }; };
-        const all = [...panel.querySelectorAll('dt')].map((el, i) => probe('label ' + i, el)).concat([...panel.querySelectorAll('dd')].map((el, i) => probe('value ' + i, el)), [probe('description', panel.querySelector('.lede')), probe('category line', panel.querySelector('.eyebrow'))]);
-        const module = getComputedStyle(document.querySelector('.equipment-module'));
-        return { all, bg: getComputedStyle(panel).backgroundColor, inProjectWindow: Boolean(document.querySelector('.project-application .equipment-module')), border: module.borderTopColor };
+        const bg = rgb(getComputedStyle(document.querySelector('.dossier')).backgroundColor);
+        const contrast = el => { const c = rgb(getComputedStyle(el).color); const [hi, lo] = [Math.max(lum(c), lum(bg)), Math.min(lum(c), lum(bg))]; return (hi + 0.05) / (lo + 0.05); };
+        return { inRecord: Boolean(document.querySelector('.dossier-record .dossier-description')), all: [...document.querySelectorAll('.dossier-fields th, .dossier-fields td, .dossier-description, .dossier-file')].map(contrast) };
       });
-      assert(readable.inProjectWindow, 'fixture must render the module inside .project-application');
-      assert.equal(readable.bg, 'rgb(10, 14, 11)');
-      for (const item of readable.all) { const need = /^(label|category)/.test(item.name) ? 4.5 : 7; assert(item.contrast >= need, item.name + ' contrast ' + item.contrast.toFixed(2) + ' (' + item.color + ')'); assert(item.green, item.name + ' is not green: ' + item.color); }
-      assert.match(readable.border, /rgba?\(140, 220, 160/);
-      console.log(`  ${key} ${shot} panel contrast: ` + ['label 0', 'value 0', 'description', 'category line'].map(n => n + ' ' + readable.all.find(item => item.name === n).contrast.toFixed(1)).join(', '));
-      assert.notEqual(copy.color, copy.valueColor); assert.match(copy.font, /monospace|Courier/i); assert(copy.ratio >= 1.6, 'line height ' + copy.ratio);
-      assert.deepEqual(copy.order.slice(0, 3), ['eyebrow', 'lede', 'equipment-specifications']);
+      assert(readable.inRecord, 'description in the record column');
+      assert(readable.all.every(value => value >= 4.5), 'dossier text contrast ' + readable.all.map(v => v.toFixed(1)).join(','));
       const back = shotPage.getByRole('link', { name: 'RETURN TO EQUIPMENT' });
       assert.equal(await back.getAttribute('href'), '/projects/fixture/equipment');
       assert.equal(await shotPage.getByText('RETURN TO FACTIONS').count(), 0);
       assert(await shotPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
-      const display = await shotPage.locator('.equipment-schematic-display').boundingBox();
-      const panel = await shotPage.locator('.equipment-panel').boundingBox();
-      assert(Math.abs(panel.y - (display.y + display.height)) < 1.01);
       await shotPage.screenshot({ path: path.join(output, `module-${key}-${shot}.png`), fullPage: true });
       await context.close();
     }
     console.log('PASS module screenshots', key);
   }
 
-  // Laptop fit: the whole schematic and the whole spec list sit inside the project window without scrolling.
+  // Laptop fit (board 3: "fits 1366x768 with the specs visible"): the whole schematic, its caption and the whole fields
+  // table sit inside the project window without scrolling, the record beside the schematic; a vertical item gets a tall
+  // frame (its poster's ratio) that still fits.
   for (const [label, width, height, scale] of [['1366x768', 1366, 768, 1], ['1440x900', 1440, 900, 1], ['1536x864', 1536, 864, 1], ['1920x1080@125%', 1536, 864, 1.25]]) {
-    for (const slug of ['laptop-short', 'laptop']) {
+    for (const slug of ['laptop-short', 'laptop', 'laptop-tall']) {
       const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: scale });
       const lap = await context.newPage();
       await lap.goto(base + '/projects/fixture/equipment/' + slug);
-      await lap.waitForSelector('.equipment-panel');
+      await lap.waitForSelector('.dossier');
       await lap.waitForFunction(() => document.querySelector('.equipment-module')?.style.getPropertyValue('--video-max-h'));
       await lap.waitForTimeout(250);
       const m = await lap.evaluate(() => {
         const scroller = document.querySelector('.project-app-content'), rect = el => el.getBoundingClientRect();
-        const module = document.querySelector('.equipment-module'), display = document.querySelector('.equipment-schematic-display'), panel = document.querySelector('.equipment-panel'), cols = getComputedStyle(document.querySelector('.equipment-specifications')).gridTemplateColumns.split(' ').length;
-        const lastRow = [...document.querySelectorAll('.equipment-specifications > div')].pop();
-        return { scrollable: scroller.scrollHeight - scroller.clientHeight, viewBottom: rect(scroller).bottom, moduleBottom: rect(module).bottom, displayBottom: rect(display).bottom, panelTop: rect(panel).top, lastRowBottom: rect(lastRow).bottom, displayTop: rect(display).top,
-          moduleW: rect(module).width, displayW: rect(display).width, displayH: rect(display).height, cols, topSpace: rect(display).top - rect(scroller).top, hOverflow: document.documentElement.scrollWidth - innerWidth };
+        const display = document.querySelector('.equipment-schematic-display'), caption = document.querySelector('.dossier-figure figcaption'), record = document.querySelector('.dossier-record');
+        const lastRow = [...document.querySelectorAll('.dossier-fields tr')].pop();
+        return { viewBottom: rect(scroller).bottom, displayBottom: rect(display).bottom, captionBottom: rect(caption).bottom, lastRowBottom: rect(lastRow).bottom,
+          displayW: rect(display).width, displayH: rect(display).height, displayRight: rect(display).right, recordLeft: rect(record).left, recordTop: rect(record).top, displayTop: rect(display).top,
+          topSpace: rect(display).top - rect(scroller).top, hOverflow: document.documentElement.scrollWidth - innerWidth };
       });
-      console.log(`  ${label} ${slug}: video ${Math.round(m.displayW)}x${Math.round(m.displayH)}, top space ${Math.round(m.topSpace)}px, window scroll ${Math.round(m.scrollable)}px, gap below module ${Math.round(m.viewBottom - m.moduleBottom)}px`);
-      // Video and the whole spec list always fit; a long description sits below the specs and may extend past the fold.
+      const ratio = slug === 'laptop-tall' ? 0.5 : 2;
+      console.log(`  ${label} ${slug}: video ${Math.round(m.displayW)}x${Math.round(m.displayH)}, top space ${Math.round(m.topSpace)}px, last spec row ${Math.round(m.viewBottom - m.lastRowBottom)}px above the window bottom`);
       assert(m.displayBottom <= m.viewBottom, `${label} ${slug}: video bottom ${m.displayBottom} below the window bottom ${m.viewBottom}`);
-      if (slug === 'laptop-short') assert(m.moduleBottom <= m.viewBottom, `${label} ${slug}: module bottom ${m.moduleBottom} below the window bottom ${m.viewBottom}`);
-      assert(m.lastRowBottom <= m.viewBottom, label + ': last spec row not visible');
-      if (slug === 'laptop-short') assert(m.scrollable <= 1, `${label}: window scrolls by ${m.scrollable}px`);
-      assert(Math.abs(m.displayW / m.displayH - 2) < 0.03, label + ' ratio ' + m.displayW / m.displayH);
-      assert(Math.abs(m.moduleW - m.displayW) <= 2.01, label + ': module width must follow the video');
-      assert(Math.abs(m.panelTop - m.displayBottom) < 1.01, label + ': panel must stay flush');
-      assert.equal(m.cols, 2, label + ': two spec columns');
+      assert(m.captionBottom <= m.viewBottom + 0.5, `${label} ${slug}: caption below the window bottom`);
+      assert(m.lastRowBottom <= m.viewBottom, `${label} ${slug}: last spec row not visible`);
+      assert(m.recordLeft >= m.displayRight - 0.5 && Math.abs(m.recordTop - m.displayTop) < 2, `${label} ${slug}: record beside the schematic`);
+      assert(Math.abs(m.displayW / m.displayH - ratio) < 0.03, label + ' ratio ' + m.displayW / m.displayH);
       assert(m.hOverflow <= 0);
-      if (slug === 'laptop-short' || label === '1366x768') await lap.screenshot({ path: path.join(output, `laptop-${label.replace('@', 'at')}-${slug}.png`) });
+      if (slug !== 'laptop-short' || label === '1366x768') await lap.screenshot({ path: path.join(output, `laptop-${label.replace('@', 'at')}-${slug}.png`) });
       await context.close();
     }
   }
@@ -293,10 +287,10 @@ try {
     const context = await browser.newContext({ viewport: { width: 390, height: 1300 }, hasTouch: true });
     const mob = await context.newPage();
     await mob.goto(base + '/projects/fixture/equipment/laptop');
-    await mob.waitForSelector('.equipment-panel');
+    await mob.waitForSelector('.dossier');
     await mob.waitForTimeout(250);
-    const m = await mob.evaluate(() => ({ cols: getComputedStyle(document.querySelector('.equipment-specifications')).gridTemplateColumns, capped: document.querySelector('.equipment-module').style.getPropertyValue('--video-max-h'), hOverflow: document.documentElement.scrollWidth - innerWidth }));
-    assert(m.cols === 'none' || m.cols.split(' ').length === 1, 'mobile specs stay one column: ' + m.cols);
+    const m = await mob.evaluate(() => ({ stacked: document.querySelector('.dossier-record').getBoundingClientRect().top >= document.querySelector('.dossier-figure').getBoundingClientRect().bottom, capped: document.querySelector('.equipment-module').style.getPropertyValue('--video-max-h'), hOverflow: document.documentElement.scrollWidth - innerWidth }));
+    assert(m.stacked, 'phone: the record stacks under the schematic');
     assert.equal(m.capped, '', 'mobile is not height-capped');
     assert(m.hOverflow <= 0);
     await mob.screenshot({ path: path.join(output, 'laptop-390-mobile.png'), fullPage: true });
@@ -308,7 +302,7 @@ try {
     const thumbs = await fac.locator('.desktop-file').evaluateAll(els => els.map(el => ({ text: el.textContent, src: el.querySelector('img')?.getAttribute('src') ?? null })));
     assert.equal(thumbs.find(t => /MP5/.test(t.text)).src, '/poster.svg', 'faction page card uses the poster');
     await fac.screenshot({ path: path.join(output, 'faction-company.png') });
-    console.log('PASS laptop fit, mobile stack, faction poster cards');
+    console.log('PASS laptop fit (dossier: schematic, caption and specs in view, record beside, tall frame), mobile stack, faction poster cards');
   }
 
   // Resizing the browser with the viewer open (wide to narrow and back) keeps every title-bar control reachable.
@@ -337,8 +331,8 @@ try {
       const context = await browser.newContext({ viewport: { width, height }, hasTouch: width < 700 });
       const open = async (url, seed) => { const page = await context.newPage(); if (seed) await seed(page); await page.goto(base + url); await page.evaluate(value => { document.documentElement.dataset.crt = value; }, mode); return page; };
       const done = async (page, file) => { await page.waitForTimeout(250); await page.screenshot({ path: path.join(shots, `${file}-${name}-${mode}.png`) }); await page.close(); };
-      let page = await open('/projects/fixture/equipment/laptop'); await page.waitForSelector('.equipment-panel'); await done(page, 'item-poster-fallback');
-      page = await open('/projects/fixture/equipment/with-art'); await page.waitForSelector('.equipment-panel'); await done(page, 'item-concept-art');
+      let page = await open('/projects/fixture/equipment/laptop'); await page.waitForSelector('.dossier'); await done(page, 'item-poster-fallback');
+      page = await open('/projects/fixture/equipment/with-art'); await page.waitForSelector('.dossier'); await done(page, 'item-concept-art');
       page = await open('/projects/fixture/equipment/with-art', seedTabs([tab('with-art', 'Equipment With Concept Art', [conceptImage], posterImage)])); await viewer(page).waitFor(); await done(page, 'art-viewer-concept');
       page = await open('/projects/fixture/equipment/poster-only', seedTabs([tab('poster-only', 'MP5 10MM Company Custom', [], posterImage)])); await viewer(page).waitFor(); await done(page, 'art-viewer-poster-fallback');
       await context.close();

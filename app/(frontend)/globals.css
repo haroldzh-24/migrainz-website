@@ -2012,26 +2012,21 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
 .equipment-specifications > div { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 1rem; border-bottom: 1px solid var(--line); padding: .4rem 0; overflow-wrap: anywhere; }
 .equipment-specifications dt { opacity: .7; }
 .equipment-specifications dd { margin: 0; white-space: pre-wrap; }
-.equipment-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 1rem; }
 /* Item page: tighten the space above the module (path line, back link, title). */
 .directory-compact .directory-path { margin: 0; }
-.directory-compact .section-link { margin: 4px 0 0; }
+/* The first section link is the back link (it shares the path line on wide screens); a later one stays in the flow. */
+.directory-compact > .section-link:first-of-type { margin: 4px 0 0; }
 @media (min-width: 701px) {
   /* Back link shares the path line; the title and module sit right under it. */
-  .directory-compact { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 16px; align-items: baseline; }
+  .directory-compact { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 16px; align-items: baseline; align-content: start; }
   .directory-compact > * { grid-column: 1 / -1; }
   .directory-compact .directory-path { grid-column: 1; }
-  .directory-compact .section-link { margin: 0; grid-column: 2; grid-row: 1; }
+  .directory-compact > .section-link:first-of-type { margin: 0; grid-column: 2; grid-row: 1; }
   .directory-compact .equipment-module { margin-top: .5rem; }
 }
 .project-app-content .directory-compact h1 { font-size: clamp(20px, 2.6vw, 30px); margin: 2px 0 6px; line-height: 1.1; }
-.equipment-card { display: flex; align-items: flex-start; gap: 1rem; border: 1px solid var(--line); padding: 1rem; min-width: 0; overflow-wrap: anywhere; }
-.equipment-card > img { width: 80px; height: 100px; object-fit: contain; background: var(--crt-bg); flex-shrink: 0; }
 /* Schematic posters (no concept art on file) get the terminal recolour; concept art never does. */
-.equipment-card > img[data-schematic], .directory-thumbnail img[data-schematic], .art-viewer-canvas img[data-schematic] { filter: var(--crt-tune-filter) drop-shadow(var(--crt-glow-filter)); }
-.equipment-card > div { min-width: 0; flex: 1; }
-.equipment-card h3 { margin: 0; }
-.equipment-card .equipment-card-file { margin: 2px 0 6px; color: var(--dim); font-size: 12px; overflow-wrap: anywhere; }
+.directory-thumbnail img[data-schematic], .art-viewer-canvas img[data-schematic] { filter: var(--crt-tune-filter) drop-shadow(var(--crt-glow-filter)); }
 /* Schematic video and specs read as one terminal module. --schematic-bg is the background the encoded
    video actually decodes to (sampled from rendered pixels); the faint grid continues into the panel. */
 /* The module reads --crt-* directly: .project-application redefines the legacy --green/--hot/--line names for the
@@ -2074,7 +2069,62 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
   .equipment-panel .lede { order: 3; margin: .7rem 0 0; }
 }
 @media (max-width: 480px) { .equipment-panel { padding: .7rem .75rem .8rem; } .equipment-panel .equipment-specifications > div { grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); gap: .6rem; } }
-@media (max-width: 480px) { .equipment-card { flex-direction: column; } .equipment-card > img { width: 100%; height: 140px; } }
+
+/* Batch 25: the dossier template (design canvas board 3; components/Dossier.tsx) for equipment items and characters.
+   An inset light panel inside the record window: media left (flex 3, about 60%), the record right (flex 2): file name
+   and code in 12px mono, the readable name at 26px, a table of fields with 1px #b0b0b0 rules, Win95 buttons; then a
+   full-width row of linked cards (44px picture, bold 14px name, a 12px mono line: the board's 11px is under the site's
+   12px floor). The columns wrap (stack) when the window is narrower than about 830px. Fixed light colours like the
+   window chrome; the plain view keeps them light and gives the reading text its serif. */
+.dossier { display: flex; flex-wrap: wrap; gap: 18px; margin: 8px 0 16px; padding: 18px; background: #efefef; color: #111;
+  border: 2px solid; border-color: #808080 #fff #fff #808080; box-shadow: inset 1px 1px 0 #404040; font-family: Arial, Helvetica, sans-serif; text-shadow: none; }
+.dossier-media { flex: 3 1 480px; min-width: 0; }
+.dossier-record { flex: 2 1 300px; min-width: 0; }
+.dossier-below { flex: 1 1 100%; min-width: 0; }
+.dossier-figure { margin: 0; }
+/* The schematic frame: dark, the poster's own ratio (a vertical weapon gets a tall frame), centred in the column. */
+.dossier .equipment-module { margin: 0 auto; border-color: #333; }
+.dossier-figure figcaption { margin-top: 6px; color: #333; font: 12px/1.4 var(--crt-font); overflow-wrap: anywhere; }
+.dossier-media .content-gallery figure { margin: 0; padding: 8px; background: #d6d6d6; border: 1px solid #999; }
+.dossier-media .content-gallery img { max-height: min(52vh, 520px); width: auto; margin: 0 auto; }
+.dossier-media .content-gallery figcaption { color: #333; font-size: 12px; }
+.dossier-media .record-image { max-height: min(52vh, 440px); width: 100%; border: 1px solid #333; color: var(--crt-mid); }
+.dossier-empty-frame { display: grid; place-items: center; aspect-ratio: 2 / 1; background: var(--crt-bg); border: 1px solid #333; color: var(--crt-mid); font: 13px var(--crt-font); }
+.dossier-file { margin: 0; color: #444; font: 12px/1.4 var(--crt-font); overflow-wrap: anywhere; }
+.project-app-content .dossier .dossier-name { margin: 2px 0 12px; color: #111; font: 700 26px/1.15 Arial, Helvetica, sans-serif; letter-spacing: 0; text-shadow: none; overflow-wrap: anywhere; }
+.dossier-fields { width: 100%; border-collapse: collapse; font-size: 13px; }
+.dossier-fields caption { padding-bottom: 6px; color: #111; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-align: left; }
+.dossier-fields tr { border-top: 1px solid #b0b0b0; }
+.dossier-fields tr:last-child { border-bottom: 1px solid #b0b0b0; }
+.dossier-fields th { width: 40%; padding: 6px 8px 6px 0; color: #444; font-weight: 400; text-align: left; vertical-align: baseline; overflow-wrap: anywhere; }
+.dossier-fields td { padding: 6px 0; color: #111; vertical-align: baseline; white-space: pre-wrap; overflow-wrap: anywhere; }
+.dossier-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.dossier-actions:empty { display: none; }
+.dossier-actions .terminal-button { min-height: 24px; padding: 3px 10px; background: #c0c0c0; color: #000; border: 2px solid; border-color: #fff #404040 #404040 #fff; font: 12px Arial, Helvetica, sans-serif; letter-spacing: 0; }
+.dossier-actions .terminal-button:active { border-color: #404040 #fff #fff #404040; }
+.dossier-actions .terminal-button:focus-visible { outline: 1px dotted #000; outline-offset: -5px; }
+.dossier .dossier-description { max-width: 70ch; margin: 14px 0 0; color: #333; font-size: 14px; line-height: 1.6; }
+.dossier-below h2 { margin: 4px 0 8px; color: #111; font-size: 13px; letter-spacing: .08em; }
+.dossier-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
+.dossier-card { display: flex; gap: 10px; align-items: center; height: 100%; box-sizing: border-box; padding: 8px; background: #dcdcdc; color: #000; text-decoration: none;
+  border: 2px solid; border-color: #fff #404040 #404040 #fff; }
+.dossier-card:hover { background: #000080; color: #fff; }
+.dossier-card:hover .dossier-card-line, .dossier-card:hover .dossier-card-note { color: #fff; }
+.dossier-card:focus-visible { outline: 1px dotted #000; outline-offset: -5px; }
+.dossier-card > img, .dossier-card-blank { flex: none; width: 44px; height: 44px; object-fit: cover; background: #9a9a9a; }
+.dossier-card > img[data-schematic] { object-fit: contain; background: var(--crt-bg); filter: var(--crt-tune-filter); }
+.dossier-card-copy { min-width: 0; overflow-wrap: anywhere; }
+.dossier-card strong { display: block; font-size: 14px; }
+.dossier-card-line { display: block; color: #444; font: 12px/1.4 var(--crt-font); }
+.dossier-card-note { display: block; color: #444; font-size: 12px; }
+/* Character records: the description and file notes follow the dossier, with the CROSS-REFERENCES aside. */
+.dossier-notes { margin: 0 0 16px; }
+@media (max-width: 480px) { .dossier { gap: 14px; padding: 12px; } .project-app-content .dossier .dossier-name { font-size: 22px; } }
+html[data-view="plain"] .dossier { background: #fff; }
+html[data-view="plain"] .project-app-content .dossier :is(.dossier-file, .dossier-card-line) { max-width: none; font: 13px/1.4 var(--plain-sans); letter-spacing: 0; }
+html[data-view="plain"] .project-app-content .dossier .dossier-name { font-family: var(--plain-serif); }
+html[data-view="plain"] .dossier-fields td { font-family: var(--plain-serif); font-size: 16px; }
+html[data-view="plain"] .dossier-card { background: #f2f0ea; }
 
 /* Phone header: MIGRAINZ, the clock and SYSTEM on one line. */
 @media (max-width: 480px) {
@@ -2093,10 +2143,10 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
    Terminal: the Watcher's reticle, four corner brackets drawn as an overlay (no layout shift).
    Win95 (windows, monitor, promo/startup windows, taskbar, desktop icons): navy bars, bevels and a dotted focus rectangle.
    Selectors stay inside :where() so they never outrank component rules; the state rules carry one pseudo-class. */
-:where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .retro-window-titlebar, .desktop-file, .public-window-dock, :root:has(.graphics-route) .application-desktop) *):not(:where(.skip-link, .equipment-card a, .patron-locked-trigger, p a, dd a, .content-writing a)) {
+:where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .retro-window-titlebar, .desktop-file, .dossier, .dossier-cards, .public-window-dock, :root:has(.graphics-route) .application-desktop) *):not(:where(.skip-link, .equipment-card a, .patron-locked-trigger, p a, dd a, .content-writing a)) {
   position: relative;
 }
-:where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .retro-window-titlebar, .desktop-file, .public-window-dock, :root:has(.graphics-route) .application-desktop) *):not(:where(.skip-link, .equipment-card a, .patron-locked-trigger, p a, dd a, .content-writing a))::after {
+:where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .retro-window-titlebar, .desktop-file, .dossier, .dossier-cards, .public-window-dock, :root:has(.graphics-route) .application-desktop) *):not(:where(.skip-link, .equipment-card a, .patron-locked-trigger, p a, dd a, .content-writing a))::after {
   --reticle: var(--hot);
   content: "";
   position: absolute;
@@ -2123,7 +2173,7 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
 /* In: ~120ms lock-on, the corners closing in from further out. Out: instant. Nothing is scaled at rest: an invisible
    scaled overlay still counts as overflow and widened the page on phones. */
 @keyframes reticle-lock { from { inset: var(--reticle-from, -9px); opacity: 0; } }
-:where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .retro-window-titlebar, .desktop-file, .public-window-dock, :root:has(.graphics-route) .application-desktop) *):not(:where(.skip-link, .equipment-card a, .patron-locked-trigger, p a, dd a, .content-writing a)):is(:focus-visible, :active),
+:where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .retro-window-titlebar, .desktop-file, .dossier, .dossier-cards, .public-window-dock, :root:has(.graphics-route) .application-desktop) *):not(:where(.skip-link, .equipment-card a, .patron-locked-trigger, p a, dd a, .content-writing a)):is(:focus-visible, :active),
 .equipment-card:has(a:focus-visible, a:active) {
   color: var(--hot);
   text-shadow: var(--crt-glow-ui);
@@ -2131,18 +2181,18 @@ body:has(.startup-sequence[data-phase="boot"]) { overflow: hidden; }
   outline: 2px solid transparent;
   outline-offset: 2px;
 }
-:where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .retro-window-titlebar, .desktop-file, .public-window-dock, :root:has(.graphics-route) .application-desktop) *):not(:where(.skip-link, .equipment-card a, .patron-locked-trigger, p a, dd a, .content-writing a)):is(:focus-visible, :active)::after,
+:where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .retro-window-titlebar, .desktop-file, .dossier, .dossier-cards, .public-window-dock, :root:has(.graphics-route) .application-desktop) *):not(:where(.skip-link, .equipment-card a, .patron-locked-trigger, p a, dd a, .content-writing a)):is(:focus-visible, :active)::after,
 .equipment-card:has(a:focus-visible, a:active)::after {
   opacity: 1;
   animation: reticle-lock var(--motion-lock) ease-out;
 }
 /* Hover only where a real pointer hovers, so a tap on a phone doesn't leave the reticle stuck. */
 @media (hover: hover) {
-  :where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .retro-window-titlebar, .desktop-file, .public-window-dock, :root:has(.graphics-route) .application-desktop) *):not(:where(.skip-link, .equipment-card a, .patron-locked-trigger, p a, dd a, .content-writing a)):hover {
+  :where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .retro-window-titlebar, .desktop-file, .dossier, .dossier-cards, .public-window-dock, :root:has(.graphics-route) .application-desktop) *):not(:where(.skip-link, .equipment-card a, .patron-locked-trigger, p a, dd a, .content-writing a)):hover {
     color: var(--hot);
     text-shadow: var(--crt-glow-ui);
   }
-  :where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .retro-window-titlebar, .desktop-file, .public-window-dock, :root:has(.graphics-route) .application-desktop) *):not(:where(.skip-link, .equipment-card a, .patron-locked-trigger, p a, dd a, .content-writing a)):hover::after {
+  :where(a, button, [role="tab"], summary, .equipment-card):not(:where(.retro-window:not(.project-application), .pixel-monitor, .promo-window, .startup-sequence, .window-taskbar, .project-app-nav, .retro-window-titlebar, .desktop-file, .dossier, .dossier-cards, .public-window-dock, :root:has(.graphics-route) .application-desktop) *):not(:where(.skip-link, .equipment-card a, .patron-locked-trigger, p a, dd a, .content-writing a)):hover::after {
     opacity: 1;
     animation: reticle-lock var(--motion-lock) ease-out;
   }
@@ -3010,7 +3060,9 @@ html[data-view="plain"] body:has(.startup-sequence[data-phase="boot"]) { overflo
   .command-palette-dialog { max-height: calc(100dvh - 20px); }
   .command-palette-input { font-size: 17px; padding: 14px 14px; }
   .command-palette-input::placeholder { font-size: 15px; }
-  .command-palette-option { padding: 11px 14px; flex-wrap: wrap; }
+  /* 23b: phones always stack the hint under the label, so every row reads the same way. */
+  .command-palette-option { flex-direction: column; align-items: stretch; gap: 2px; padding: 11px 14px; }
+  .command-palette-hint { text-align: left; }
   .command-palette-group, .command-palette-note, .command-palette-empty { margin-left: 14px; margin-right: 14px; }
   .command-palette-keys { padding: 8px 14px; }
 }

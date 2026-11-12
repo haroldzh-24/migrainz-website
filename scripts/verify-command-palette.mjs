@@ -7,7 +7,8 @@
 // Escape closes and gives focus back to the opener; the empty state; Enter on a record runs the terminal → desktop switch
 // (mode-stage events) and lands on the record; Enter on a command (cd, view plain); the homepage terminal's `search`
 // and the palette's `help`; the header SEARCH button and SYSTEM ▸ SEARCH (phone); Ctrl+K is ignored in the terminal
-// input, during the boot, during a mode switch, in the comic reader and the Art Viewer and on /admin; MOTION: REDUCED and the plain view
+// input, during the boot, the power-on and a mode switch, in the comic reader and the Art Viewer, and /admin has no palette; the
+// page behind an open palette is inert; a stale `help` note is dropped; phone rows stack; ⌘K on a Mac; MOTION: REDUCED and the plain view
 // (light dialog); axe clean on the open dialog; no sideways scroll at 390; no page errors. The signed-in patron case of
 // the index is scripts/verify-search-index.ts (the fixture server cannot sign in a patron).
 import assert from 'node:assert/strict';
@@ -139,8 +140,13 @@ try {
     await dialog(page).waitFor();
     await loaded(page);
     assert.equal(page.__index, 1, 'reopening does not fetch again');
+    // 23b: the page behind the open palette is inert; the palette is not; closing clears exactly what it set.
+    const inert = await page.evaluate(() => ({ main: Boolean(document.querySelector('main#top')?.closest('[inert]')), header: Boolean(document.querySelector('.topbar')?.closest('[inert]')),
+      palette: Boolean(document.querySelector('.command-palette')?.closest('[inert]')) }));
+    assert.deepEqual(inert, { main: true, header: true, palette: false }, 'page inert behind the palette');
     await ctrlK(page);
     await dialog(page).waitFor({ state: 'detached' });
+    assert.equal(await page.locator('[inert]').count(), 0, 'nothing left inert after closing');
     pass('Ctrl+K: dialog, grouped results, filter by name/kind/file/code, ↑↓, Tab trapped, empty state, axe clean, Escape and Ctrl+K close back to the opener, one fetch');
     await context.close();
   }
@@ -216,6 +222,22 @@ try {
     await page.waitForFunction(() => [...document.querySelectorAll('.home-term-log p')].some(p => p.textContent.startsWith('search <text>')));
     assert.ok(await terminal.evaluate(element => element === document.activeElement), 'help leaves focus in the terminal');
     assert.equal(await page.evaluate(() => sessionStorage.getItem('migrainz-terminal-run')), null, 'the pending command is used once');
+    // 23b: a note left by a trip home that never finished (older than 10 s) is dropped, not run on a later visit home.
+    await page.goto(base + '/about');
+    await ready(page);
+    await page.evaluate(() => sessionStorage.setItem('migrainz-terminal-run', JSON.stringify({ command: 'help', at: Date.now() - 60_000 })));
+    await page.goto(base + '/');
+    await ready(page);
+    await page.waitForTimeout(800);
+    assert.equal(await page.evaluate(() => [...document.querySelectorAll('.home-term-log p')].some(p => p.textContent.startsWith('search <text>'))), false, 'a stale help note does not run');
+    assert.equal(await page.evaluate(() => sessionStorage.getItem('migrainz-terminal-run')), null, 'and is cleared');
+    // ... while the same note stored just now runs (so only its age made the difference).
+    await page.goto(base + '/about');
+    await ready(page);
+    await page.evaluate(() => sessionStorage.setItem('migrainz-terminal-run', JSON.stringify({ command: 'help', at: Date.now() })));
+    await page.goto(base + '/');
+    await ready(page);
+    await page.waitForFunction(() => [...document.querySelectorAll('.home-term-log p')].some(p => p.textContent.startsWith('search <text>')));
     pass('terminal `search <text>` opens the palette; Escape returns to the terminal; help runs in the homepage terminal');
     await context.close();
   }
@@ -236,9 +258,13 @@ try {
     await ready(page);
     await page.evaluate(() => window.dispatchEvent(new CustomEvent('migrainz:open-route', { detail: { href: '/projects/blushland' }, cancelable: true })));
     await page.waitForFunction(() => window.__stages.includes('print'));
+    // 23b: watch for the dialog at any moment (the route change would close a palette that did open), and wait long
+    // enough (600 ms) that an opening would have happened.
+    await page.evaluate(() => { window.__paletteSeen = false; new MutationObserver(() => { if (document.querySelector('.command-palette')) window.__paletteSeen = true; }).observe(document.body, { childList: true, subtree: true }); });
+    assert.ok(await page.evaluate(() => Boolean(document.querySelector('.mode-switch:not([hidden])'))), 'the switch is running at the key press');
     await ctrlK(page);
-    await page.waitForTimeout(100);
-    assert.equal(await page.locator('.command-palette').count(), 0, 'not during a mode switch');
+    await page.waitForTimeout(600);
+    assert.equal(await page.evaluate(() => window.__paletteSeen), false, 'not during a mode switch');
     await page.waitForURL(base + '/projects/blushland');
     await page.goto(base + '/comics/blushland/chapter-01');
     await ready(page);
@@ -255,12 +281,30 @@ try {
     await ctrlK(page);
     await page.waitForTimeout(200);
     assert.equal(await page.locator('.command-palette').count(), 0, 'not while the Art Viewer has focus');
+    // 23b: the screen's power-on (main#top.power-on, board 17) blocks it too; once it is over, Ctrl+K opens the palette.
+    await page.goto(base + '/about');
+    await ready(page);
+    await page.evaluate(() => document.querySelector('main#top').classList.add('power-on'));
+    await ctrlK(page);
+    await page.waitForTimeout(300);
+    assert.equal(await page.locator('.command-palette').count(), 0, 'not during the power-on');
+    await page.evaluate(() => document.querySelector('main#top').classList.remove('power-on'));
+    await page.bringToFront();
+    await page.locator('main#top').focus(); // the browser's own Ctrl+K ran above and may have taken focus
+    await ctrlK(page);
+    await dialog(page).waitFor();
+    await page.keyboard.press('Escape');
+    await dialog(page).waitFor({ state: 'detached' });
+    // /admin has its own root layout (app/(payload)), so the palette is never mounted there: no public shell, no palette
+    // DOM, and its open event does nothing. (A Ctrl+K check alone passed trivially for the same reason.)
     await page.goto(base + '/admin/login');
     await page.waitForLoadState('domcontentloaded');
     await page.keyboard.press('Control+k');
+    await page.evaluate(() => window.dispatchEvent(new CustomEvent('migrainz:open-palette', { detail: { query: 'x' } })));
     await page.waitForTimeout(300);
-    assert.equal(await page.locator('.command-palette').count(), 0, 'not on /admin');
-    pass('Ctrl+K is ignored during the boot, a mode switch, in the comic reader, in the Art Viewer and on /admin');
+    const admin = await page.evaluate(() => ({ palette: document.querySelectorAll('.command-palette, .command-palette-dialog').length, shell: document.querySelectorAll('main#top, .topbar-search, .system-menu, .phone-tabs').length }));
+    assert.deepEqual(admin, { palette: 0, shell: 0 }, 'no public shell or palette on /admin');
+    pass('Ctrl+K is ignored during the boot, a mode switch, the power-on, in the comic reader and in the Art Viewer; /admin has no palette at all');
     await context.close();
   }
 
@@ -302,6 +346,12 @@ try {
     assert.ok(box.x >= 0 && box.x + box.width <= 390 && box.y + box.height <= 844, `dialog inside the screen (${JSON.stringify(box)})`);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, 'no sideways scroll');
     assert.deepEqual(await axe(page), [], 'axe: phone');
+    // 23b: on phones every row stacks its hint under its label.
+    const rows = await page.evaluate(() => [...document.querySelectorAll('.command-palette-option')].map(o => {
+      const label = o.querySelector('.command-palette-label').getBoundingClientRect(), hint = o.querySelector('.command-palette-hint').getBoundingClientRect();
+      return { direction: getComputedStyle(o).flexDirection, below: !hint.height || hint.top >= label.bottom - 1, left: Math.abs(hint.left - label.left) < 1 };
+    }));
+    assert.ok(rows.length > 3 && rows.every(r => r.direction === 'column' && r.below && r.left), `phone rows stacked (${JSON.stringify(rows.slice(0, 3))})`);
     await page.keyboard.press('Escape');
     await dialog(page).waitFor({ state: 'detached' });
     await page.waitForTimeout(100);
@@ -312,9 +362,24 @@ try {
     await dialog(page).waitFor();
     await page.mouse.click(195, 830);
     await dialog(page).waitFor({ state: 'detached' });
-    pass('phone: SYSTEM ▸ SEARCH, fits 390 with no sideways scroll, axe clean, focus back to SYSTEM, backdrop closes');
+    pass('phone: SYSTEM ▸ SEARCH, fits 390 with no sideways scroll, rows stacked, axe clean, focus back to SYSTEM, backdrop closes');
     await context.close();
   }
+
+  // 8 (23b). The shortcut label: CTRL+K elsewhere, ⌘K on a Mac, the same in the header, SYSTEM and the palette.
+  for (const [platform, key] of [['Win32', 'CTRL+K'], ['MacIntel', '⌘K']]) {
+    const { context, page } = await open();
+    await context.addInitScript(value => Object.defineProperty(Navigator.prototype, 'platform', { configurable: true, get: () => value }), platform);
+    await page.goto(base + '/about');
+    await ready(page);
+    await page.waitForFunction(expected => document.querySelector('.topbar-search-key')?.textContent === expected, key);
+    assert.equal(await page.locator('.palette-toggle-key').textContent(), ' · ' + key, platform + ': SYSTEM ▸ SEARCH label');
+    await page.locator('.topbar-search').click();
+    await dialog(page).waitFor();
+    assert.match(await page.locator('.command-palette-keys').textContent(), new RegExp(key.replace('+', '\\+') + ' ANYWHERE'), platform + ': palette key line');
+    await context.close();
+  }
+  pass('shortcut label: CTRL+K, and ⌘K on a Mac, in the header, SYSTEM ▸ SEARCH and the key line');
 
   assert.deepEqual(errors, [], 'no page errors');
   await policies.check();

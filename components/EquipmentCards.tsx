@@ -1,21 +1,17 @@
-import Link from 'next/link';
-import EquipmentSpecifications, { type Specification } from './EquipmentSpecifications';
+import { DossierCards } from './Dossier';
+import type { Specification } from './EquipmentSpecifications';
 import type { ComicPage } from '@/lib/content/types';
 
 type Entry = { slug: string; name: string; category: string; images: ComicPage[]; poster?: ComicPage; specifications: Specification[]; designation?: string; quantity?: number; notes?: string };
+
+/** EQUIPMENT CARRIED on a character dossier (board 3, batch 25): one small linked card per assignment, in the
+ * assignment order. The item's specifications are on its own dossier; the card shows its file name, the assignment's
+ * designation and quantity, and the assignment note. */
 export default function EquipmentCards({ projectSlug, equipment }: { projectSlug: string; equipment: Entry[] }) {
-  if (!equipment.length) return null;
-  return <section aria-label="Character equipment"><h2>EQUIPMENT</h2><div className="equipment-cards">
-    {equipment.map((item, index) => { const art = item.images[0] ?? item.poster; return <article className="equipment-card" key={`${item.slug}-${index}`}>
-      {art && <img data-schematic={!item.images[0] || undefined} src={art.thumbnailSrc ?? art.src} alt={art.alt} loading="lazy" />}
-      <div><h3><Link href={`/projects/${projectSlug}/equipment/${item.slug}`}>{item.designation || item.name}</Link></h3>
-        <p className="equipment-card-file">{item.name.replace(/\s+/g, "_")}.EQP</p>
-        {item.designation && <p>{item.name}</p>}
-        {item.category && <p className="eyebrow">{item.category}</p>}
-        {item.quantity != null && <p>QUANTITY: {item.quantity}</p>}
-        <EquipmentSpecifications rows={item.specifications} />
-        {item.notes && <p>{item.notes}</p>}
-      </div>
-    </article>; })}
-  </div></section>;
+  return <DossierCards title="EQUIPMENT CARRIED" label="Equipment carried" cards={equipment.map((item, index) => {
+    const art = item.images.find(image => !image.classification && image.src) ?? item.poster;
+    return { key: `${item.slug}-${index}`, href: `/projects/${projectSlug}/equipment/${item.slug}`, name: item.name,
+      line: [`${item.name.replace(/\s+/g, '_')}.EQP`, item.designation, item.quantity != null ? `×${item.quantity}` : ''].filter(Boolean).join(' · '),
+      note: item.notes, image: art ? art.thumbnailSrc ?? art.src : undefined, schematic: !item.images.some(image => !image.classification && image.src) && Boolean(art) };
+  })} />;
 }

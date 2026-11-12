@@ -9,7 +9,9 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
     return Response.json({ records: await getSearchIndex() }, { headers: { 'Cache-Control': 'private, no-store' } });
-  } catch {
+  } catch (error) {
+    // 23b: logged for the server's own log; only the error's name and message (no request data, no credentials).
+    console.error('search-index: building the index failed:', error instanceof Error ? `${error.name}: ${error.message}` : 'unknown error');
     return Response.json({ records: [], error: 'unavailable' }, { status: 503, headers: { 'Cache-Control': 'private, no-store' } });
   }
 }

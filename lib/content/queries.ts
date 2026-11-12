@@ -113,7 +113,7 @@ export const getProjectIdentity = cache(async (slug: string) => {
   const cms = await getPayload({ config });
   const result = await cms.find({ req: await contentRequest(), collection: 'projects', overrideAccess: false, depth: 0, limit: 1,
     where: { and: [publicWhere, { slug: { equals: slug } }] },
-    select: { slug: true, title: true } });
+    select: { slug: true, title: true, projectCode: true } });
   return result.docs[0];
 });
 
@@ -199,11 +199,18 @@ export const getEquipment = cache(async (project: number, slug: string) => {
     where: { and: [publicWhere, { project: { equals: project } }, { slug: { equals: slug } }] } });
   const item = result.docs[0];
   if (!item) return undefined;
-  const characters = await cms.find({ collection: 'characters', req, overrideAccess: false, depth: 0, pagination: false, sort: 'name',
+  // ISSUED TO (board 3): depth 1 for the portrait (first image this visitor may see, through image()); the assignment
+  // rows give this item's designation and quantity. The assigned equipment itself is not populated beyond its id.
+  const characters = await cms.find({ collection: 'characters', req, overrideAccess: false, depth: 1, pagination: false, sort: 'name',
     where: { and: [{ project: { equals: project } }, { 'equipmentAssignments.equipment': { equals: item.id } }] },
-    select: { name: true, slug: true, role: true } });
+    select: { name: true, slug: true, role: true, images: true, equipmentAssignments: true }, populate: { equipment: { slug: true } } });
   return { ...equipmentSummary(item), schematic: schematicOf(item),
-    characters: characters.docs.map(character => ({ name: character.name, slug: character.slug, role: character.role || '' })) };
+    characters: characters.docs.map(character => {
+      const portrait = images(character.images).find(file => !file.classification && file.src && !/\.pdf(?:\?|$)/i.test(file.src));
+      const row = (character.equipmentAssignments ?? []).find(entry => idOf(entry.equipment) === item.id);
+      return { name: character.name, slug: character.slug, role: character.role || '', portrait: portrait ? portrait.thumbnailSrc ?? portrait.src : undefined,
+        designation: row?.designation || undefined, quantity: row?.quantity ?? undefined };
+    }) };
 });
 
 // The schematic video and poster of an equipment record fetched with overrideAccess:false: only a published public or

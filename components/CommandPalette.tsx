@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useSound } from "@/components/SoundProvider";
 import { openRoute } from "@/lib/graphics-mode";
 import { setDisplayMode } from "@/lib/display-mode";
-import { OPEN_PALETTE_EVENT, PENDING_KEY, TERMINAL_RUN_EVENT } from "@/lib/palette";
+import { OPEN_PALETTE_EVENT, TERMINAL_RUN_EVENT, isMac, setPendingRun } from "@/lib/palette";
 import type { SearchEntry } from "@/lib/content/search-entries";
 
 /**
@@ -37,7 +37,6 @@ function shortcutBlocked(pathname: string): boolean {
   return Boolean(active.closest("input, textarea, select, [contenteditable]:not([contenteditable=\"false\"])"));
 }
 
-const isMac = () => /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 
 export default function CommandPalette() {
   const router = useRouter();
@@ -55,6 +54,7 @@ export default function CommandPalette() {
   const opener = useRef<Element | null>(null);
   const input = useRef<HTMLInputElement>(null);
   const list = useRef<HTMLDivElement>(null);
+  const root = useRef<HTMLDivElement>(null);
   const loading = useRef(false);
   const ids = useId();
   const listId = `${ids}-list`;
@@ -139,7 +139,7 @@ export default function CommandPalette() {
     list.push({ id: "sound", label: `sound ${soundOn ? "off" : "on"}`, hint: "display settings", run: () => { setSound(!soundOn); close(); } });
     list.push({ id: "help", label: "help", hint: "list every command", run: () => {
       if (pathRef.current === "/") { close(false); requestAnimationFrame(() => window.dispatchEvent(new CustomEvent(TERMINAL_RUN_EVENT, { detail: { command: "help" } }))); return; }
-      try { sessionStorage.setItem(PENDING_KEY, "help"); } catch { /* optional storage */ }
+      setPendingRun("help");
       go("/");
     } });
     return list;
@@ -214,6 +214,24 @@ export default function CommandPalette() {
     return () => window.removeEventListener("keydown", onKey, true);
   }, [open, close]);
 
+  // 23b: while the palette is open the page behind it is inert (no Tab, click or screen-reader stop there). Every
+  // sibling of the palette and of each of its ancestors up to <body> gets `inert`; only the ones this effect set are
+  // cleared again on close, so a wrapper the boot made inert stays as it was.
+  useLayoutEffect(() => {
+    if (!open) return;
+    const own = root.current;
+    if (!own) return;
+    const changed: Element[] = [];
+    for (let node: Element | null = own; node && node !== document.body && node.parentElement; node = node.parentElement) {
+      for (const sibling of Array.from(node.parentElement.children)) {
+        if (sibling === node || sibling.hasAttribute("inert") || /^(SCRIPT|STYLE|LINK|TEMPLATE)$/.test(sibling.tagName)) continue;
+        sibling.setAttribute("inert", "");
+        changed.push(sibling);
+      }
+    }
+    return () => { for (const element of changed) element.removeAttribute("inert"); };
+  }, [open]);
+
   if (!open) return null;
   const records = items.filter(item => item.group === "RECORDS");
   const commandItems = items.filter(item => item.group === "COMMANDS");
@@ -233,7 +251,7 @@ export default function CommandPalette() {
   const empty = !items.length && !recordsNote;
 
   return (
-    <div className="command-palette" onKeyDown={onKeyDown}>
+    <div ref={root} className="command-palette" onKeyDown={onKeyDown}>
       <div className="command-palette-backdrop" aria-hidden="true" onClick={() => close()} />
       <div className="command-palette-dialog" role="dialog" aria-modal="true" aria-label="Command palette">
         <label className="command-palette-field">

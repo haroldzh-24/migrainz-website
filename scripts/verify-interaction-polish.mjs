@@ -290,7 +290,9 @@ try {
     assert.deepEqual(await page.locator('.project-application .lede').first().evaluate(el => [getComputedStyle(el).color, getComputedStyle(el).textShadow]),
       ['rgb(51, 51, 51)', 'none'], 'project-window descriptions stay dark grey (.retro-window-body p) without glow');
     await visit(page, base + '/projects/blushland/equipment/fixture-scanner');
-    assert.match(await page.locator('.equipment-panel p').first().evaluate(el => getComputedStyle(el).textShadow), /2\.8px/, 'the equipment panel keeps body glow');
+    // Batch 25 (board 3), updated on purpose: the item page is the light dossier (Win95 window content), so no glow there;
+    // the dark terminal specs panel that kept the body glow is no longer on the page.
+    assert.deepEqual(await page.locator('.dossier').evaluate(el => [getComputedStyle(el.querySelector('.dossier-fields td')).textShadow, getComputedStyle(el.querySelector('.dossier-name')).textShadow]), ['none', 'none'], 'the light dossier has no glow');
     await context.close();
 
     // The boot/announcement window body is terminal text: its headline keeps the glow.

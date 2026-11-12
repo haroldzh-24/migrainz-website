@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { useSound } from "@/components/SoundProvider";
 import CrtToggle, { MotionToggle, PhosphorToggle, ViewToggle } from "@/components/CrtToggle";
 import { openPalette } from "@/lib/palette";
+import ShortcutKey from "@/components/ShortcutKey";
 
 /**
  * Header SYSTEM menu: display settings behind a disclosure button. The panel stays mounted while closed (hidden)
@@ -59,8 +60,8 @@ export default function SystemMenu() {
         <ViewToggle />
         <MotionToggle />
         {/* Batch 23: the command palette (board 7); on phones this is its only button (no new tab). */}
-        <button className="palette-toggle" type="button" onClick={event => { const from = event.currentTarget; setOpen(false); openPalette("", from); }}>
-          SEARCH<span className="palette-toggle-key" aria-hidden="true"> · CTRL+K</span>
+        <button className="palette-toggle" type="button" aria-keyshortcuts="Control+K Meta+K" onClick={event => { const from = event.currentTarget; setOpen(false); openPalette("", from); }}>
+          SEARCH<ShortcutKey className="palette-toggle-key" prefix=" · " />
         </button>
       </div>
     </div>

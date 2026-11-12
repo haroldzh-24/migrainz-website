@@ -9,11 +9,14 @@ export function Directory({
   path,
   title,
   compact = false,
+  heading = true,
   children,
 }: {
   path: string;
   title: string;
   compact?: boolean;
+  /** false: the page's own heading carries the title (the dossier template, components/Dossier.tsx). */
+  heading?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -25,7 +28,7 @@ export function Directory({
         <Link href="/comics">COMICS</Link>
       </nav>
       <p className="eyebrow directory-path">{path}</p>
-      <h1><DecodeText text={title} /></h1>
+      {heading && <h1><DecodeText text={title} /></h1>}
       {children}
       <TypeOut />
     </section>
