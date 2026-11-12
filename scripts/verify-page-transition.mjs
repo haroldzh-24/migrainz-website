@@ -26,6 +26,13 @@ const browser = await playwright.chromium.launch({ executablePath: process.env.B
 const policies = require('./policy-watch.cjs').watchBrowser(browser);
 const errors = [];
 const pass = message => console.log('PASS ' + message);
+// Batch 22: SYSTEM ▸ MOTION: REDUCED and the plain view (saved settings) must act like the OS reduced-motion setting.
+const REDUCED_SETUPS = [
+  { name: 'reduced motion', options: { reducedMotion: 'reduce' } },
+  { name: 'MOTION: REDUCED', options: {}, storage: ['migrainz-motion', 'reduced'] },
+  { name: 'plain view', options: {}, storage: ['migrainz-view', 'plain'] },
+];
+const applySetup = async (context, setup) => { if (setup.storage) await context.addInitScript(([key, value]) => { try { localStorage.setItem(key, value); } catch {} }, setup.storage); };
 const open = async ({ width = 1366, height = 768, reducedMotion = 'no-preference', noNavigationApi = false } = {}) => {
   const context = await browser.newContext({ viewport: { width, height }, reducedMotion });
   // Browsers without the Navigation API: Back is told from a trail of visited paths instead (13b).
@@ -299,14 +306,15 @@ try {
   }
 
   // 9. Reduced motion: a cut (the event says so; no attribute, no band).
-  {
-    const { context, page } = await open({ reducedMotion: 'reduce' });
+  for (const setup of REDUCED_SETUPS) {
+    const { context, page } = await open(setup.options);
+    await applySetup(context, setup);
     await page.goto(base + '/');
     await ready(page);
     await page.locator('.terminal-nav a[href="/tracker"]').click();
     const enter = await last(page);
-    assert.deepEqual([enter.animated, enter.attr, enter.band], [false, null, false], 'reduced motion: a cut');
-    pass('reduced motion: a cut');
+    assert.deepEqual([enter.animated, enter.attr, enter.band], [false, null, false], `${setup.name}: a cut`);
+    pass(`${setup.name}: a cut`);
     await context.close();
   }
 

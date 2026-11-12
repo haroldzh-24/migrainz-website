@@ -1,5 +1,6 @@
 'use client';
 
+import { onMotionChange, reducedMotion } from '@/components/home/motion';
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useBeforeWorkspace } from '@/components/WindowManager';
 
@@ -35,16 +36,15 @@ export default function EquipmentSchematic({ src, poster, ratio, name, children 
   animating.current = animate;
 
   useEffect(() => {
-    const motion = matchMedia('(prefers-reduced-motion: reduce)');
     const data = matchMedia('(prefers-reduced-data: reduce)');
     const connection = (navigator as Navigator & { connection?: EventTarget & { saveData?: boolean } }).connection;
-    const preference = () => setReduced(motion.matches || data.matches || Boolean(connection?.saveData));
+    const preference = () => setReduced(reducedMotion() || data.matches || Boolean(connection?.saveData));
     preference();
-    motion.addEventListener('change', preference);
+    const stopSettings = onMotionChange(preference);
     data.addEventListener('change', preference);
     connection?.addEventListener('change', preference);
     return () => {
-      motion.removeEventListener('change', preference);
+      stopSettings();
       data.removeEventListener('change', preference);
       connection?.removeEventListener('change', preference);
     };

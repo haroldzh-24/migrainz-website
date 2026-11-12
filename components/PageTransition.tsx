@@ -1,5 +1,6 @@
 "use client";
 
+import { reducedMotion } from "@/components/home/motion";
 import { usePathname } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { arrival } from "@/lib/arrival";
@@ -22,7 +23,7 @@ type NavigationLike = EventTarget & { currentEntry?: { index: number } | null };
 const CAP_MS = 1200;
 const TRAIL_LIMIT = 50;
 const depth = (path: string) => path.split("/").filter(Boolean).length;
-const plain = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches || document.documentElement.dataset.crt === "off";
+const plain = () => reducedMotion() || document.documentElement.dataset.crt === "off";
 const navigationApi = () => (window as unknown as { navigation?: NavigationLike }).navigation;
 
 export default function PageTransition() {

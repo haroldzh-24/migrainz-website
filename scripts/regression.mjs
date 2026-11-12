@@ -115,6 +115,8 @@ try {
   await completed(launch(['scripts/verify-equipment-directory.mjs']));
   await stopServer(server);
   server = await startServer();
+  // Batch 22: on the fresh server, so the first server's memory growth (bugs.md) does not reach it.
+  await completed(launch(['scripts/verify-plain-motion.mjs']));
   await completed(launch(['scripts/verify-site-health.mjs']));
   await completed(launch(['scripts/verify-site-health.mjs', '--self-test']));
 } catch (error) {

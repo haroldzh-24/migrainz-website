@@ -17,6 +17,7 @@
 // 2 visits; never while the page is busy (a page turn, typing, the mode switch, the boot), with reduced motion or CRT
 // off (visual stunts only), or once `exorcise`d (until `summon`). Tests: outside production builds, localStorage
 // migrainz-ghost-test = "block" or "force:<name>,<name>" decides every roll.
+import { plainView, reducedMotion } from "@/components/home/motion";
 
 export type Ambient = "second-user" | "slip" | "idle" | "second-cursor" | "misclick" | "watcher" | "amber" | "boot-ad";
 export type Line = "tails" | "console" | "tab" | "not-found" | "welcome" | "archive" | "chapter";
@@ -187,7 +188,9 @@ function load(): boolean {
   }
 }
 
-const quietMode = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches || document.documentElement.dataset.crt === "off";
+// Reduced motion covers the OS setting, SYSTEM ▸ MOTION: REDUCED and the plain view (batch 22).
+// Reduced motion covers the OS setting, SYSTEM ▸ MOTION: REDUCED and the plain view (batch 22).
+const quietMode = () => reducedMotion() || document.documentElement.dataset.crt === "off";
 const busyNow = () => Boolean(document.documentElement.dataset.busy) || document.documentElement.dataset.power !== "on"
   || Boolean(document.querySelector(".startup-sequence, .mode-switch:not([hidden]), main#top.power-on"));
 
@@ -207,6 +210,8 @@ export const ghost = {
 
   /** A quiet line or effect that is not an ambient event (tails, console, tab title, 404 line...): awake, from visit 2. */
   allows(name: Line): boolean {
+    // The plain reading view (batch 22) has no ghost at all: no tails, lines or tab title, even when a test forces one.
+    if (plainView()) return false;
     const test = override();
     if (test.force.has(name)) return load() && !local!.exorcised;
     return ghost.awake() && session!.visit >= 2;

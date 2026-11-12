@@ -22,8 +22,16 @@ const policies = require('./policy-watch.cjs').watchBrowser(browser);
 const errors = [];
 const pass = message => console.log('PASS ' + message);
 
-const open = async ({ reducedMotion = 'no-preference', width = 1366, height = 768 } = {}) => {
+// Batch 22: SYSTEM ▸ MOTION: REDUCED and the plain view (saved settings) must act like the OS reduced-motion setting.
+const REDUCED_SETUPS = [
+  { name: 'reduced motion', options: { reducedMotion: 'reduce' } },
+  { name: 'MOTION: REDUCED', options: {}, storage: ['migrainz-motion', 'reduced'] },
+  { name: 'plain view', options: {}, storage: ['migrainz-view', 'plain'] },
+];
+const applySetup = async (context, setup) => { if (setup.storage) await context.addInitScript(([key, value]) => { try { localStorage.setItem(key, value); } catch {} }, setup.storage); };
+const open = async ({ reducedMotion = 'no-preference', width = 1366, height = 768, setup = null } = {}) => {
   const context = await browser.newContext({ viewport: { width, height }, reducedMotion });
+  if (setup) await applySetup(context, setup); // before the first load (open() navigates)
   await context.addInitScript(() => {
     try { sessionStorage.setItem('migrainz-announcement:studio-transmission-001', 'studio-transmission-001'); localStorage.setItem('migrainz-ghost-test', 'block'); } catch {}
     window.__typing = [];
@@ -119,11 +127,11 @@ try {
     await context.close();
   }
   // 5. Reduced motion: complete at once; phone width: no sideways scroll while typing.
-  {
-    const { context, page } = await open({ reducedMotion: 'reduce' });
+  for (const setup of REDUCED_SETUPS) {
+    const { context, page } = await open({ ...setup.options, setup });
     await run(page, 'help');
     await page.waitForTimeout(300);
-    assert.deepEqual(await page.evaluate(() => window.__typing), [], 'reduced motion: no typing');
+    assert.deepEqual(await page.evaluate(() => window.__typing), [], `${setup.name}: no typing`);
     await context.close();
   }
   {

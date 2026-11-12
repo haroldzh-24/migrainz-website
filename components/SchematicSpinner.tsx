@@ -1,5 +1,6 @@
 "use client";
 
+import { onMotionChange, reducedMotion } from "@/components/home/motion";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
 /**
@@ -16,7 +17,7 @@ const MIN_RATE = 0.25;
 const MAX_RATE = 4;
 
 function quiet() {
-  const motion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const motion = reducedMotion();
   const data = window.matchMedia("(prefers-reduced-data: reduce)").matches;
   const saveData = Boolean((navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData);
   return motion || data || saveData;
@@ -33,9 +34,10 @@ export function SpinAngle() {
   useEffect(() => {
     const update = () => setHeld(quiet());
     update();
-    const queries = ["(prefers-reduced-motion: reduce)", "(prefers-reduced-data: reduce)"].map(query => window.matchMedia(query));
-    queries.forEach(query => query.addEventListener("change", update));
-    return () => queries.forEach(query => query.removeEventListener("change", update));
+    const data = window.matchMedia("(prefers-reduced-data: reduce)");
+    data.addEventListener("change", update);
+    const stopSettings = onMotionChange(update);
+    return () => { data.removeEventListener("change", update); stopSettings(); };
   }, []);
   useEffect(() => {
     if (held) { setDegrees(0); return; }
@@ -65,9 +67,10 @@ export default function SchematicSpinner({ src, poster, label, decorative = fals
   useEffect(() => {
     const update = () => setStill(!src || quiet());
     update();
-    const queries = ["(prefers-reduced-motion: reduce)", "(prefers-reduced-data: reduce)"].map(query => window.matchMedia(query));
-    queries.forEach(query => query.addEventListener("change", update));
-    return () => queries.forEach(query => query.removeEventListener("change", update));
+    const data = window.matchMedia("(prefers-reduced-data: reduce)");
+    data.addEventListener("change", update);
+    const stopSettings = onMotionChange(update);
+    return () => { data.removeEventListener("change", update); stopSettings(); };
   }, [src]);
 
   // Swap the still for the video only once it is about to be seen.

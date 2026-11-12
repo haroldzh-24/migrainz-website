@@ -21,12 +21,12 @@ const SECTIONS = [
   { key: "requisitions", file: "requisitions.exe", promo: "shop", aliases: ["shop", "store", "requisitions.exe"] },
   { key: "patreon", file: "patreon.key", promo: "patreon", aliases: ["patreon.key", "clearance"] },
 ] as const;
-const COMMANDS = ["help", "ls", "cd", "open", "cat", "system", "whoami", "date", "echo", "clear", "crt", "phosphor", "sound", "boot"];
+const COMMANDS = ["help", "ls", "cd", "open", "cat", "system", "whoami", "date", "echo", "clear", "crt", "phosphor", "view", "motion", "sound", "boot"];
 const HISTORY_LIMIT = 50;
 const OUTPUT_LIMIT = 80;
 
 /** Writes a display mode the same way the SYSTEM menu does, and tells its buttons to catch up. */
-function setDisplayMode(attribute: "crt" | "phosphor", storageKey: string, value: string) {
+function setDisplayMode(attribute: "crt" | "phosphor" | "view" | "motion", storageKey: string, value: string) {
   document.documentElement.dataset[attribute] = value;
   try { localStorage.setItem(storageKey, value); } catch { /* storage may be blocked */ }
   window.dispatchEvent(new CustomEvent("migrainz:display-mode", { detail: { attribute, value } }));
@@ -131,6 +131,7 @@ export default function HomeTerminal({ projects, clearance }: { projects: Termin
         { text: "system             open the SYSTEM monitor", kind: "out" },
         { text: "whoami · date · echo <text> · clear", kind: "out" },
         { text: "crt on|reduced|off · phosphor green|amber · sound on|off · boot", kind: "out" },
+        { text: "view terminal|plain · motion auto|reduced", kind: "out" },
         { text: "Up/Down recall commands; Tab completes a name.", kind: "dim" },
       );
       tail(out, "help yourself      run requisitions.exe");
@@ -209,10 +210,20 @@ export default function HomeTerminal({ projects, clearance }: { projects: Termin
       const mode = argument.toLowerCase();
       if (["green", "amber"].includes(mode)) { setDisplayMode("phosphor", "crt-phosphor", mode); out.push({ text: `phosphor ........ ${mode}`, kind: "ok" }); }
       else out.push({ text: "usage: phosphor green|amber", kind: "err" });
+    } else if (command === "view") {
+      const mode = argument.toLowerCase();
+      if (mode === "terminal" || mode === "plain") { setDisplayMode("view", "migrainz-view", mode); out.push({ text: `view ............ ${mode}`, kind: "ok" }); }
+      else out.push({ text: "usage: view terminal|plain", kind: "err" });
+    } else if (command === "motion") {
+      const mode = argument.toLowerCase();
+      if (mode === "auto" || mode === "reduced") { setDisplayMode("motion", "migrainz-motion", mode); out.push({ text: `motion .......... ${mode}`, kind: "ok" }); }
+      else out.push({ text: "usage: motion auto|reduced (auto follows your system setting)", kind: "err" });
     } else if (command === "sound" || command === "snd") {
       const mode = argument.toLowerCase();
       if (mode === "on" || mode === "off") { setSound(mode === "on"); out.push({ text: `snd.drv ......... ${mode}`, kind: "ok" }); }
       else out.push({ text: `usage: sound on|off (now ${soundOn ? "on" : "off"})`, kind: "err" });
+    } else if ((command === "boot" || command === "reboot") && document.documentElement.dataset.view === "plain") {
+      out.push({ text: "no boot in the plain view. Type view terminal first.", kind: "err" });
     } else if (command === "boot" || command === "reboot") {
       out.push({ text: "rebooting ...", kind: "dim" });
       try {

@@ -1,4 +1,5 @@
 "use client";
+import { plainView, reducedMotion } from "@/components/home/motion";
 import { useEffect, useRef, useState, type ReactNode, type PointerEvent } from "react";
 import { announcement } from "@/data/announcement";
 import { ghost } from "@/lib/ghost";
@@ -109,7 +110,7 @@ export default function StartupSequence({ children }: { children: ReactNode }) {
     bootTimers.current.forEach(clearTimeout);
     bootTimers.current = [];
     try { sessionStorage.setItem(bootSeenKey, "1"); } catch { /* Optional storage. */ }
-    const plain = window.matchMedia("(prefers-reduced-motion: reduce)").matches || document.documentElement.dataset.crt === "off";
+    const plain = reducedMotion() || document.documentElement.dataset.crt === "off";
     const show = () => {
       setCollapsing(false);
       // Power-on (board 17): only the page's <main> scales up from a line, never the wrapper with the fixed layers
@@ -138,7 +139,9 @@ export default function StartupSequence({ children }: { children: ReactNode }) {
       dismissed = sessionStorage.getItem(storageKey) === announcement.id;
       seen = sessionStorage.getItem(bootSeenKey) === "1";
     } catch { /* Optional storage. */ }
-    if (!announcement.enabled || dismissed) { setState("closed"); powerOn(); return; }
+    // Plain reading view (batch 22): no boot and no announcement window on load; nothing is marked as seen, so the
+    // terminal view shows them on its next load (and the terminal's `boot` command still replays the boot).
+    if (!announcement.enabled || dismissed || plainView()) { setState("closed"); powerOn(); return; }
     if (seen) { setState("announcement"); powerOn(); return; }
     setPhosphor(document.documentElement.dataset.phosphor === "amber" ? "amber" : "green");
     windowRef.current?.focus();
@@ -158,7 +161,7 @@ export default function StartupSequence({ children }: { children: ReactNode }) {
   // Reduced motion: every line at once.
   useEffect(() => {
     if (state !== "boot" || !running || finishing.current) return;
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const reduced = reducedMotion();
     let timer: ReturnType<typeof setTimeout> | undefined;
     if (reduced && stage !== lines.length) setStage(lines.length);
     else if (!reduced && stage < lines.length) timer = setTimeout(() => setStage(value => value + 1), stage === 0 ? FIRST_LINE_MS : LINE_MS);
@@ -175,7 +178,7 @@ export default function StartupSequence({ children }: { children: ReactNode }) {
     // the list gets longer and the share can fall; the counter then waits for the list to catch up and never goes back.
     const share = lines.length ? Math.min(stage, lines.length) / lines.length : 0;
     const target = Math.round(dataLines === null ? Math.min(90, share * 90) : share * 100);
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { setCount(value => Math.max(value, target)); return; }
+    if (reducedMotion()) { setCount(value => Math.max(value, target)); return; }
     const timer = setInterval(() => setCount(value => {
       if (target - value < 1) { clearInterval(timer); return Math.max(value, target); }
       return value + (target - value) * 0.25;
@@ -284,6 +287,6 @@ export default function StartupSequence({ children }: { children: ReactNode }) {
         </div>
       </div>
     </div>}
-    <div ref={contentRef} inert={state === "boot"} aria-hidden={state === "boot" ? true : undefined} style={{ visibility: state === "boot" ? "hidden" : "visible" }}>{children}</div>
+    <div ref={contentRef} className="startup-page" inert={state === "boot"} aria-hidden={state === "boot" ? true : undefined} style={{ visibility: state === "boot" ? "hidden" : "visible" }}>{children}</div>
   </>;
 }

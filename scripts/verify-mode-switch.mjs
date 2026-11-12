@@ -203,8 +203,10 @@ try {
   }
 
   // 3. Reduced motion and CRT off: crossfade only, no print.
-  for (const setup of [{ reducedMotion: 'reduce' }, { crt: 'off' }]) {
+  for (const setup of [{ reducedMotion: 'reduce' }, { crt: 'off' }, { storage: ['migrainz-motion', 'reduced'] }, { storage: ['migrainz-view', 'plain'] }]) {
     const { page, context } = await open(setup);
+    // Batch 22: SYSTEM ▸ MOTION: REDUCED and the plain view act like the OS setting.
+    if (setup.storage) await context.addInitScript(([key, value]) => { try { localStorage.setItem(key, value); } catch {} }, setup.storage);
     await page.goto(base + '/');
     await page.locator('.home-screen').waitFor();
     await reset(page);

@@ -1,5 +1,6 @@
 "use client";
 
+import { reducedMotion } from "@/components/home/motion";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { GRAPHICS_LINES, LAST_TERMINAL_KEY, fileForPath, isGraphicsPath } from "@/lib/graphics-mode";
@@ -21,7 +22,7 @@ type Stage = "idle" | "print" | "collapse" | "line" | "black" | "reveal" | "fade
 type Forward = { from: string; pushed: boolean; started: number; push: () => void; source?: string };
 
 const graphicsShown = () => Boolean(document.querySelector(".graphics-route"));
-const plain = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches || document.documentElement.dataset.crt === "off";
+const plain = () => reducedMotion() || document.documentElement.dataset.crt === "off";
 const skippable = (stage: Stage) => stage === "print" || stage === "collapse" || stage === "line";
 
 export default function ModeSwitch() {

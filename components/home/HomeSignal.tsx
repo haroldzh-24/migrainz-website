@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Watcher from "@/components/Watcher";
 import { CELL_H, CELL_W, imageToText, noise, renderStatic, GLYPHS } from "@/lib/home/text-graphics";
-import { crtMode, finePointer, reducedMotion, watchMotion } from "@/components/home/motion";
+import { crtMode, finePointer, onMotionChange, reducedMotion, watchMotion } from "@/components/home/motion";
 
 export type HomeChannel = { name: string; ext: string; caption: string; lines: string[] };
 
@@ -228,15 +228,11 @@ function HomeTitle() {
 /** The caption under the Watcher: types out the active channel's line (all at once under reduced motion). */
 function HomeCaption({ active }: { active: HomeChannel | null }) {
   const [caption, setCaption] = useState(IDLE);
-  // The idle line depends on the display mode and reduced motion: re-type it when either changes.
+  // The idle line depends on the display mode and reduced motion (OS, SYSTEM ▸ MOTION, plain view): re-type it on a change.
   const [mode, setMode] = useState(0);
   useEffect(() => {
     const bump = () => setMode(value => value + 1);
-    const observer = new MutationObserver(bump);
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-crt"] });
-    const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
-    motion.addEventListener("change", bump);
-    return () => { observer.disconnect(); motion.removeEventListener("change", bump); };
+    return onMotionChange(bump);
   }, []);
   useEffect(() => {
     const text = active ? active.caption : idleText();

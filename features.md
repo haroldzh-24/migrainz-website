@@ -1,5 +1,10 @@
 # Features
 
+## Implemented - 2026-11-12 / Plain reading view and SYSTEM ▸ MOTION (batch 22)
+
+- SYSTEM ▸ VIEW: PLAIN shows the same page as a light page with dark serif text, no CRT effects and no motion: good for long lore, screen readers, slow phones and printing. Remembered in the browser; `view plain` / `view terminal` in the homepage terminal too. Printing always uses it.
+- SYSTEM ▸ MOTION: REDUCED stops the site's motion (page wipes, decode, typing, page flip, the mode-switch sequence, Watcher motion, the ghost's stunts) as the system's reduced-motion setting does; AUTO follows the system setting. `motion reduced` / `motion auto` in the terminal.
+
 ## Implemented - 2026-11-12 / Ghost visits, unlisted.txt live, CI (batch 21)
 
 - The ghost counts a new visit only after 30 minutes without activity in the browser; links opened in new tabs no longer add visits.

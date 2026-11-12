@@ -23,6 +23,13 @@ const policies = require('./policy-watch.cjs').watchBrowser(browser);
 const errors = [];
 const pass = message => console.log('PASS ' + message);
 
+// Batch 22: SYSTEM ▸ MOTION: REDUCED and the plain view (saved settings) must act like the OS reduced-motion setting.
+const REDUCED_SETUPS = [
+  { name: 'reduced motion', options: { reducedMotion: 'reduce' } },
+  { name: 'MOTION: REDUCED', options: {}, storage: ['migrainz-motion', 'reduced'] },
+  { name: 'plain view', options: {}, storage: ['migrainz-view', 'plain'] },
+];
+const applySetup = async (context, setup) => { if (setup.storage) await context.addInitScript(([key, value]) => { try { localStorage.setItem(key, value); } catch {} }, setup.storage); };
 const open = async ({ width = 1366, height = 768, reducedMotion = 'no-preference', announcement = true } = {}) => {
   const context = await browser.newContext({ viewport: { width, height }, reducedMotion });
   await context.addInitScript(skipAnnouncement => {
@@ -144,12 +151,15 @@ try {
   }
 
   // 8. Reduced motion: complete. Phones: no sideways scroll while typing.
-  {
-    const { context, page } = await open({ reducedMotion: 'reduce' });
+  for (const setup of REDUCED_SETUPS) {
+    const { context, page } = await open(setup.options);
+    await applySetup(context, setup);
     await page.goto(base + '/about');
     await ready(page);
     await page.waitForTimeout(800);
-    assert.deepEqual(await typing(page), [], 'reduced motion: no typing');
+    assert.deepEqual(await typing(page), [], `${setup.name}: no typing`);
+    // Nothing of the page is hidden for typing (the head script's mark, batch 22: it honours the saved settings).
+    assert.equal(await page.evaluate(() => document.documentElement.dataset.typeout ?? null), null, `${setup.name}: no typing mark`);
     await context.close();
   }
   for (const width of [390, 320]) {
