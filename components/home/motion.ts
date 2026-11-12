@@ -18,13 +18,25 @@ export const reducedMotion = () =>
 export const crtMode = () => document.documentElement.dataset.crt ?? "on";
 export const finePointer = () => window.matchMedia("(hover: hover) and (pointer: fine)").matches;
 
+// 22b: printing switches the plain view on and back off (ViewToggle, beforeprint / afterprint). That is not a setting
+// change, and the page returns to the same state, so motion observers ignore those two switches; otherwise the homepage
+// title would type again and the Watcher and spinners reset after every print.
+let printSwitch = false;
+/** Runs a print-only change of html[data-view] without onMotionChange() / watchMotion() observers reacting to it. */
+export function printViewSwitch(apply: () => void) {
+  printSwitch = true;
+  apply();
+  // The observers' callbacks are microtasks queued by `apply`; they have run (and been ignored) before this timer.
+  setTimeout(() => { printSwitch = false; }, 0);
+}
+
 /**
  * Calls `change()` whenever any input of reducedMotion() or crtMode() may have changed: the OS setting, or the
  * html data-crt / data-motion / data-view attributes (SYSTEM menu, terminal commands). Returns the cleanup.
  */
 export function onMotionChange(change: () => void): () => void {
   const query = window.matchMedia(REDUCE_QUERY);
-  const mode = new MutationObserver(change);
+  const mode = new MutationObserver(() => { if (!printSwitch) change(); });
   mode.observe(document.documentElement, { attributes: true, attributeFilter: MOTION_ATTRIBUTES });
   query.addEventListener("change", change);
   return () => { mode.disconnect(); query.removeEventListener("change", change); };

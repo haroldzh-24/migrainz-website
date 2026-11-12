@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useState } from "react";
+import { printViewSwitch } from "@/components/home/motion";
 
 type ModeToggleProps<Mode extends string> = {
   /** The <html data-*> attribute that holds the mode (set before first paint by the layout script). */
@@ -83,13 +84,19 @@ export function ViewToggle() {
   // stylesheet in globals.css carries the same colours if this script cannot run.
   useEffect(() => {
     let restore: string | undefined;
+    // printViewSwitch (22b): motion observers ignore these two switches, so nothing re-types or resets after a print.
     const before = () => {
       const root = document.documentElement;
       if (root.dataset.view === "plain") return;
       restore = root.dataset.view ?? "terminal";
-      root.dataset.view = "plain";
+      printViewSwitch(() => { root.dataset.view = "plain"; });
     };
-    const after = () => { if (restore !== undefined) { document.documentElement.dataset.view = restore; restore = undefined; } };
+    const after = () => {
+      if (restore === undefined) return;
+      const value = restore;
+      restore = undefined;
+      printViewSwitch(() => { document.documentElement.dataset.view = value; });
+    };
     window.addEventListener("beforeprint", before);
     window.addEventListener("afterprint", after);
     return () => { window.removeEventListener("beforeprint", before); window.removeEventListener("afterprint", after); };

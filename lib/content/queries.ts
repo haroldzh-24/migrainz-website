@@ -6,6 +6,7 @@ import type { Media, Equipment } from '@/payload-types';
 import { contentRequest } from '@/lib/patreon/viewer';
 import { findListing } from './listings';
 import type { Classified, ComicPage, Project } from './types';
+import { loreEntries, type LoreEntry } from './lore';
 
 const classificationOf = (value: Classified): Classified => ({ classification: value.classification, safeLabel: value.safeLabel });
 const publicWhere = { listingVisibility: { equals: 'public' as const } };
@@ -324,5 +325,39 @@ export const getEquipmentTiles = cache(async (project: number) => {
   return result.docs.map(item => {
     const spin = item.classification ? undefined : schematicOf(item);
     return { ...equipmentListing(item), spin: spin && (spin.src || spin.poster) ? { src: spin.src, poster: spin.poster } : undefined };
+  });
+});
+
+// Lore links (design canvas board 8; batch 24): the project's characters, factions and equipment that may be linked in
+// lore text, with what their preview cards show. Lean selects through findListing with overrideAccess:false; only PUBLIC
+// rows of a PUBLIC project are kept (loreEntries(), lib/content/lore.ts), also for a signed-in patron. A portrait or poster
+// is used only when its media record is itself public (the image goes through image() / schematicPoster(), so it is a
+// /api/media/file URL that checks access again). Faction pages call this, never getProjects().
+export const getLoreIndex = cache(async (projectID: number): Promise<LoreEntry[]> => {
+  const cms = await getPayload({ config });
+  const projectRows = await findListing(cms, { collection: 'projects', overrideAccess: false, pagination: false,
+    where: { and: [publicWhere, { id: { equals: projectID } }] }, select: { slug: true, accessLevel: true } });
+  const project = projectRows.docs.find(row => row.id === projectID);
+  if (!project || project.accessLevel !== 'public' || project.classification || !project.slug || project.slug.startsWith('classified:')) return [];
+  const scoped = { and: [publicWhere, { project: { equals: projectID } }] };
+  const [characters, factions, equipment] = await Promise.all([
+    findListing(cms, { collection: 'characters', overrideAccess: false, depth: 1, pagination: false, where: scoped, sort: 'name',
+      select: { slug: true, name: true, description: true, primaryFaction: true, affiliations: true, images: true, accessLevel: true } }),
+    findListing(cms, { collection: 'factions', overrideAccess: false, depth: 0, pagination: false, where: scoped, sort: ['order', 'name'],
+      select: { slug: true, name: true, description: true, accessLevel: true } }),
+    findListing(cms, { collection: 'equipment', overrideAccess: false, depth: 1, pagination: false, where: scoped, sort: ['order', 'name'],
+      select: { slug: true, name: true, description: true, faction: true, schematicEnabled: true, schematicPoster: true, accessLevel: true } }),
+  ]);
+  const publicMedia = (media: unknown) => typeof media === 'object' && media !== null && (media as Media).accessLevel === 'public';
+  return loreEntries(project.slug, {
+    characters: characters.docs.map(row => {
+      const first = row.classification ? undefined : (row.images ?? []).find(entry => publicMedia(entry.media));
+      const portrait = first ? image(first.media) : undefined;
+      return { ...row, primaryFaction: row.primaryFaction, affiliations: row.affiliations,
+        portrait: portrait && !portrait.classification ? portrait.thumbnailSrc : undefined };
+    }),
+    factions: factions.docs,
+    equipment: equipment.docs.map(row => ({ ...row,
+      poster: !row.classification && publicMedia(row.schematicPoster) ? schematicPoster(row)?.src : undefined })),
   });
 });

@@ -40,6 +40,10 @@ export default function StartupSequence({ children }: { children: ReactNode }) {
   const [phosphor, setPhosphor] = useState("green");
   // True once this page load actually runs the checklist; null data = still waiting for /boot-status.
   const [running, setRunning] = useState(false);
+  // 22b: the page wrapper is made inert only once hydrated. Before that, `visibility: hidden` already keeps the hidden
+  // page out of reach (no focus, nothing for screen readers), and in the plain view the page must work from the server
+  // render (CSS shows it; an inert/aria-hidden wrapper in the server HTML would leave it unfocusable until hydration).
+  const [mounted, setMounted] = useState(false);
   const [dataLines, setDataLines] = useState<BootLine[] | null>(null);
   const { enabled: soundOn, setEnabled: setSound } = useSound();
   // Fixed driver lines first, then the real data lines and clearance from the server.
@@ -139,8 +143,9 @@ export default function StartupSequence({ children }: { children: ReactNode }) {
       dismissed = sessionStorage.getItem(storageKey) === announcement.id;
       seen = sessionStorage.getItem(bootSeenKey) === "1";
     } catch { /* Optional storage. */ }
+    setMounted(true);
     // Plain reading view (batch 22): no boot and no announcement window on load; nothing is marked as seen, so the
-    // terminal view shows them on its next load (and the terminal's `boot` command still replays the boot).
+    // terminal view shows them on its next load (the terminal's `boot` command explains that it needs `view terminal`).
     if (!announcement.enabled || dismissed || plainView()) { setState("closed"); powerOn(); return; }
     if (seen) { setState("announcement"); powerOn(); return; }
     setPhosphor(document.documentElement.dataset.phosphor === "amber" ? "amber" : "green");
@@ -287,6 +292,6 @@ export default function StartupSequence({ children }: { children: ReactNode }) {
         </div>
       </div>
     </div>}
-    <div ref={contentRef} className="startup-page" inert={state === "boot"} aria-hidden={state === "boot" ? true : undefined} style={{ visibility: state === "boot" ? "hidden" : "visible" }}>{children}</div>
+    <div ref={contentRef} className="startup-page" inert={mounted && state === "boot"} aria-hidden={mounted && state === "boot" ? true : undefined} style={{ visibility: state === "boot" ? "hidden" : "visible" }}>{children}</div>
   </>;
 }

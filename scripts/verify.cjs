@@ -52,7 +52,11 @@ const { chromium } = require(
     await initial.goto('/');
     assert.equal(await initial.locator('.startup-sequence').isVisible(), true);
     assert.equal(await initial.locator('#top').isVisible(), false);
-    assert.equal(await initial.locator('#top').evaluate(el => !!el.closest('[inert]')), true);
+    // 22b: before hydration the wrapper is hidden with visibility:hidden (out of reach for focus and screen readers);
+    // inert / aria-hidden are added once hydrated (so the plain view works from the server render).
+    assert.equal(await initial.locator('.startup-page').evaluate(el => getComputedStyle(el).visibility), 'hidden');
+    for (let i = 0; i < 4; i += 1) await initial.keyboard.press('Tab');
+    assert.equal(await initial.evaluate(() => !!document.activeElement?.closest('.startup-page')), false, 'no focus inside the hidden page before hydration');
     await noJS.close();
     const adminContext = await browser.newContext({ baseURL });
     const admin = await adminContext.newPage();

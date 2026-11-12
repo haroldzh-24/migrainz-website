@@ -56,6 +56,9 @@ try {
   await completed(launch(['--import', 'tsx', 'scripts/seed-desktop-fixture.ts']));
   // Batch 23: the command palette's index for an anonymous visitor and a signed-in patron (its own private fixture).
   await completed(launch(['--import', 'tsx', '--import', './scripts/stubs/register.mjs', 'scripts/verify-search-index.ts']));
+  // Batch 24: the lore-link index (public only, also for a signed-in patron; a redacted name containing a public name)
+  // and the linker's rules, in-process on its own private fixture.
+  await completed(launch(['--import', 'tsx', '--import', './scripts/stubs/register.mjs', 'scripts/verify-lore-index.ts']));
   const freePort = () => new Promise((resolve, reject) => {
     const probe = net.createServer();
     probe.once('error', reject);
@@ -109,6 +112,10 @@ try {
   await completed(launch(['scripts/verify-page-flip.mjs']));
   await completed(launch(['scripts/verify-terminal-typing.mjs']));
   await completed(launch(['scripts/verify-type-out.mjs']));
+  // Batch 24: a fresh server for the second half too. In this sandbox's 6 GB limit the first server was killed for memory
+  // (cgroup OOM, about 5 GB resident) during verify-equipment-directory in two runs in a row (bugs.md "Check environment").
+  await stopServer(server);
+  server = await startServer();
   await completed(launch(['scripts/verify-ghost-core.mjs']));
   await completed(launch(['scripts/verify-ghost-terminal.mjs']));
   await completed(launch(['scripts/verify-ghost-site.mjs']));
@@ -120,6 +127,7 @@ try {
   // Batch 22: on the fresh server, so the first server's memory growth (bugs.md) does not reach it.
   await completed(launch(['scripts/verify-plain-motion.mjs']));
   await completed(launch(['scripts/verify-command-palette.mjs']));
+  await completed(launch(['scripts/verify-lore-links.mjs']));
   await completed(launch(['scripts/verify-site-health.mjs']));
   await completed(launch(['scripts/verify-site-health.mjs', '--self-test']));
 } catch (error) {

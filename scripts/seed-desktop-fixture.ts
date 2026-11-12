@@ -59,7 +59,25 @@ try {
       images: [{ media: poster.id, caption: 'Synthetic relay concept' }], ...pub } });
   }
   const satchel = await cms.create({ collection: 'equipment', data: { name: 'Fixture Satchel', slug: 'fixture-satchel', project: project.id, category: 'Carry', images: [{ media: media.id, caption: 'Synthetic satchel' }], ...pub } });
-  await cms.create({ collection: 'characters', data: { name: 'Fixture Operative', slug: 'fixture-operative', project: project.id,
+  // Lore links (batch 24, scripts/verify-lore-links.mjs): the operative's description and writing name other public
+  // records of BLUSHLAND. The writing exercises the rules: a name in bold keeps its formatting, the second mention in a
+  // paragraph stays plain, names inside a link, a heading and inline code stay plain, the longer faction name wins, a name
+  // run into another word is not a name, and the page's own record is never linked.
+  const emblem = (await cms.find({ collection: 'factions', depth: 0, where: { slug: { equals: 'regression-emblem' } } })).docs[0];
+  assert.ok(emblem);
+  await cms.update({ collection: 'factions', id: emblem.id, data: { description: 'A synthetic field unit. Fixture Operative reports to it; THE OBSERVER keeps its records.', _status: 'published' } });
+  const text = (value: string, format = 0) => ({ type: 'text', text: value, format, detail: 0, mode: 'normal', style: '', version: 1 });
+  const block = (type: string, children: unknown[], extra: Record<string, unknown> = {}) => ({ type, children, direction: 'ltr', format: '', indent: 0, version: 1, ...extra });
+  const writing = { root: block('root', [
+    block('paragraph', [text('Field notes: the '), text('Fixture Satchel', 1), text(' stays packed. Fixture Satchel is checked twice; Fixture Operative signs off.')], { textFormat: 0, textStyle: '' }),
+    block('heading', [text('Fixture Lamp schedule')], { tag: 'h2' }),
+    block('paragraph', [text('Bench test: '), text('Fixture Relay', 16), text(' (code), '),
+      block('link', [text('Fixture Beacon manual')], { fields: { linkType: 'custom', url: '/projects/blushland/equipment/fixture-beacon', newTab: false } }),
+      text(', then the Fixture Relay itself. Seen near REGRESSION NO EMBLEM; Fixture Lampshade is not a record.')], { textFormat: 0, textStyle: '' }),
+  ]) };
+  await cms.create({ collection: 'characters', data: { name: 'Fixture Operative', slug: 'fixture-operative', project: project.id, primaryFaction: emblem.id,
+    description: 'Fixture Operative carries the Fixture Scanner into territory held by REGRESSION EMBLEM. THE OBSERVER files the reports.',
+    writing: writing as never,
     equipmentAssignments: [{ equipment: scanner.id, designation: 'Unit 7', quantity: 1, notes: 'Synthetic assignment', order: 1 }, { equipment: satchel.id, order: 2 }], ...pub } });
   // Project updates for the operations log (batch 12): two BLUSHLAND updates on one day (one with an image), one STALKER
   // update, and a REDACTED and a PATRON update whose SENTINEL-UPDATE-* text must never reach a page. Fixed dates. The

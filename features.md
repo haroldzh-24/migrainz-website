@@ -1,12 +1,17 @@
 # Features
 
+## Implemented - 2026-11-12 / Lore links with previews (batch 24, board 8)
+
+- In project, character and faction texts, names of other public characters, factions and equipment of the same project are links: hover or focus one (tap on a phone) to see a small card (portrait, faction, one line; the `.EQP` file and its schematic poster; member count), then open the record. Each page lists what it links under CROSS-REFERENCES (with the chapters a character appears in). Works in the plain view and with MOTION: REDUCED. Public records only.
+- Printing without script now uses the plain view's reading type too (22b).
+
 ## Implemented - 2026-11-12 / Command palette (batch 23, board 7)
 
 - Ctrl+K (⌘K on a Mac) anywhere, the header's SEARCH, SYSTEM ▸ SEARCH on phones, or `search <text>` in the homepage terminal: one box to find any public record (projects, chapters, characters, factions, equipment, archive items) by name, kind, code or file name, and to run commands (`cd /archive`, `crt off`, `view plain`, `motion reduced`, `help` ...). ↑↓ to move, Enter to open (records open with the usual terminal → desktop switch), Esc to close. Public records only; works in the plain view and with MOTION: REDUCED.
 
 ## Implemented - 2026-11-12 / Plain reading view and SYSTEM ▸ MOTION (batch 22)
 
-- SYSTEM ▸ VIEW: PLAIN shows the same page as a light page with dark serif text, no CRT effects and no motion: good for long lore, screen readers, slow phones and printing. Remembered in the browser; `view plain` / `view terminal` in the homepage terminal too. Printing always uses it.
+- SYSTEM ▸ VIEW: PLAIN shows the same page as a light page with dark serif text, no CRT effects and no motion: good for long lore, screen readers, slow phones and printing. Remembered in the browser; `view plain` / `view terminal` in the homepage terminal too. Printing always uses it (without script: the print stylesheet's light colours and plain reading type, since 22b).
 - SYSTEM ▸ MOTION: REDUCED stops the site's motion (page wipes, decode, typing, page flip, the mode-switch sequence, Watcher motion, the ghost's stunts) as the system's reduced-motion setting does; AUTO follows the system setting. `motion reduced` / `motion auto` in the terminal.
 
 ## Implemented - 2026-11-12 / Ghost visits, unlisted.txt live, CI (batch 21)
