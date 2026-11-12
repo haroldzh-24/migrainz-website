@@ -55,7 +55,7 @@ const layout = page => page.evaluate(() => {
   const rows = [...document.querySelectorAll('.dossier-fields tr')];
   return { window: rect('.project-app-content'), media: rect('.dossier-media'), record: rect('.dossier-record'), lastRow: rows.at(-1)?.getBoundingClientRect().toJSON(),
     scrollTop: document.querySelector('.project-app-content').scrollTop, headings: [...document.querySelectorAll('h1')].map(h => h.textContent),
-    fields: rows.map(row => [row.querySelector('th').textContent, row.querySelector('td').textContent]), file: document.querySelector('.dossier-file').textContent,
+    fields: rows.map(row => [row.querySelector('th').innerText, row.querySelector('td').textContent]), file: document.querySelector('.dossier-file').textContent,
     caption: document.querySelector('.dossier-fields caption').textContent, hOverflow: document.documentElement.scrollWidth - innerWidth };
 });
 const cards = page => page.locator('.dossier-card').evaluateAll(links => links.map(link => ({ href: link.getAttribute('href'), name: link.querySelector('strong').textContent,
@@ -83,7 +83,7 @@ try {
     assert.deepEqual(m.headings, ['Fixture Scanner'], 'one heading, in the dossier');
     assert.equal(m.file, 'Fixture_Scanner.EQP · BL-001');
     assert.equal(m.caption, 'TECHNICAL SPECIFICATIONS');
-    assert.deepEqual(m.fields.slice(0, -1), [['CATEGORY', 'Sensor'], ['MANUFACTURER', 'Studio Fixture'], ['CAPACITY', '2 cells'], ['Mass', '1 kg'], ['Range', '40 m']]);
+    assert.deepEqual(m.fields.slice(0, -1), [['CATEGORY', 'Sensor'], ['MANUFACTURER', 'Studio Fixture'], ['CAPACITY', '2 cells'], ['MASS', '1 kg'], ['RANGE', '40 m']], 'labels read in capitals (25b: text-transform on the labels)');
     assert.equal(m.fields.at(-1)[0], 'UPDATED');
     fits(m, 'equipment 1366x768');
     const display = await page.locator('.dossier-figure .equipment-schematic-display').boundingBox();
@@ -93,6 +93,16 @@ try {
     assert.equal(await page.getByRole('region', { name: 'Issued to' }).locator('h2').textContent(), 'ISSUED TO');
     assert.deepEqual(await cards(page), [{ href: CHARACTER, name: 'Fixture Operative', line: 'Unit 7 · ×1', image: null }]);
     assert.equal(await page.getByRole('link', { name: 'RETURN TO EQUIPMENT' }).getAttribute('href'), `${P}/equipment`);
+    // 25b: the schematic's region is named for what it holds (no specs panel inside it any more).
+    assert.equal(await page.getByRole('region', { name: 'Fixture Scanner schematic' }).count(), 1, 'the schematic region is "<name> schematic"');
+    assert.equal(await page.getByRole('region', { name: 'Fixture Scanner specifications' }).count(), 0, 'no "specifications" region holding only the image');
+    // 25b: keyboard focus stays visible on a card under the mouse (white dotted rectangle on the navy hover).
+    const card = page.locator('.dossier-card').first();
+    await card.focus();
+    await card.hover();
+    assert.deepEqual(await card.evaluate(el => [getComputedStyle(el).backgroundColor, getComputedStyle(el).outlineColor, getComputedStyle(el).outlineStyle]),
+      ['rgb(0, 0, 128)', 'rgb(255, 255, 255)', 'dotted'], 'hover + focus: navy card, white dotted focus rectangle');
+    await page.mouse.move(0, 0);
     assert.ok(!/SENTINEL/.test(await page.content()), 'no restricted fixture text');
     assert.deepEqual(await axe(page), [], 'axe: equipment dossier');
     await page.screenshot({ path: 'test-results/batch-25/verify-equipment-1366x768.png' });
@@ -113,6 +123,7 @@ try {
     assert.equal(m.caption, 'RECORD');
     assert.deepEqual(m.fields.map(([label]) => label), ['FACTION', 'CHAPTERS', 'RECORD STATUS', 'UPDATED']);
     assert.deepEqual(m.fields[0], ['FACTION', 'REGRESSION EMBLEM'], 'the public primary faction');
+    assert.deepEqual(m.fields[2], ['RECORD STATUS', 'PUBLIC'], 'record status from the record\'s access level (25b)');
     fits(m, 'character 1366x768');
     assert.equal(await page.getByRole('region', { name: 'Equipment carried' }).locator('h2').textContent(), 'EQUIPMENT CARRIED');
     const carried = await cards(page);
@@ -142,9 +153,13 @@ try {
     assert.ok(m.hOverflow <= 0, `${route} 390: no sideways scroll`);
     const grid = await page.locator('.dossier-cards').evaluate(list => getComputedStyle(list).gridTemplateColumns.split(' ').length);
     assert.equal(grid, 1, `${route} 390: one card per row`);
+    // 25b: no navy hover without a real hover pointer (a tap left the card navy).
+    assert.equal(await page.evaluate(() => matchMedia('(hover: hover)').matches), false, 'the phone context has no hover pointer');
+    await page.locator('.dossier-card').first().hover();
+    assert.notEqual(await page.locator('.dossier-card').first().evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(0, 0, 128)', `${route} 390: no navy hover on touch`);
     await context.close();
   }
-  pass('390: the record stacks under the media, one card per row, no sideways scroll');
+  pass('390: the record stacks under the media, one card per row, no sideways scroll, no hover colour on touch');
 
   // 4. Plain view: the light panel stays, values in the serif, axe clean.
   for (const route of [ITEM, CHARACTER]) {

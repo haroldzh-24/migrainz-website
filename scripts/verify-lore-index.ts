@@ -1,3 +1,4 @@
+// Also (batch 26, 25b): getEquipment's ISSUED TO cards list listed characters only, for an anonymous visitor and a signed-in patron.
 // Batch 24: lore links (design canvas board 8). The records that may be linked in lore text (getLoreIndex in
 // lib/content/queries.ts, filtered by loreEntries in lib/content/lore.ts) are PUBLIC only, for an anonymous visitor AND
 // for a signed-in, verified patron who may read patron records; a redacted record whose name contains a public name
@@ -35,7 +36,7 @@ globalThis.fetch = (async (input: RequestInfo | URL) => {
 const { getPayload } = await import('payload');
 const { default: config } = await import('../payload.config');
 const { seal, sessionCookie } = await import('../lib/patreon/server');
-const { getLoreIndex } = await import('../lib/content/queries');
+const { getLoreIndex, getEquipment } = await import('../lib/content/queries');
 const { createLoreLinker, loreEntries } = await import('../lib/content/lore');
 const cms = await getPayload({ config });
 const as = (headers: Record<string, string>) => { (globalThis as { __fixtureRequestHeaders?: Record<string, string> }).__fixtureRequestHeaders = headers; };
@@ -71,10 +72,23 @@ try {
   await cms.create({ collection: 'equipment', data: { name: 'SENTINEL-LORE-UNDER-PATRON-FACTION', slug: 'sentinel-lore-under-patron-faction', project: a.id, faction: patronFaction.id, ...pub } });
   await cms.create({ collection: 'equipment', data: { name: 'SENTINEL-LORE-PATRON-EQUIPMENT', slug: 'sentinel-lore-patron-equipment', project: a.id, ...patron } });
 
+  // 25b: ISSUED TO on an equipment page (getEquipment) lists listed characters only. Assigned after the equipment exists:
+  // one listed public character and one public character whose listing is hidden (readable by direct link, never listed).
+  const rifle = (await cms.find({ collection: 'equipment', where: { slug: { equals: 'lore-rifle' } }, limit: 1, depth: 0 })).docs[0];
+  await cms.create({ collection: 'characters', data: { name: 'Dee Holt', slug: 'dee-holt', project: a.id, role: 'Armourer',
+    equipmentAssignments: [{ equipment: rifle.id, designation: 'Rack 2', quantity: 1 }], ...pub } });
+  await cms.create({ collection: 'characters', data: { name: 'SENTINEL-LORE-UNLISTED-CARRIER', slug: 'sentinel-lore-unlisted-carrier', project: a.id,
+    equipmentAssignments: [{ equipment: rifle.id }], ...pub, listingVisibility: 'hidden' } });
+  const issued = async (who: string) => {
+    const item = await getEquipment(a.id, 'lore-rifle');
+    assert.deepEqual(item?.characters.map(character => character.slug), ['dee-holt'], `${who}: ISSUED TO lists the listed carrier only`);
+    assert.equal(item?.characters[0].designation, 'Rack 2');
+  };
+
   const base = '/projects/lore-alpha';
   const check = (index: Entry[], who: string) => {
     assert.ok(!JSON.stringify(index).includes('SENTINEL') && !JSON.stringify(index).toLowerCase().includes('sentinel-lore'), `${who}: no restricted name, slug, safe label or media: ${JSON.stringify(index)}`);
-    assert.deepEqual(byKey(index).map(entry => entry.key), ['character:ada-vale', 'character:bo-reed', 'character:cy-moss', 'equipment:lore-lamp', 'equipment:lore-rifle', 'faction:lore-guild'], `${who}: exactly the public records`);
+    assert.deepEqual(byKey(index).map(entry => entry.key), ['character:ada-vale', 'character:bo-reed', 'character:cy-moss', 'character:dee-holt', 'equipment:lore-lamp', 'equipment:lore-rifle', 'faction:lore-guild'], `${who}: exactly the public records`);
     const get = (key: string) => index.find(entry => entry.key === key)!;
     assert.equal(get('character:ada-vale').href, `${base}/characters/ada-vale`);
     assert.equal(get('character:ada-vale').faction, 'Lore Guild');
@@ -94,6 +108,8 @@ try {
   check(anonymous, 'anonymous');
   assert.deepEqual(await getLoreIndex(p.id), [], 'anonymous: nothing for a patron project');
   console.log('PASS anonymous visitor: only public records of a public project; public portrait and poster only; no restricted names');
+  await issued('anonymous');
+  console.log('PASS anonymous visitor: ISSUED TO has no unlisted character (25b)');
 
   const token = seal({ accessToken: 'fixture', userID: 'fixture', campaignID: '1', exp: Date.now() + 60000 }, 'session');
   const cookie = { cookie: `${sessionCookie}=${token}` };
@@ -105,6 +121,10 @@ try {
   check(patronIndex, 'signed-in patron');
   assert.deepEqual(await getLoreIndex(p.id), [], 'signed-in patron: nothing for a patron project either');
   console.log('PASS signed-in patron: the same public records; patron records, faction names, portraits and posters left out');
+  // Payload's read access already leaves HIDDEN listings out (also for a patron), so the added publicWhere is a second
+  // line, as in every other listing; this guards the outcome either way.
+  await issued('signed-in patron');
+  console.log('PASS signed-in patron: ISSUED TO has no unlisted character (25b)');
 
   // The redacted record's name contains "Ada Vale": the text links the public Ada Vale only, never the redacted record.
   const linker = createLoreLinker(anonymous, { self: 'character:cy-moss' });

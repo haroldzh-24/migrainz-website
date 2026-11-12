@@ -94,6 +94,8 @@ export const getProjects = cache(async (): Promise<Project[]> => {
       characters: characters.docs.filter((character) => idOf(character.project) === project.id).map((character) => ({
         ...classificationOf(character), slug: character.slug, name: character.name, role: character.role || '', description: character.description || '',
         writing: character.writing, images: images(character.images), updated: character.updatedAt.slice(0, 10),
+        // 25b: the dossier's RECORD STATUS (PUBLIC, PATRON ...), from the record itself rather than a fixed word.
+        access: character.classification ? undefined : character.accessLevel?.toUpperCase(),
         chapterSlugs: (character.relatedChapters ?? []).flatMap((value) => {
           const chapter = projectChapters.find((c) => c.id === idOf(value)); return chapter ? [chapter.slug] : [];
         }),
@@ -202,7 +204,9 @@ export const getEquipment = cache(async (project: number, slug: string) => {
   // ISSUED TO (board 3): depth 1 for the portrait (first image this visitor may see, through image()); the assignment
   // rows give this item's designation and quantity. The assigned equipment itself is not populated beyond its id.
   const characters = await cms.find({ collection: 'characters', req, overrideAccess: false, depth: 1, pagination: false, sort: 'name',
-    where: { and: [{ project: { equals: project } }, { 'equipmentAssignments.equipment': { equals: item.id } }] },
+    // 25b: listed characters only (listingVisibility public), like every other listing; an unlisted character never gets
+    // an ISSUED TO card, also for a signed-in patron who may read it.
+    where: { and: [publicWhere, { project: { equals: project } }, { 'equipmentAssignments.equipment': { equals: item.id } }] },
     select: { name: true, slug: true, role: true, images: true, equipmentAssignments: true }, populate: { equipment: { slug: true } } });
   return { ...equipmentSummary(item), schematic: schematicOf(item),
     characters: characters.docs.map(character => {

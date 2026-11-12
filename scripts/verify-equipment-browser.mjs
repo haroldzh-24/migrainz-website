@@ -97,7 +97,7 @@ try {
     else assert(record.y >= figure.y + figure.height, 'phone: record under the schematic');
     assert.equal(await page.locator('.dossier-figure .equipment-panel').count(), 0, 'no attached panel in the dossier');
     assert(await page.locator('.dossier-figure figcaption').evaluate((el, top) => el.getBoundingClientRect().top >= top, box.y + box.height - 0.5), 'caption under the schematic');
-    assert.deepEqual(await page.locator('.dossier-fields th').allTextContents(), ['CATEGORY', 'Capacity', 'Manufacturer']);
+    assert.deepEqual(await page.locator('.dossier-fields th').allInnerTexts(), ['CATEGORY', 'CAPACITY', 'MANUFACTURER'], 'spec labels in capitals (25b)');
     const palette = await page.evaluate(() => ({ label: getComputedStyle(document.querySelector('.dossier-fields th')).color, value: getComputedStyle(document.querySelector('.dossier-fields td')).color }));
     assert.notEqual(palette.label, palette.value);
     assert.equal(await page.locator('.dossier-name').textContent(), 'Scanner');

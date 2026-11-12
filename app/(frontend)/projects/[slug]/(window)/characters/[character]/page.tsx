@@ -73,7 +73,7 @@ export default async function CharacterPage({
           ...(character.role ? [{ label: "ROLE", value: character.role }] : []),
           ...(faction ? [{ label: "FACTION", value: faction }] : []),
           { label: "CHAPTERS", value: String(appearsIn.length) },
-          { label: "RECORD STATUS", value: "PUBLIC" },
+          ...(character.access ? [{ label: "RECORD STATUS", value: character.access }] : []),
           ...(character.updated ? [{ label: "UPDATED", value: <time dateTime={character.updated}>{character.updated}</time> }] : []),
         ]}
         actions={<CharacterViewerButton project={project} character={{ slug: character.slug, name: character.name, role: character.role, description: character.description, images: character.images }} />}

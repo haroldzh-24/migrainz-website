@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from 'node:child_process';
-import { appendFileSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
 import { fixtureEnv, fixtureEnvProblems } from './fixture-env.mjs';
@@ -99,42 +99,71 @@ try {
     await Promise.race([exited, new Promise(resolve => setTimeout(resolve, 10000))]);
     if (server.exitCode === null && server.signalCode === null && process.platform !== 'win32') { try { process.kill(-server.pid, 'SIGKILL'); } catch {} }
   }
+  // 24b: the fixture server's resident memory (next dev and its workers: the server's process group) after each browser
+  // script, written to the check log, to follow the growth that got it killed in this sandbox (bugs.md "Check
+  // environment"). Linux only (reads /proc); elsewhere nothing is logged.
+  function serverMemory(server) {
+    if (process.platform !== 'linux' || !server?.pid) return undefined;
+    let kb = 0;
+    for (const entry of readdirSync('/proc')) {
+      if (!/^\d+$/.test(entry)) continue;
+      try {
+        const stat = readFileSync(`/proc/${entry}/stat`, 'utf8');
+        const group = Number(stat.slice(stat.lastIndexOf(')') + 2).split(' ')[2]);
+        if (group !== server.pid) continue;
+        kb += Number(/VmRSS:\s+(\d+)/.exec(readFileSync(`/proc/${entry}/status`, 'utf8'))?.[1] ?? 0);
+      } catch { /* the process ended meanwhile */ }
+    }
+    return kb;
+  }
+  async function step(args) {
+    try { await completed(launch(args)); }
+    finally {
+      const kb = serverMemory(server);
+      if (kb !== undefined) console.log(`[regression] fixture server memory after ${path.basename(args.at(-1))}: ${(kb / 1048576).toFixed(2)} GB resident`);
+    }
+  }
   let server = await startServer();
-  await completed(launch(['scripts/verify-factions.cjs']));
-  await completed(launch(['scripts/verify.cjs']));
-  await completed(launch(['scripts/verify-interaction-polish.mjs']));
-  await completed(launch(['scripts/verify-art-viewer-keys.mjs']));
-  await completed(launch(['scripts/verify-art-viewer.mjs']));
-  await completed(launch(['scripts/verify-nav-status.mjs']));
-  await completed(launch(['scripts/verify-operations-log.mjs']));
-  await completed(launch(['scripts/verify-page-transition.mjs']));
-  await completed(launch(['scripts/verify-decode.mjs']));
-  await completed(launch(['scripts/verify-page-flip.mjs']));
-  await completed(launch(['scripts/verify-terminal-typing.mjs']));
-  await completed(launch(['scripts/verify-type-out.mjs']));
+  await step(['scripts/verify-factions.cjs']);
+  await step(['scripts/verify.cjs']);
+  await step(['scripts/verify-interaction-polish.mjs']);
+  await step(['scripts/verify-art-viewer-keys.mjs']);
+  await step(['scripts/verify-art-viewer.mjs']);
+  await step(['scripts/verify-nav-status.mjs']);
+  await step(['scripts/verify-operations-log.mjs']);
+  await step(['scripts/verify-page-transition.mjs']);
+  await step(['scripts/verify-decode.mjs']);
+  await step(['scripts/verify-page-flip.mjs']);
+  await step(['scripts/verify-terminal-typing.mjs']);
+  await step(['scripts/verify-type-out.mjs']);
   // Batch 24: a fresh server for the second half too. In this sandbox's 6 GB limit the first server was killed for memory
   // (cgroup OOM, about 5 GB resident) during verify-equipment-directory in two runs in a row (bugs.md "Check environment").
   await stopServer(server);
   server = await startServer();
-  await completed(launch(['scripts/verify-ghost-core.mjs']));
-  await completed(launch(['scripts/verify-ghost-terminal.mjs']));
-  await completed(launch(['scripts/verify-ghost-site.mjs']));
-  await completed(launch(['scripts/verify-home.mjs']));
-  await completed(launch(['--import', 'tsx', 'scripts/verify-mode-switch.mjs']));
-  await completed(launch(['scripts/verify-equipment-directory.mjs']));
+  await step(['scripts/verify-ghost-core.mjs']);
+  await step(['scripts/verify-ghost-terminal.mjs']);
+  await step(['scripts/verify-ghost-site.mjs']);
+  await step(['scripts/verify-home.mjs']);
+  await step(['--import', 'tsx', 'scripts/verify-mode-switch.mjs']);
+  await step(['scripts/verify-equipment-directory.mjs']);
   await stopServer(server);
   server = await startServer();
   // Batch 22: on the fresh server, so the first server's memory growth (bugs.md) does not reach it.
-  await completed(launch(['scripts/verify-plain-motion.mjs']));
-  await completed(launch(['scripts/verify-command-palette.mjs']));
-  await completed(launch(['scripts/verify-lore-links.mjs']));
-  await completed(launch(['scripts/verify-dossier.mjs']));
+  await step(['scripts/verify-plain-motion.mjs']);
+  await step(['scripts/verify-command-palette.mjs']);
+  await step(['scripts/verify-lore-links.mjs']);
+  // Batch 26: the dossier and the scroll-told project page on their own fresh server, so the third server's growth
+  // (killed for memory in batches 24 and 25, bugs.md "Check environment") does not reach them.
+  await stopServer(server);
+  server = await startServer();
+  await step(['scripts/verify-dossier.mjs']);
+  await step(['scripts/verify-scroll-file.mjs']);
   // Batch 25: one more fresh server for the site-health crawl. With verify-dossier added, the third server was killed
   // for memory (cgroup OOM, about 5.4 GB resident) during the crawl in this sandbox's 6 GB limit (bugs.md "Check environment").
   await stopServer(server);
   server = await startServer();
-  await completed(launch(['scripts/verify-site-health.mjs']));
-  await completed(launch(['scripts/verify-site-health.mjs', '--self-test']));
+  await step(['scripts/verify-site-health.mjs']);
+  await step(['scripts/verify-site-health.mjs', '--self-test']);
 } catch (error) {
   console.error(error);
   process.exitCode = 1;
