@@ -1,5 +1,10 @@
 # Features
 
+## Implemented - 2026-11-12 / Scroll-told project page (batch 26, board 21)
+
+- A project's overview reads as one file you scroll through inside its window: the title and key art, the logline and description, then CHARACTERS (cards with role and faction), EQUIPMENT (one turning schematic and the `.EQP` list), CHAPTERS (page counts), and the factions, writing, artwork, files and production log as before. An ON THIS PAGE index beside it (a strip at the top on phones) shows where you are, with a progress rail and SCROLL nnn% in the header; click an entry to jump there. Big outlined section numbers drift slightly and pictures reveal once as you scroll; all of it still with MOTION: REDUCED, the plain view, CRT off or in print. Every link and tab is unchanged.
+- Lore cards near the bottom of a window now open above the name instead of being cut off (24b); dossier labels read in capitals, a patron character shows RECORD STATUS PATRON, and the navy card hover no longer sticks after a tap on phones (25b).
+
 ## Implemented - 2026-11-12 / Dossier pages for equipment and characters (batch 25, board 3)
 
 - An equipment item opens as a dossier: the turning schematic on the left (a tall frame for vertical weapons), the file name, project code, name, TECHNICAL SPECIFICATIONS table and OPEN IN ART VIEWER on the right, and ISSUED TO cards for the characters who carry it below. Fits a 1366x768 laptop with the specs in view; phones stack it.

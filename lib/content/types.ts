@@ -10,6 +10,8 @@ export type Gallery = Classified & { slug: string; title: string; description: s
 export type Character = Classified & {
   slug: string; name: string; role: string; description: string; chapterSlugs: string[];
   writing?: Writing | null; images: ComicPage[]; updated?: string;
+  /** The record's access level in capitals (PUBLIC, PATRON ...); undefined for a classified placeholder. */
+  access?: string;
 };
 export type Project = Classified & {
   slug: string; id: string; title: string; category: string; status: string; art: string;

@@ -125,7 +125,7 @@ export default function EquipmentSchematic({ src, poster, ratio, name, children 
   const showVideo = Boolean(src) && !failed && (animate || firstFrame);
   const hasMedia = showVideo || hasPoster;
   if (!hasMedia && !children) return null;
-  return <section ref={container} className="equipment-module" aria-label={`${name} specifications`}
+  return <section ref={container} className="equipment-module" aria-label={children ? `${name} specifications` : `${name} schematic`}
     style={hasMedia ? { '--schematic-ratio': shape } as CSSProperties : undefined}>
     {hasMedia && <div className="equipment-schematic-display" role="img" aria-label={`${name} rotating schematic`}
       style={{ aspectRatio: shape }} data-playing={playing || undefined}>

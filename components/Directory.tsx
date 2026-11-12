@@ -10,6 +10,7 @@ export function Directory({
   title,
   compact = false,
   heading = true,
+  pathLine = true,
   children,
 }: {
   path: string;
@@ -17,6 +18,8 @@ export function Directory({
   compact?: boolean;
   /** false: the page's own heading carries the title (the dossier template, components/Dossier.tsx). */
   heading?: boolean;
+  /** false: the page draws its own path line (the scroll-told project page's header strip, components/ScrollFile.tsx). */
+  pathLine?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -27,7 +30,7 @@ export function Directory({
         <Link href="/tracker">TRACKER</Link>
         <Link href="/comics">COMICS</Link>
       </nav>
-      <p className="eyebrow directory-path">{path}</p>
+      {pathLine && <p className="eyebrow directory-path">{path}</p>}
       {heading && <h1><DecodeText text={title} /></h1>}
       {children}
       <TypeOut />
