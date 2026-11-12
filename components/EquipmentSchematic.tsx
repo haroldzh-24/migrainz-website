@@ -75,10 +75,19 @@ export default function EquipmentSchematic({ src, poster, ratio, name, children 
           const style = getComputedStyle(lede);
           return box.offsetHeight - lede.offsetHeight - parseFloat(style.marginTop) - parseFloat(style.marginBottom);
         };
-        let max = Math.max(200, Math.floor(space - panelHeight() - 2));
+        // In the dossier (board 3) the module sits alone in a figure: its caption must stay in view under it too.
+        const below = () => {
+          let total = 0;
+          for (let next = element.nextElementSibling as HTMLElement | null; next; next = next.nextElementSibling as HTMLElement | null) {
+            const style = getComputedStyle(next);
+            total += next.offsetHeight + parseFloat(style.marginTop || '0') + parseFloat(style.marginBottom || '0');
+          }
+          return total;
+        };
+        let max = Math.max(200, Math.floor(space - panelHeight() - below() - 2));
         for (let pass = 0; pass < 5; pass++) {
           element.style.setProperty('--video-max-h', max + 'px');
-          const next = Math.max(200, Math.floor(space - panelHeight() - 2));
+          const next = Math.max(200, Math.floor(space - panelHeight() - below() - 2));
           if (Math.abs(next - max) < 2) break;
           max = next;
         }

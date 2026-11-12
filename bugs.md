@@ -14,6 +14,18 @@
 - No dedicated test yet (6c/7c, listed by the 8b review): the idle caption following a CRT-mode or reduced-motion change, the lens dropping a sample that went stale while loading, the motion helper reading the latest visibility entry.
 - Status: Open; questions for Harold.
 
+### 2026-11-12 - Batch 25: dossier limits and an open question from the batch 23 review
+
+- **Open question for Harold (23b, from batch 23's independent review): server-side caching for `/search-index`.** The first palette open on a page runs about 21 lean listing queries (no cache; `private, no-store`). A short server-side cache (per access level) would cut that, but it is a caching decision (AGENTS.md: caching headers and behaviour need his yes) and must never serve one visitor's records to another. Not built; recorded here.
+- Dossier fields are only the CMS's existing fields (no schema change): equipment = category, the fixed spec fields that are filled in, the free technical-specification rows, updated; character = role, the public primary faction (from the lore index, so a non-public faction or affiliations are not shown), the number of chapters it appears in, `RECORD STATUS: PUBLIC` (the same fixed text as before, also on a patron character's page) and updated. The board's file name (`mp510mmcc.EQP`) is drawn from the slug; the site keeps its name-based `.EQP` / `.CHR` file names (palette, lore cards, desktop files).
+- COMPARE (board 3) is left out (plan). The dossier's window title bar keeps `PROJECT: <name>` (the board's `MP5 / mp510mmcc.EQP` title would need the shared project window to change per record).
+- EQUIPMENT CARRIED cards no longer list each item's specifications or category (they are on the item's dossier); they show the file name, the assignment's designation and quantity, and its note. ISSUED TO cards show the character's first image the visitor may see (a grey square when there is none), its designation and quantity on this item, or its role.
+- Character media: only the first image sits in the dossier frame; the other images follow under the record notes (they were one gallery before).
+- A vertical schematic gets a frame of its poster's ratio, capped to the window's height (narrower, centred) rather than a full-width dark frame; a schematic without a poster ratio measures it from the poster or video as before.
+- Labels on the cards are 12 px (the board's 11 px is under the site's floor). The equipment description sits under the actions in the record column and may run past the first screen; the fields table stays in view.
+- Checked only in headless Chrome on the dev fixture (1366x768, 1440x900, 1536x864, 390) and the synthetic equipment pages; not on a real phone, Safari or Firefox.
+- Status: Open (recorded; the caching question waits for Harold).
+
 ### 2026-11-12 - Batch 24: lore link limits
 
 - Only names written exactly as the record's name link (case-sensitive, whole words); a name split across two differently formatted pieces of rich text (e.g. half of it bold) is not matched; nicknames and plurals do not link. Two records with the same name: the character wins over a faction, a faction over equipment.
@@ -46,6 +58,7 @@
 
 - `check-20261112-092749`: the regression step failed with `ERR_CONNECTION_REFUSED` in `verify-equipment-directory.mjs` after ~26 min; the kernel log shows the cgroup OOM killer ending `next-server` at about 5 GB resident (this cloud sandbox's shell processes share a 6 GB limit). The dev server's memory grows through the run (about 4.9 GB near the end of the re-run). Re-run `--only regression` (`check-20261112-095647`) passed. Not a code fault; on a machine with more memory it should not occur. If it repeats, consider restarting the fixture server between regression scripts.
 - Batch 24: `check-20261112-140525` (`--only regression`): `verify-mode-switch.mjs` round 1 saw the forward run stop at `black` on `/projects` (a route the batch does not touch); the script passed twice in a row on its own against a fresh fixture server, and passed in the next run: a timing flake under load. `check-20261112-144013` and `check-20261112-151404` (`--only regression`): the first dev server was killed for memory (cgroup OOM, about 4.9 GB resident) during `verify-equipment-directory.mjs` both times. Fix (batch 24): `scripts/regression.mjs` now restarts the fixture server after `verify-type-out.mjs` too (three fresh servers per run), so none of them reaches the limit.
+- Batch 25: `check-20261112-170324`: the third server was killed for memory (cgroup OOM, about 5.4 GB resident) during the `verify-site-health.mjs` crawl, after the new `verify-dossier.mjs` ran on it (`ECONNRESET`); every other script and step passed. Fix: `scripts/regression.mjs` starts a fourth fresh server for the site-health crawl. Re-run below (changelog, batch 25).
 - Status: Open (watching).
 
 ### 2026-11-05 - Ghost limits (batches 18 to 20)

@@ -103,6 +103,9 @@ try {
     await visit(page, CHARACTER);
     const equipment = term(page, 'equipment');
     assert.equal(await shown(equipment), false, 'hidden until hovered');
+    // Batch 25: the dossier puts the lore text below the first screen, so bring the link into view before measuring
+    // (hover() would scroll the window and move everything by the scroll, not by a layout shift).
+    await equipment.locator('> .lore-link').scrollIntoViewIfNeeded();
     const after = page.locator('.lore-main .content-writing h2');
     const before = await after.boundingBox();
     const scroll = await page.locator('.project-app-content').evaluate(element => element.scrollHeight);
@@ -171,7 +174,14 @@ try {
     assert.deepEqual(rows, [['Fixture Scanner', 'equipment'], ['REGRESSION EMBLEM', 'faction'], ['THE OBSERVER', 'character'], ['Fixture Satchel', 'equipment'], ['Fixture Relay', 'equipment'], ['REGRESSION NO EMBLEM', 'faction']]);
     assert.equal(await page.locator('.lore-references h2').textContent(), 'CROSS-REFERENCES');
     const aside = await page.locator('.lore-references').boundingBox(), main = await page.locator('.lore-main').boundingBox();
-    assert.ok(aside.y >= main.y + main.height - 1, 'narrow column: the aside sits under the text');
+    // Batch 25: the character dossier puts the record notes full width under the dossier, so at 1366 the aside has room
+    // beside the text (before, the text sat in the narrow right column and the aside went under it).
+    assert.ok(aside.x >= main.x + main.width - 1 && Math.abs(aside.y - main.y) < 40, 'wide column: the aside sits beside the text');
+    await page.setViewportSize({ width: 560, height: 768 });
+    await page.waitForTimeout(200);
+    const narrowAside = await page.locator('.lore-references').boundingBox(), narrowMain = await page.locator('.lore-main').boundingBox();
+    assert.ok(narrowAside.y >= narrowMain.y + narrowMain.height - 1, 'narrow column: the aside sits under the text');
+    await page.setViewportSize({ width: 1366, height: 768 });
     await visit(page, OBSERVER);
     assert.deepEqual(await page.locator('.lore-references li').evaluateAll(items => items.map(item => item.textContent)), ['BLUSHLAND ch. 01 appears in']);
     await visit(page, FACTION);
@@ -179,7 +189,7 @@ try {
     await term(page, 'character').locator('> .lore-link').hover();
     assert.equal(await term(page, 'character').locator('.lore-preview-meta').textContent(), 'character.rec · REGRESSION EMBLEM', 'a character\'s public primary faction');
     assert.equal(await page.locator('.lore-references li').count(), 2);
-    pass('CROSS-REFERENCES: linked records with kinds in order, appears in (chapters); faction page links and aside');
+    pass('CROSS-REFERENCES: linked records with kinds in order, beside the text when wide and under it when narrow, appears in (chapters); faction page links and aside');
     await context.close();
   }
 

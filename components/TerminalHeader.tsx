@@ -1,5 +1,6 @@
 "use client";
 
+import ShortcutKey from "@/components/ShortcutKey";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import SystemMenu from "@/components/SystemMenu";
@@ -35,7 +36,7 @@ export default function TerminalHeader() {
         </span>
         {/* Batch 23: the command palette (board 7). Shown with the menu bar (above 860 px); phones use SYSTEM ▸ SEARCH. */}
         <button className="topbar-search" type="button" aria-keyshortcuts="Control+K Meta+K" onClick={event => openPalette("", event.currentTarget)}>
-          SEARCH<span className="topbar-search-key" aria-hidden="true">CTRL+K</span>
+          SEARCH<ShortcutKey className="topbar-search-key" />
         </button>
         <SystemMenu />
       </div>

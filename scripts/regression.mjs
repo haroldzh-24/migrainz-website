@@ -128,6 +128,11 @@ try {
   await completed(launch(['scripts/verify-plain-motion.mjs']));
   await completed(launch(['scripts/verify-command-palette.mjs']));
   await completed(launch(['scripts/verify-lore-links.mjs']));
+  await completed(launch(['scripts/verify-dossier.mjs']));
+  // Batch 25: one more fresh server for the site-health crawl. With verify-dossier added, the third server was killed
+  // for memory (cgroup OOM, about 5.4 GB resident) during the crawl in this sandbox's 6 GB limit (bugs.md "Check environment").
+  await stopServer(server);
+  server = await startServer();
   await completed(launch(['scripts/verify-site-health.mjs']));
   await completed(launch(['scripts/verify-site-health.mjs', '--self-test']));
 } catch (error) {

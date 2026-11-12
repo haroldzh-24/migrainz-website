@@ -5,7 +5,7 @@ import ContentGallery from "@/components/ContentGallery";
 import { EquipmentViewerButton } from "@/components/EquipmentViewerLink";
 import { getProjectIdentity, getEquipment } from "@/lib/content/queries";
 import EquipmentSchematic from "@/components/EquipmentSchematic";
-import EquipmentSpecifications from "@/components/EquipmentSpecifications";
+import { Dossier, DossierCards } from "@/components/Dossier";
 
 type Props = { params: Promise<{ slug: string; equipment: string }> };
 export async function generateMetadata({ params }: Props) {
@@ -20,17 +20,36 @@ export default async function EquipmentPage({ params }: Props) {
   if (!project) return lockedPageOrNotFound({ projectSlug: ids.slug, kind: "equipment", slug: ids.equipment });
   const equipment = await getEquipment(project.id, ids.equipment);
   if (!equipment) return lockedPageOrNotFound({ projectSlug: ids.slug, kind: "equipment", slug: ids.equipment });
-  return <Directory path={`SYS:/PROJECTS/${project.slug.toUpperCase()}/EQUIPMENT/${equipment.slug.toUpperCase()}`} title={equipment.name} compact>
+  const file = `${equipment.name.replace(/\s+/g, "_")}.EQP`;
+  const schematic = equipment.schematic;
+  const hasSchematic = Boolean(schematic?.src || schematic?.poster);
+  // Board 3: the schematic loop on the left (its frame follows the poster's ratio, so a vertical weapon gets a tall
+  // frame); without one, the first concept image; without either, an empty frame.
+  const media = hasSchematic
+    ? <figure className="dossier-figure">
+        <EquipmentSchematic key={equipment.slug + schematic?.src + schematic?.poster} {...schematic} name={equipment.name} />
+        <figcaption>SCHEMATIC · {file}</figcaption>
+      </figure>
+    : equipment.images.length
+      ? <ContentGallery images={equipment.images.slice(0, 1)} />
+      : <div className="dossier-empty-frame" role="img" aria-label={`No schematic or artwork filed for ${equipment.name}`}><span>NO SCHEMATIC FILED</span></div>;
+  const gallery = hasSchematic ? equipment.images : equipment.images.slice(1);
+  return <Directory path={`SYS:/PROJECTS/${project.slug.toUpperCase()}/EQUIPMENT/${equipment.slug.toUpperCase()}`} title={equipment.name} compact heading={false}>
     <Link className="section-link" href={`/projects/${project.slug}/equipment`}>RETURN TO EQUIPMENT</Link>
-    <EquipmentSchematic key={equipment.slug + equipment.schematic?.src + equipment.schematic?.poster} {...equipment.schematic} name={equipment.name}>
-      <p className="eyebrow">{equipment.category && `${equipment.category} / `}UPDATED <time dateTime={equipment.updated}>{equipment.updated}</time></p>
-      {equipment.description && <p className="lede">{equipment.description}</p>}
-      <EquipmentSpecifications rows={equipment.specifications} />
-    </EquipmentSchematic>
-    <EquipmentViewerButton project={project} equipment={equipment} />
-    <ContentGallery images={equipment.images} />
-    {equipment.characters.length > 0 && <section aria-label="Assigned characters"><h2>ASSIGNED CHARACTERS</h2><div className="directory-list">
-      {equipment.characters.map(character => <Link className="directory-row" key={character.slug} href={`/projects/${project.slug}/characters/${character.slug}`}><strong>{character.name}</strong><span>{character.role}</span></Link>)}
-    </div></section>}
+    <Dossier label="Equipment dossier" media={media} file={file} code={project.projectCode || undefined} name={equipment.name}
+      fieldsCaption="TECHNICAL SPECIFICATIONS"
+      fields={[
+        ...(equipment.category ? [{ label: "CATEGORY", value: equipment.category }] : []),
+        ...equipment.specifications.map(row => ({ label: row.label, value: row.value })),
+        { label: "UPDATED", value: <time dateTime={equipment.updated}>{equipment.updated}</time> },
+      ]}
+      actions={<EquipmentViewerButton project={project} equipment={equipment} />}
+      below={<DossierCards title="ISSUED TO" label="Issued to" cards={equipment.characters.map(character => ({
+        key: character.slug, href: `/projects/${project.slug}/characters/${character.slug}`, name: character.name, image: character.portrait,
+        line: [character.designation || character.role, character.quantity != null ? `×${character.quantity}` : ""].filter(Boolean).join(" · ") || undefined,
+      }))} />}>
+      {equipment.description && <p className="lede dossier-description">{equipment.description}</p>}
+    </Dossier>
+    <ContentGallery images={gallery} />
   </Directory>;
 }

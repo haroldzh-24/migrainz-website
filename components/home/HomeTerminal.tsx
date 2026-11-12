@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSound } from "@/components/SoundProvider";
 import { openRoute } from "@/lib/graphics-mode";
 import { setDisplayMode } from "@/lib/display-mode";
-import { PENDING_KEY, TERMINAL_RUN_EVENT, openPalette } from "@/lib/palette";
+import { TERMINAL_RUN_EVENT, openPalette, takePendingRun } from "@/lib/palette";
 import { useTerminalTyping } from "@/components/home/useTerminalTyping";
 import { ghost } from "@/lib/ghost";
 import GhostTerminal from "@/components/ghost/GhostTerminal";
@@ -86,8 +86,7 @@ export default function HomeTerminal({ projects, clearance }: { projects: Termin
     const request = (command: string) => { inputRef.current?.focus({ preventScroll: false }); runRef.current(command); };
     const onRun = (event: Event) => { const command = (event as CustomEvent<{ command?: string }>).detail?.command; if (command) request(command); };
     window.addEventListener(TERMINAL_RUN_EVENT, onRun);
-    let pending: string | null = null;
-    try { pending = sessionStorage.getItem(PENDING_KEY); sessionStorage.removeItem(PENDING_KEY); } catch { /* optional storage */ }
+    const pending = takePendingRun(); // fresh (10 s) and one shot (23b)
     if (pending === "help") request(pending); // only the palette's own request, never arbitrary stored text
     return () => window.removeEventListener(TERMINAL_RUN_EVENT, onRun);
   }, []);
