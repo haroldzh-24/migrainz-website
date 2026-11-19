@@ -2,6 +2,14 @@
 
 ## Open Bugs
 
+### 2026-11-19 - Batch 28: media caching question for Harold, and page flip limits
+
+- **Question for Harold (production lane, not changed):** media is served `Cache-Control: private, no-store` (cms/blob-storage.ts, app/(payload)/api/[...slug]/route.ts), so every visit downloads each comic page again (a function call and a Blob read each time) and the browser cannot keep pages between visits. Batch 28's preload works within one page view (the browser's list of available images reuses a loaded image even with `no-store`), but a reload or a new visit fetches every page again. Allowing the browser to keep public page images (for example `private, max-age=<n>` for public media only, never for patron files) would cut requests and make turns faster; it changes caching headers, so it needs his yes and a check that protected files stay `no-store`.
+- Preloading costs up to two extra page downloads per page shown (the next and the previous; most are pages the reader would load anyway). Not under Save-Data; not measured on the live site.
+- The plain sheet has the page area's colour, so at the very start of a NEXT it only shows by its edge and shading; the decoding placeholder turns only when it is already on screen (the reader shows it only for thumbnails this page has shown).
+- Checked only in headless Chrome on the dev fixture with page requests held or delayed by Playwright (1366x768, 390x844); not on a real phone, Safari or Firefox, or the live site.
+- Status: Open (question for Harold; recorded limits).
+
 ### 2026-10-29 - Batch 8: open questions and limits
 
 - Cost (Harold asked for always-turning thumbnails): every card on screen plays its schematic video through `/api/media/file` (a function call and a Blob read per request; responses are `private, no-store`). Measured in the fixture (corrected in 8b): one request per video file on load, three files (the two test clips and the scanner's stub video, which fails and shows its poster), and no request during a full 12 s loop. Not measured: real-size schematic files (the test clips are 33 KB and 49 KB; with `no-store` a browser may fetch a large file again when it loops), production request counts, Vercel or Blob usage. Since 8b the cards and the phone tab bar do not prefetch their pages (in production every link on screen would otherwise prefetch; `next dev`, which the tests use, never does, so this is not tested); the switch still fetches the route at the click. Videos only load within 200 px of the screen and pause off screen; once loaded they stay in memory until the page is left.
@@ -119,7 +127,7 @@
 ### 2026-11-04 - Batch 15: page flip limits
 
 - Checked only in headless Chrome; drawing cost on phones (up to 640 strips per frame at 24 frames a second) not measured on a real device.
-- No preloading of the next page (one more media request per page for readers who stop early); a NEXT onto a page still loading shows its DECODING state under the turning page.
+- ~~No preloading of the next page (one more media request per page for readers who stop early); a NEXT onto a page still loading shows its DECODING state under the turning page.~~ Batch 28 preloads the next and previous page; a page still loading shows its DECODING state under the turning page.
 - Status: Open (recorded).
 
 ### 2026-11-04 - Batch 14: heading decode limits and a question
@@ -253,6 +261,18 @@
 - Status: Open
 
 ## Resolved Bugs
+
+### 2026-11-19 - Page flip skipped while a page was loading (Harold, 2026-11-19: "the animation isn't playing sometimes")
+
+- `PageFlip.start()` returned false unless the outgoing page image was loaded and visible, so NEXT / PREV / arrow keys pressed while the page on screen was still LOADING turned the page instantly with no flip; PREV fell back to an instant turn when the earlier page was not ready within 300 ms. Measured on the fixture: NEXT pressed as the reader left LOADING missed 1 in 4 with no delay and 2 in 4 with a 1.5 s media delay. On the live site media is `private, no-store` and nothing preloaded the next page, so pages were often not ready.
+- Fixed in batch 28: the flip turns the decoding placeholder or a plain sheet when the page is not on screen, PREV turns one after 300 ms instead of dropping to an instant turn, and the next and previous page are preloaded. Tests: `scripts/verify-page-flip-slow.mjs` (page requests held or delayed: NEXT while LOADING flips a plain sheet for its full length at 1366 and 390; the next page is requested once the page is shown and NEXT then shows it without LOADING and without a second request; PREV to a held page flips a plain sheet; reduced motion still instant) and `scripts/verify-page-preload.ts` (one ahead and one behind, no classified or missing pages, nothing under Save-Data).
+- Status: Resolved (batch 28; caching headers unchanged, see the open question above).
+
+### 2026-11-19 - Batch 27 review (27b): phone taskbar, reader route window, minimize focus
+
+- Found by the independent review of batch 27: (1) at 390 px the phone taskbar buttons (max 200 px, no shrinking) pushed the later window buttons out of view; (2) the comic reader's route-window path (close → `/`, keys after the phone sheet) had no test; (3) minimizing the Art Viewer from its own taskbar button could move focus to the viewer's opener (where a click gives the button no focus, as in Safari, focus was still in the viewer when it was handed back); (4) undocumented: closing a route window navigates with `router.push`, adding a history entry.
+- Fixed in batch 28: phone buttons shrink (64 to 160 px, ellipsis); `minimizeWindow(id, from)` keeps focus on the taskbar button that minimized the window; tests in `scripts/verify-desktop-polish.mjs` (two windows at 390 fit without scrolling, each button fully visible; reader at 390 opened by the switch: ←/→ turn pages after the sheet, close goes to `/`; minimizing the viewer by a click and by a click that gives no focus keeps focus on its button; that check fails on the batch 27 code); the history entry is documented in changelog.md and features.md.
+- Status: Resolved (batch 28).
 
 ### 2026-11-12 - Batch 22 review (22b): plain view before hydration, print and observers
 

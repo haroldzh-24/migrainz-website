@@ -134,6 +134,8 @@ try {
   await step(['scripts/verify-page-transition.mjs']);
   await step(['scripts/verify-decode.mjs']);
   await step(['scripts/verify-page-flip.mjs']);
+  // Batch 28: the flip while pages load, and the next page preloaded (media held by Playwright routes).
+  await step(['scripts/verify-page-flip-slow.mjs']);
   await step(['scripts/verify-terminal-typing.mjs']);
   await step(['scripts/verify-type-out.mjs']);
   // Batch 24: a fresh server for the second half too. In this sandbox's 6 GB limit the first server was killed for memory

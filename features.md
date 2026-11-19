@@ -1,5 +1,11 @@
 # Features
 
+## Implemented - 2026-11-19 / Page flip while pages load, next page preloaded (batch 28, with 27b)
+
+- The comic reader's page turn now always plays: pressing NEXT, PREV or an arrow while a page is still loading turns a blurred preview or a plain sheet instead of skipping the animation.
+- The next and the previous page load in the background once the page you are reading is on screen, so turning usually shows the new page at once. Nothing is preloaded for locked pages, on Save-Data connections, or more than one page either way.
+- 27b: on phones two or three window buttons fit the taskbar (long names are cut with …); minimizing the Art Viewer from its taskbar button keeps focus on that button. Closing a route window (project window, comic reader) goes back with a normal navigation, so browser Back opens the window again.
+
 ## Implemented - 2026-11-12 / Win95 desktop polish (batch 27, P2-2)
 
 - Opening a project, comic or archive from the terminal now ends with a Win95 zoom: a dotted outline steps from the link you clicked to the window. Closing or minimizing a window zooms it down to its taskbar button; closing the project window (or the comic reader) takes you back to the terminal page you came from.
