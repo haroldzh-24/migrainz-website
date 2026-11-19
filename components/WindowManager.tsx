@@ -51,7 +51,7 @@ type WindowManagerValue = {
   registerWindow: (window: Omit<WindowRecord, "focused" | "zIndex">) => void;
   unregisterWindow: (id: string) => void;
   focusWindow: (id: string, sound?: "click" | "open") => void;
-  minimizeWindow: (id: string) => void;
+  minimizeWindow: (id: string, from?: HTMLElement) => void;
   restoreWindow: (id: string) => void;
   closeWindow: (id: string) => void;
   moveWindow: (id: string, position: WindowPosition) => void;
@@ -222,11 +222,17 @@ export function WindowManagerProvider({ children }: { children: ReactNode }) {
     return [...document.querySelectorAll<HTMLElement>(".retro-window:not(.art-viewer-window)")].sort((a, b) => Number(b.style.zIndex) - Number(a.style.zIndex))[0]
       ?? document.getElementById("top");
   };
-  const minimizeWindow = (id: string) => {
+  /** `from`: the taskbar button that minimized the window; focus stays on it (27b), also where a click gives no focus. */
+  const minimizeWindow = (id: string, from?: HTMLElement) => {
     if (id === "system") hideDesktop();
     else zoomToTaskbar(id, "minimize"); // batch 27: window → its taskbar button (desktop only; decoration)
     // The opener is kept: restoring and then closing the viewer still returns there.
-    if (id === viewerWindowId && !desktopVisible) handBackFocus(viewerHandBack(viewerOpener.current));
+    if (from) requestAnimationFrame(() => {
+      const active = document.activeElement;
+      const lost = !active || active === document.body || !active.isConnected || Boolean(document.querySelector(`.retro-window[data-window-id="${id}"]`)?.contains(active));
+      if (from.isConnected && active !== from && lost) from.focus({ preventScroll: true });
+    });
+    else if (id === viewerWindowId && !desktopVisible) handBackFocus(viewerHandBack(viewerOpener.current));
     setWindows((current) => current.map((window) => window.id === id ? { ...window, minimized: true, focused: false } : window));
     playSound("close");
   };
@@ -456,7 +462,7 @@ export function WindowTaskbar({ system = false, inside = false }: { system?: boo
         // minimizes it, any other brings it up and to the front.
         const active = visible && window.focused;
         return <button type="button" key={window.id} data-window-id={window.id} className={active ? "is-open" : ""} aria-pressed={active} aria-label={window.title}
-          onClick={() => active ? minimizeWindow(window.id) : restoreWindow(window.id)}>[{window.title}]</button>;
+          onClick={(event) => active ? minimizeWindow(window.id, event.currentTarget) : restoreWindow(window.id)}>[{window.title}]</button>;
       }
       return <button type="button" key={window.id} data-window-id={window.id} className={visible ? "is-open" : ""} aria-label={`${visible ? "Focus" : "Restore"} ${window.title}`} onClick={() => restoreWindow(window.id)}>[{window.title}]</button>;
     })}

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useId, useRef, useState, type MutableRefObject, type PointerEvent } from "react";
 import { RetroWindow, useWindowManager, viewerClosedKey, type ViewerImage } from "@/components/WindowManager";
+import { artworkSources } from "@/lib/page-preload";
 
 // scale null = fitted: to the whole frame by default, or to the frame's height or width (the comic reader's FIT HEIGHT
 // and FIT WIDTH, design canvas board 4). `top` starts a fitted page that is taller than the frame at its top edge.
@@ -55,14 +56,15 @@ function fileLabel(src?: string) {
 /**
  * `keys`: filled with the canvas's key handler, so a window can let the canvas act on a key wherever focus is inside it.
  * `scan`: a slow image scans in when it arrives (Art Viewer); the comic reader shows it at once, so page turns stay quick.
+ * `onSettled`: called once the image has loaded, or every source has failed (the comic reader then preloads, batch 28).
  */
-export function ArtworkCanvas({ image, view, onChange, schematic = false, reader = false, onFitChosen, keys, scan = false, several = false }: { image: ViewerImage; view: View; onChange: (view: View) => void; schematic?: boolean; reader?: boolean; onFitChosen?: (fit: "height" | "width") => void; keys?: MutableRefObject<CanvasKeys | null>; scan?: boolean; several?: boolean }) {
+export function ArtworkCanvas({ image, view, onChange, schematic = false, reader = false, onFitChosen, keys, scan = false, several = false, onSettled }: { image: ViewerImage; view: View; onChange: (view: View) => void; schematic?: boolean; reader?: boolean; onFitChosen?: (fit: "height" | "width") => void; keys?: MutableRefObject<CanvasKeys | null>; scan?: boolean; several?: boolean; onSettled?: () => void }) {
   const canvas = useRef<HTMLDivElement>(null);
   const [space, setSpace] = useState({ width: 0, height: 0 });
   const [natural, setNatural] = useState({ width: 0, height: 0 });
   const [failed, setFailed] = useState(false);
   const [sourceIndex, setSourceIndex] = useState(0);
-  const sources = image.sources ?? [...new Set([image.viewerSrc, image.src, image.thumbnailSrc].filter((src): src is string => Boolean(src)))];
+  const sources = artworkSources(image);
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const frame = useRef<number | null>(null);
   const change = useRef(onChange);
@@ -302,12 +304,13 @@ export function ArtworkCanvas({ image, view, onChange, schematic = false, reader
       <img className="art-viewer-image" data-schematic={schematic || undefined} data-reveal={decode === "scan" || undefined} src={source} alt={image.alt} draggable={false}
         onError={() => {
           if (sourceIndex + 1 < sources.length) setSourceIndex(sourceIndex + 1);
-          else setFailed(true);
+          else { setFailed(true); onSettled?.(); }
         }}
         onLoad={(event) => {
           setNatural({ width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight });
           const motion = scan && slow && document.documentElement.dataset.crt === "on" && !reducedMotion();
           setDecode(motion ? "scan" : "done");
+          onSettled?.();
         }}
         style={ready ? box : { visibility: "hidden" }} />
       {decode === "scan" && ready && <span className="art-viewer-scan" aria-hidden="true" style={box} />}

@@ -24,6 +24,7 @@ const STEPS = [
   { name: 'migration', args: ['--import', 'tsx', 'scripts/verify-equipment-migration.mjs'], timeout: minutes(5) },
   { name: 'home-graphics', args: ['--import', 'tsx', 'scripts/verify-home-graphics.ts'], timeout: minutes(1) },
   { name: 'graphics-mode', args: ['--import', 'tsx', 'scripts/verify-graphics-mode.ts'], timeout: minutes(1) },
+  { name: 'page-preload', args: ['--import', 'tsx', 'scripts/verify-page-preload.ts'], timeout: minutes(1) },
   { name: 'regression', args: ['scripts/regression.mjs'], timeout: minutes(50) }, // about 30 min on a 2-core machine since batch 7
   { name: 'equipment-navigation', args: ['scripts/verify-equipment-navigation.mjs'], timeout: minutes(10) },
   { name: 'equipment-browser', args: ['scripts/verify-equipment-browser.mjs'], timeout: minutes(10) },

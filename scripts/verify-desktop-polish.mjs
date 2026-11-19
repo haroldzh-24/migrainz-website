@@ -7,6 +7,8 @@
 // outline window → its button; closing the route's window goes back to the terminal with the reverse. Phones: the
 // window slides up as a sheet, no outline, no extra terminal button. Reduced motion, MOTION: REDUCED, the plain view
 // and CRT "reduced" / "off": no outline and no sheet. ModeSwitch's window listeners are not duplicated by navigation.
+// 27b: minimizing the Art Viewer from its taskbar button keeps focus there; at 390 two window buttons are fully
+// visible; the comic reader as the route window turns pages with ←/→ after the sheet and closes back to /.
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -211,6 +213,83 @@ try {
     assert.ok((await tab.boundingBox()).height >= 44, 'window button is a 44px touch target');
     assert.ok(!(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)), 'no sideways scroll at 390');
     pass('phones: full switch, sheet slides up, no outline, no extra terminal button');
+    await context.close();
+  }
+
+  // 1b (27b). Minimizing the Art Viewer from its own taskbar button keeps focus on that button, also where a click
+  // gives the button no focus (Safari: focus is still in the viewer, so the old hand-back sent it to the opener).
+  {
+    const { page, context } = await open();
+    await page.goto(base + '/projects/blushland/equipment/fixture-satchel');
+    await page.locator('.project-application').waitFor();
+    const viewerTab = page.locator('.public-window-dock button[data-window-id="art-viewer"]');
+    await page.getByRole('button', { name: /OPEN IN ART VIEWER/i }).click();
+    for (const how of ['click', 'click without focus']) {
+      await page.locator('.art-viewer-window').waitFor();
+      await page.waitForFunction(() => document.querySelector('.public-window-dock button[data-window-id="art-viewer"]')?.getAttribute('aria-pressed') === 'true');
+      if (how === 'click') await viewerTab.click();
+      else {
+        await page.locator('.art-viewer-window .art-viewer-canvas').first().focus();
+        await viewerTab.dispatchEvent('click');
+      }
+      await page.locator('.art-viewer-window').waitFor({ state: 'detached' }).catch(() => {});
+      await page.waitForFunction(() => document.querySelector('.public-window-dock button[data-window-id="art-viewer"]')?.getAttribute('aria-pressed') === 'false');
+      await page.waitForTimeout(150);
+      assert.equal(await page.evaluate(() => document.activeElement?.dataset.windowId), 'art-viewer', `${how}: focus stays on the viewer's taskbar button`);
+      await viewerTab.click(); // restore for the next round
+    }
+    await page.locator('.art-viewer-window').waitFor();
+    pass('27b: minimizing the Art Viewer from its taskbar button keeps focus on the button');
+    await context.close();
+  }
+
+  // 2b (27b). Phones: two windows fit the taskbar (every button fully visible); the reader as the route window: ←/→ turn
+  // pages after the sheet slides up, and closing it goes back to the terminal.
+  {
+    const { page, context } = await open({ width: 390, height: 844 });
+    await page.goto(base + '/projects/blushland/equipment/fixture-satchel');
+    await page.locator('.project-application').waitFor();
+    await page.getByRole('button', { name: /OPEN IN ART VIEWER/i }).click();
+    await page.locator('.art-viewer-window').waitFor();
+    await page.waitForTimeout(300);
+    const fit = await page.evaluate(() => {
+      const bar = document.querySelector('.public-window-dock .window-taskbar');
+      const dock = document.querySelector('.public-window-dock').getBoundingClientRect();
+      const box = bar.getBoundingClientRect();
+      const buttons = [...bar.querySelectorAll('button')].map(button => { const r = button.getBoundingClientRect(); return { left: r.left, right: r.right, width: r.width, text: button.textContent }; });
+      return { buttons, scrolls: bar.scrollWidth > bar.clientWidth + 1, bar: { left: box.left, right: box.right }, dock: { left: dock.left, right: dock.right } };
+    });
+    assert.equal(fit.buttons.length, 2, `two window buttons (${JSON.stringify(fit)})`);
+    assert.ok(!fit.scrolls, `390: the window buttons fit without scrolling (${JSON.stringify(fit)})`);
+    for (const button of fit.buttons) assert.ok(button.left >= fit.bar.left - 0.5 && button.right <= fit.bar.right + 0.5 && button.right <= 390 && button.width >= 60, `390: button fully visible (${JSON.stringify(button)})`);
+    await mkdir(path.resolve('test-results/batch-28'), { recursive: true });
+    await page.screenshot({ path: path.resolve('test-results/batch-28/taskbar-390-two-windows.png') });
+    pass('27b: 390 with two windows: every taskbar button fully visible');
+    await context.close();
+  }
+  {
+    const { page, context } = await open({ width: 390, height: 844 });
+    for (const route of ['/comics/blushland/chapter-01', '/']) await page.goto(base + route);
+    await page.locator('.home-screen').waitFor();
+    await reset(page);
+    await page.evaluate(() => window.dispatchEvent(new CustomEvent('migrainz:open-route', { cancelable: true, detail: { href: '/comics/blushland/chapter-01' } })));
+    await page.waitForURL(/\/comics\/blushland\/chapter-01$/);
+    await idle(page);
+    await page.waitForFunction(() => !document.querySelector('[data-sheet]'), null, { timeout: 5000 });
+    assert.equal((await page.evaluate(() => window.__sheets)).length, 1, 'the reader slides up as a sheet');
+    const counter = page.locator('.comic-reader-navigation output');
+    await page.locator('.comic-page-stage .art-viewer-canvas').focus();
+    await page.keyboard.press('ArrowRight');
+    await page.waitForFunction(() => document.querySelector('.comic-reader-navigation output')?.textContent === 'PAGE 2 / 3');
+    await page.waitForFunction(() => document.querySelector('.page-flip')?.hidden !== false);
+    await page.keyboard.press('ArrowLeft');
+    await page.waitForFunction(() => document.querySelector('.comic-reader-navigation output')?.textContent === 'PAGE 1 / 3');
+    assert.equal(await counter.textContent(), 'PAGE 1 / 3');
+    await page.getByRole('button', { name: /^Close COMIC READER/ }).click();
+    await page.waitForURL(url => new URL(url).pathname === '/');
+    await idle(page);
+    assert.equal(await page.locator('.comic-reader-window').count(), 0, 'the reader is gone');
+    pass('27b: 390 reader route window: ←/→ turn pages after the sheet; closing goes back to /');
     await context.close();
   }
 

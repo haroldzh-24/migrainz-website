@@ -2626,7 +2626,8 @@ html[data-motion="reduced"] .zoom-outline, html[data-view="plain"] .zoom-outline
 @media (max-width: 700px) {
   :root:has(.graphics-route) .public-window-layer { top: calc(var(--header-bottom, 0px) + 4px); }
   :root:has(.graphics-route) .taskbar-terminal { min-height: 44px; }
-  :root:has(.graphics-route) .public-window-dock .window-taskbar button { min-height: 44px; max-width: 200px; }
+  /* 27b: phone buttons shrink (text cut with an ellipsis) so two or three windows fit beside ◂ TERMINAL at 390. */
+  :root:has(.graphics-route) .public-window-dock .window-taskbar button { min-height: 44px; max-width: 160px; flex: 0 1 auto; min-width: 64px; }
   .mode-switch-log { bottom: 84px; font-size: 13px; }
 }
 
